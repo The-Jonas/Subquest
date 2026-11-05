@@ -7,7 +7,7 @@
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
   import { t } from "../i18n/index.svelte";
-  import { app } from "../stores/app.svelte";
+  import { app, persistSettings } from "../stores/app.svelte";
   import {
     inTauri,
     listWindows,
@@ -15,18 +15,21 @@
     stopSession,
     onOcrText,
     errorKind,
+    profileKey,
+    type AreaMode,
     type GameWindow,
     type OcrTextEvent,
+    type Region,
   } from "../api";
 
   type Step = 0 | 1 | 2;
-  type AreaMode = "dialogue" | "screen";
 
   let step = $state<Step>(0);
   let windows = $state<GameWindow[]>([]);
   let loading = $state(false);
   let game = $state<GameWindow | null>(null);
   let areaMode = $state<AreaMode>("dialogue");
+  let region = $state<Region | null>(null);
   let running = $state(false);
   let error = $state<string | null>(null);
   let lines = $state<OcrTextEvent[]>([]);
@@ -56,11 +59,29 @@
     }
   }
 
-  // Picks the game and moves on to the area step.
+  // Dialogue mode needs a marked area; screen mode doesn't.
+  const canContinue = $derived(areaMode === "screen" || region !== null);
+
+  // Picks the game, restores its saved profile (if any) and moves on to the area step.
   function pick(w: GameWindow) {
     game = w;
     error = null;
+    const saved = app.settings.profiles[profileKey(w)];
+    areaMode = saved?.areaMode ?? "dialogue";
+    region = saved?.region ?? null;
     step = 1;
+  }
+
+  // Saves the area choice in the game's profile and moves on to the summary.
+  async function confirmArea() {
+    if (!game || !canContinue) return;
+    app.settings.profiles[profileKey(game)] = { title: game.title, areaMode, region };
+    try {
+      await persistSettings();
+    } catch (e) {
+      errorKind(e); // not fatal: the session still works, it just won't be remembered
+    }
+    step = 2;
   }
 
   // Starts the core session and begins listening for recognized lines.
@@ -69,7 +90,7 @@
     error = null;
     try {
       unlisten = await onOcrText((e) => (lines = [e, ...lines].slice(0, 6)));
-      await startSession(game.handle, null);
+      await startSession(game.handle, areaMode === "dialogue" ? region : null);
       running = true;
     } catch (e) {
       unlisten?.();
@@ -129,8 +150,18 @@
       </div>
     {:else if step === 1}
       {#if game}
-        <GamePreview windowHandle={game.handle} />
+        <GamePreview windowHandle={game.handle} selectable={areaMode === "dialogue"} bind:region />
       {/if}
+      <div class="area-hint">
+        {#if areaMode === "dialogue" && region}
+          <p>{t("play.area.marked", { width: String(region[2]), height: String(region[3]) })}</p>
+          <button class="btn btn-ghost" onclick={() => (region = null)}>{t("play.area.clear")}</button>
+        {:else if areaMode === "dialogue"}
+          <p>{t("play.area.drag")}</p>
+        {:else}
+          <p>{t("play.area.wholeWindow")}</p>
+        {/if}
+      </div>
       <div class="choices" role="radiogroup">
         {#each areaModes as mode (mode)}
           <label class="choice" class:selected={areaMode === mode}>
@@ -140,12 +171,9 @@
           </label>
         {/each}
       </div>
-      {#if areaMode === "dialogue"}
-        <p class="note">{t("play.area.notYet")}</p>
-      {/if}
       <div class="actions">
         <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
-        <button class="btn btn-primary" onclick={() => (step = 2)}>{t("play.next")}</button>
+        <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>
       </div>
     {:else}
       <p class="summary">
@@ -270,9 +298,18 @@
     outline-offset: 2px;
   }
 
-  .note {
-    margin-top: 12px;
-    color: var(--ink-faint);
+  .area-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 42px;
+    margin: 6px 0 14px;
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+  }
+  .area-hint .btn {
+    padding: 6px 10px;
     font-size: var(--text-sm);
   }
 

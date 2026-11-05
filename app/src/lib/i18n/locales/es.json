@@ -31,11 +31,12 @@
       "dialogueHelp": "Más rápido y preciso. Marcas el área una vez y queda guardada en el perfil del juego.",
       "screen": "En cualquier parte de la pantalla",
       "screenHelp": "Menús, objetos y carteles. Más lento: el texto se busca en toda la ventana.",
-      "mark": "Marcar el área",
-      "marked": "Área marcada",
-      "notYet": "Marcar el área llega en el próximo paso. Por ahora se usa toda la ventana.",
+      "marked": "Área marcada: {width} × {height} px",
       "previewLabel": "Imagen en vivo de la ventana del juego",
-      "previewWaiting": "Conectando con la ventana del juego…"
+      "previewWaiting": "Conectando con la ventana del juego…",
+      "drag": "Arrastra sobre la imagen para marcar dónde aparecen los diálogos.",
+      "clear": "Marcar de nuevo",
+      "wholeWindow": "Se leerá toda la ventana."
     },
     "start": {
       "question": "Todo listo.",
@@ -51,7 +52,10 @@
   },
   "profiles": {
     "title": "Perfiles de juego",
-    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, su área de diálogo, idioma y glosario se guardan aquí."
+    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, su área de diálogo, idioma y glosario se guardan aquí.",
+    "dialogueArea": "Cuadro de diálogo de {width} × {height} px",
+    "wholeScreen": "Toda la ventana",
+    "forget": "Olvidar"
   },
   "settings": {
     "title": "Ajustes",

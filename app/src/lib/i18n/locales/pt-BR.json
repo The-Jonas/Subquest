@@ -31,11 +31,12 @@
       "dialogueHelp": "Mais rápido e mais preciso. Você marca a área uma vez e ela fica salva no perfil do jogo.",
       "screen": "Em qualquer lugar da tela",
       "screenHelp": "Menus, itens e placas. Mais lento: o texto é procurado na janela inteira.",
-      "mark": "Marcar a área",
-      "marked": "Área marcada",
-      "notYet": "Marcar a área chega no próximo passo. Por enquanto, a janela inteira será usada.",
+      "marked": "Área marcada: {width} × {height} px",
       "previewLabel": "Imagem ao vivo da janela do jogo",
-      "previewWaiting": "Conectando à janela do jogo…"
+      "previewWaiting": "Conectando à janela do jogo…",
+      "drag": "Arraste sobre a imagem para marcar onde as falas aparecem.",
+      "clear": "Marcar de novo",
+      "wholeWindow": "A janela inteira será lida."
     },
     "start": {
       "question": "Tudo pronto.",
@@ -51,7 +52,10 @@
   },
   "profiles": {
     "title": "Perfis de jogo",
-    "empty": "Nenhum perfil ainda. Quando você traduzir um jogo, a área das falas, o idioma e o glossário dele ficam salvos aqui."
+    "empty": "Nenhum perfil ainda. Quando você traduzir um jogo, a área das falas, o idioma e o glossário dele ficam salvos aqui.",
+    "dialogueArea": "Caixa de diálogo de {width} × {height} px",
+    "wholeScreen": "Janela inteira",
+    "forget": "Esquecer"
   },
   "settings": {
     "title": "Ajustes",

@@ -1,6 +1,7 @@
 //! User settings, saved as JSON in the app's config folder
 //! (`%APPDATA%\io.github.the-jonas.subquest\settings.json`). Never in the repository.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,16 @@ pub struct Settings {
     pub translator: TranslatorSettings,
     pub overlay: OverlaySettings,
     pub tutorial_done: bool, // false => opens the tutorial on first run
+    pub profiles: BTreeMap<String, GameProfile>, // key: lowercase executable name
+}
+
+/// What Subquest remembers about each game, so it starts ready next time.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GameProfile {
+    pub title: String,            // window title when it was saved, for display
+    pub area_mode: String,        // "dialogue" | "screen"
+    pub region: Option<[i32; 4]>, // [x, y, width, height] in capture pixels
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -46,6 +57,7 @@ impl Default for Settings {
             translator: TranslatorSettings::default(),
             overlay: OverlaySettings::default(),
             tutorial_done: false,
+            profiles: BTreeMap::new(),
         }
     }
 }
@@ -104,5 +116,23 @@ mod tests {
         assert_eq!(s.ui_language, "en");
         assert_eq!(s.target_language, "pt-BR");
         assert_eq!(s.overlay.font_size, 22);
+        assert!(s.profiles.is_empty());
+    }
+
+    #[test]
+    fn profiles_round_trip_through_json() {
+        let mut s = Settings::default();
+        s.profiles.insert(
+            "hades2.exe".into(),
+            GameProfile {
+                title: "Hades II".into(),
+                area_mode: "dialogue".into(),
+                region: Some([120, 840, 1680, 200]),
+            },
+        );
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(json.contains("\"areaMode\":\"dialogue\""));
+        let back: Settings = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, s);
     }
 }

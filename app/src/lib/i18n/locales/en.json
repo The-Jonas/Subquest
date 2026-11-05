@@ -31,11 +31,12 @@
       "dialogueHelp": "Faster and more accurate. Mark the area once and it is saved in the game's profile.",
       "screen": "Anywhere on screen",
       "screenHelp": "Menus, items and signs. Slower: text is searched across the whole window.",
-      "mark": "Mark the area",
-      "marked": "Area marked",
-      "notYet": "Area marking arrives in the next step. For now, the whole window is used.",
+      "marked": "Area marked: {width} × {height} px",
       "previewLabel": "Live image of the game window",
-      "previewWaiting": "Connecting to the game window…"
+      "previewWaiting": "Connecting to the game window…",
+      "drag": "Drag over the image to mark where the dialogue appears.",
+      "clear": "Mark again",
+      "wholeWindow": "The whole window will be read."
     },
     "start": {
       "question": "All set.",
@@ -51,7 +52,10 @@
   },
   "profiles": {
     "title": "Game profiles",
-    "empty": "No profiles yet. Once you translate a game, its dialogue area, language and glossary are saved here."
+    "empty": "No profiles yet. Once you translate a game, its dialogue area, language and glossary are saved here.",
+    "dialogueArea": "Dialogue box of {width} × {height} px",
+    "wholeScreen": "Whole window",
+    "forget": "Forget"
   },
   "settings": {
     "title": "Settings",

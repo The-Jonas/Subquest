@@ -17,6 +17,18 @@ export interface GameWindow {
   process: string;
 }
 
+// [x, y, width, height] in capture pixels (the same space the core crops in).
+export type Region = [number, number, number, number];
+
+export type AreaMode = "dialogue" | "screen";
+
+// What Subquest remembers about each game (mirrors GameProfile in settings.rs).
+export interface GameProfile {
+  title: string;
+  areaMode: AreaMode;
+  region: Region | null;
+}
+
 export interface Settings {
   uiLanguage: string;
   sourceLanguage: string;
@@ -25,6 +37,7 @@ export interface Settings {
   translator: { kind: string; baseUrl: string; model: string; apiKey: string };
   overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean };
   tutorialDone: boolean;
+  profiles: Record<string, GameProfile>; // key: lowercase executable name
 }
 
 // Error coming from Rust: `kind` is the key in `errors.<kind>` in the locale files.
@@ -58,7 +71,13 @@ export const defaultSettings: Settings = {
   translator: { kind: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "", apiKey: "" },
   overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
   tutorialDone: false,
+  profiles: {},
 };
+
+// Profile key for a window: the executable name survives restarts, the HWND doesn't.
+export function profileKey(w: GameWindow): string {
+  return (w.process || w.title).toLowerCase();
+}
 
 const mockWindows: GameWindow[] = [
   { handle: 1, title: "Hollow Knight", process: "hollow_knight.exe" },
@@ -90,7 +109,7 @@ export async function listWindows(): Promise<GameWindow[]> {
 }
 
 // Starts translating; `region` = [x, y, width, height] or null for the whole window.
-export async function startSession(windowHandle: number, region: [number, number, number, number] | null) {
+export async function startSession(windowHandle: number, region: Region | null) {
   if (!inTauri) return;
   await invoke("start_session", { windowHandle, region });
 }
