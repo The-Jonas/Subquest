@@ -254,6 +254,7 @@ async fn start_session(
     state.translation.reset_context();
     start_core(&app, &state, window_handle, &profile_key)?;
     *state.session_window.lock().unwrap() = Some(window_handle);
+    tauri::async_runtime::spawn(translation::keep_warm(app.clone(), window_handle));
 
     // The session works even if the overlay fails; the translations still show in the app.
     if let Err(e) = overlay::open(&app, window_handle) {
@@ -284,6 +285,7 @@ async fn apply_areas(app: AppHandle, state: State<'_, AppState>) -> Result<(), A
 async fn stop_session(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
     overlay::close(&app);
     *state.session_window.lock().unwrap() = None;
+    state.translation.save_cache();
     stop_core(&state)
 }
 
@@ -558,11 +560,11 @@ pub fn run() {
                 core,
                 settings: Mutex::new(settings::load(&config_dir)),
                 config_dir,
-                data_dir,
+                data_dir: data_dir.clone(),
                 session_user_data: Mutex::new(None),
                 session_window: Mutex::new(None),
                 preview_user_data: Mutex::new(None),
-                translation: TranslationState::new(),
+                translation: TranslationState::new(&data_dir),
                 overlay_running: Mutex::new(None),
                 font_finder: font_detect::FontFinder::default(),
                 active_profile: Mutex::new(None),
@@ -590,8 +592,14 @@ pub fn run() {
             get_settings,
             save_settings
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to start Subquest");
+        .build(tauri::generate_context!())
+        .expect("failed to start Subquest")
+        .run(|app, event| {
+            // Closing the app also saves what was translated this time.
+            if let tauri::RunEvent::Exit = event {
+                app.state::<AppState>().translation.save_cache();
+            }
+        });
 }
 
 #[cfg(test)]

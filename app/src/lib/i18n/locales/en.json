@@ -4,7 +4,8 @@
     "profiles": "Profiles",
     "settings": "Settings",
     "tutorial": "Tutorial",
-    "fonts": "Fonts"
+    "fonts": "Fonts",
+    "history": "History"
   },
   "core": {
     "ok": "Core ready",
@@ -55,7 +56,8 @@
       "timing": "OCR in {ocr} ms, {total} ms since capture",
       "translated": "Translated in {ms} ms",
       "cached": "Repeated line, from cache in {ms} ms",
-      "adjust": "Adjust areas"
+      "adjust": "Adjust areas",
+      "quickDone": "Quick translation in {ms} ms (the main one didn't answer)"
     },
     "back": "Back",
     "next": "Continue",
@@ -86,7 +88,7 @@
     "uiLanguage": "Interface language",
     "sourceLanguage": "Game language",
     "targetLanguage": "Translate to",
-    "translation": "Translation",
+    "translation": "Main translator",
     "service": "Service",
     "baseUrl": "API address",
     "model": "Model",
@@ -118,7 +120,22 @@
     "testTime": "in {ms} ms",
     "visionModel": "Model for font detection",
     "visionModelHelp": "Optional. Recognizing fonts is hard; a stronger model (e.g. a \"pro\" one) gets closer. Empty uses the translation model.",
-    "visionModelSame": "Same as translation"
+    "visionModelSame": "Same as translation",
+    "translationIntro": "The good translation: it understands context and fixes reading errors. It replaces the quick one as soon as it arrives.",
+    "quick": {
+      "title": "Quick translator",
+      "intro": "A gap filler: shows up in a few tenths of a second while the main one thinks, so lines that vanish fast still get translated.",
+      "engines": {
+        "google": "Google Translate",
+        "googleHelp": "Free, no key. Not an official API and may change.",
+        "deepl": "DeepL",
+        "deeplHelp": "Official API, free plan with 500k characters a month. Needs a key.",
+        "off": "Off",
+        "offHelp": "Only the main translator."
+      },
+      "deeplKey": "DeepL key",
+      "deeplKeyHelp": "Create one for free at deepl.com/pro-api. Free-plan keys end in \":fx\"."
+    }
   },
   "tutorial": {
     "title": "How to use",
@@ -204,5 +221,19 @@
         "smallCaps": "Small caps"
       }
     }
+  },
+  "history": {
+    "title": "History",
+    "summary": "{game}: {count} lines, {missed} passed before their translation was ready.",
+    "noSession": "The session's lines show up here.",
+    "search": "Search the original or the translation",
+    "onlyMissed": "Only the ones that passed too fast",
+    "missed": "Passed fast",
+    "quick": "Quick translation",
+    "failed": "This line couldn't be translated.",
+    "pending": "Translating…",
+    "nothingMatches": "No lines match this filter.",
+    "empty": "No lines yet. Start translating a game and everything that shows up is kept here.",
+    "missedBadge": "Lines that passed before their translation was ready"
   }
 }

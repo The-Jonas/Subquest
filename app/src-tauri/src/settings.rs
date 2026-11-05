@@ -14,6 +14,7 @@ pub struct Settings {
     pub target_language: String, // translation language
     pub ocr_engine: String,      // "windows" | "paddle"
     pub translator: TranslatorSettings,
+    pub quick: QuickSettings, // second translation layer: fills the gap while the LLM answers
     pub overlay: OverlaySettings,
     pub tutorial_done: bool, // false => opens the tutorial on first run
     pub profiles: BTreeMap<String, GameProfile>, // key: lowercase executable name
@@ -100,6 +101,25 @@ pub struct OverlaySettings {
     pub show_original: bool,     // show the original text above the translation
 }
 
+/// The quick translation layer: a plain machine translator that answers in a
+/// few hundred milliseconds and is shown until the main (LLM) translation arrives.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct QuickSettings {
+    pub engine: String,    // "" (off) | "google" | "deepl"
+    pub deepl_key: String, // only for "deepl"
+}
+
+impl Default for QuickSettings {
+    /// On, with Google: free and needs no key, so lines show fast from the first run.
+    fn default() -> Self {
+        Self {
+            engine: "google".into(),
+            deepl_key: String::new(),
+        }
+    }
+}
+
 impl Default for Settings {
     /// Defaults for the most common case: English game, translated to PT-BR.
     fn default() -> Self {
@@ -109,6 +129,7 @@ impl Default for Settings {
             target_language: "pt-BR".into(),
             ocr_engine: "windows".into(),
             translator: TranslatorSettings::default(),
+            quick: QuickSettings::default(),
             overlay: OverlaySettings::default(),
             tutorial_done: false,
             profiles: BTreeMap::new(),

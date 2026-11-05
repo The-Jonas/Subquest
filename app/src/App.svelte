@@ -2,6 +2,7 @@
 <script lang="ts">
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Play from "./lib/screens/Play.svelte";
+  import History from "./lib/screens/History.svelte";
   import Profiles from "./lib/screens/Profiles.svelte";
   import Fonts from "./lib/screens/Fonts.svelte";
   import Settings from "./lib/screens/Settings.svelte";
@@ -17,6 +18,8 @@
     {#if app.ready}
       {#if app.screen === "play"}
         <Play />
+      {:else if app.screen === "history"}
+        <History />
       {:else if app.screen === "profiles"}
         <Profiles />
       {:else if app.screen === "fonts"}

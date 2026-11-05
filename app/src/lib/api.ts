@@ -55,10 +55,14 @@ export interface Settings {
   targetLanguage: string;
   ocrEngine: string;
   translator: { kind: string; baseUrl: string; model: string; visionModel: string; apiKey: string };
+  quick: { engine: QuickEngine; deeplKey: string }; // second translation layer
   overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean };
   tutorialDone: boolean;
   profiles: Record<string, GameProfile>; // key: lowercase executable name
 }
+
+// Quick translator shown while the main one answers ("" = off).
+export type QuickEngine = "" | "google" | "deepl";
 
 // Error coming from Rust: `kind` is the key in `errors.<kind>` in the locale files.
 export interface AppError {
@@ -105,6 +109,7 @@ export const defaultSettings: Settings = {
   targetLanguage: "pt-BR",
   ocrEngine: "windows",
   translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", visionModel: "", apiKey: "" },
+  quick: { engine: "google", deeplKey: "" },
   overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
   tutorialDone: false,
   profiles: {},
@@ -334,6 +339,7 @@ export interface TranslationEvent {
   text: string;
   done: boolean;
   cached: boolean;
+  quick: boolean; // from the quick layer (the main translator is late or failed)
   elapsedMs: number; // since the OCR text arrived
   errorKind: string | null;
 }
@@ -396,6 +402,7 @@ function fakeTranslate(frameId: number, source: string) {
         text: words.slice(0, i + 1).join(" "),
         done,
         cached: false,
+        quick: false,
         elapsedMs: 180 + i * 90,
         errorKind: null,
       });

@@ -6,6 +6,7 @@
 
   const gameLanguages = ["en", "ja", "zh-Hans", "ko"];
   const targetLanguages = ["pt-BR", "en", "es"];
+  const quickEngines = ["google", "deepl", ""]; // "" = layer off
 
   let saved = $state(false);
   let error = $state<string | null>(null);
@@ -100,7 +101,8 @@
   </section>
 
   <section>
-    <h2>{t("settings.translation")}</h2>
+    <h2><span class="layer">1</span>{t("settings.translation")}</h2>
+    <p class="intro">{t("settings.translationIntro")}</p>
     <div class="grid">
       <label class="field">
         <span>{t("settings.service")}</span>
@@ -187,6 +189,28 @@
     </div>
   </section>
 
+  <!-- Second layer: shown first, replaced by the main translation when it arrives -->
+  <section>
+    <h2><span class="layer">2</span>{t("settings.quick.title")}</h2>
+    <p class="intro">{t("settings.quick.intro")}</p>
+    <div class="engines" role="radiogroup">
+      {#each quickEngines as engine (engine)}
+        <label class="engine" class:selected={app.settings.quick.engine === engine}>
+          <input type="radio" value={engine} bind:group={app.settings.quick.engine} />
+          <strong>{t(`settings.quick.engines.${engine || "off"}`)}</strong>
+          <span>{t(`settings.quick.engines.${engine || "off"}Help`)}</span>
+        </label>
+      {/each}
+    </div>
+    {#if app.settings.quick.engine === "deepl"}
+      <label class="field wide deepl-key">
+        <span>{t("settings.quick.deeplKey")}</span>
+        <input class="input" type="password" bind:value={app.settings.quick.deeplKey} autocomplete="off" />
+        <small>{t("settings.quick.deeplKeyHelp")}</small>
+      </label>
+    {/if}
+  </section>
+
   <section>
     <h2>{t("settings.overlay")}</h2>
     <div class="grid">
@@ -243,6 +267,61 @@
   h2 {
     font-size: var(--text-md);
     color: var(--gold);
+  }
+
+  /* Layer number in front of the translator headings: 1 = main, 2 = quick */
+  .layer {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--gold-ink);
+    font-size: 12px;
+    vertical-align: 2px;
+  }
+  .intro {
+    margin: -6px 0 14px;
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+    max-width: 62ch;
+  }
+  .engines {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .engine {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--night-deep);
+    cursor: pointer;
+  }
+  .engine span {
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+  }
+  .engine.selected {
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 1px var(--gold);
+  }
+  .engine input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .engine:has(input:focus-visible) {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .deepl-key {
+    margin-top: 12px;
   }
 
   .grid {

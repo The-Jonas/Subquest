@@ -170,7 +170,7 @@
   function timing(line: OcrTextEvent, tr: TranslationEvent | undefined): string {
     const ocr = t("play.start.timing", { ocr: String(Math.round(line.ocrMs)), total: String(Math.round(line.totalMs)) });
     if (!tr?.done || tr.errorKind) return ocr;
-    const key = tr.cached ? "play.start.cached" : "play.start.translated";
+    const key = tr.cached ? "play.start.cached" : tr.quick ? "play.start.quickDone" : "play.start.translated";
     return `${ocr}. ${t(key, { ms: String(Math.round(tr.elapsedMs)) })}`;
   }
 

@@ -4,7 +4,8 @@
     "profiles": "Perfis",
     "settings": "Ajustes",
     "tutorial": "Tutorial",
-    "fonts": "Fontes"
+    "fonts": "Fontes",
+    "history": "Histórico"
   },
   "core": {
     "ok": "Núcleo pronto",
@@ -55,7 +56,8 @@
       "timing": "OCR em {ocr} ms, {total} ms desde a captura",
       "translated": "Traduzido em {ms} ms",
       "cached": "Repetida, veio do cache em {ms} ms",
-      "adjust": "Ajustar áreas"
+      "adjust": "Ajustar áreas",
+      "quickDone": "Tradução rápida em {ms} ms (o principal não respondeu)"
     },
     "back": "Voltar",
     "next": "Continuar",
@@ -86,7 +88,7 @@
     "uiLanguage": "Idioma da interface",
     "sourceLanguage": "Idioma do jogo",
     "targetLanguage": "Traduzir para",
-    "translation": "Tradução",
+    "translation": "Tradutor principal",
     "service": "Serviço",
     "baseUrl": "Endereço da API",
     "model": "Modelo",
@@ -118,7 +120,22 @@
     "testTime": "em {ms} ms",
     "visionModel": "Modelo para detectar fontes",
     "visionModelHelp": "Opcional. Reconhecer fontes é difícil; um modelo mais forte (ex.: um \"pro\") acerta mais. Vazio usa o mesmo da tradução.",
-    "visionModelSame": "Mesmo da tradução"
+    "visionModelSame": "Mesmo da tradução",
+    "translationIntro": "A tradução boa: entende o contexto e corrige erros de leitura. Ela substitui a rápida assim que chega.",
+    "quick": {
+      "title": "Tradutor rápido",
+      "intro": "Tapa-buraco: aparece em poucos décimos de segundo enquanto o principal pensa, para falas que somem rápido não ficarem sem tradução.",
+      "engines": {
+        "google": "Google Tradutor",
+        "googleHelp": "Grátis e sem chave. Não é uma API oficial e pode mudar.",
+        "deepl": "DeepL",
+        "deeplHelp": "API oficial, plano grátis de 500 mil caracteres por mês. Precisa de chave.",
+        "off": "Desligado",
+        "offHelp": "Só o tradutor principal."
+      },
+      "deeplKey": "Chave do DeepL",
+      "deeplKeyHelp": "Crie grátis em deepl.com/pro-api. Chaves do plano grátis terminam em \":fx\"."
+    }
   },
   "tutorial": {
     "title": "Como usar",
@@ -204,5 +221,19 @@
         "smallCaps": "Versaletes (maiúsculas pequenas)"
       }
     }
+  },
+  "history": {
+    "title": "Histórico",
+    "summary": "{game}: {count} falas, {missed} passaram antes da tradução ficar pronta.",
+    "noSession": "As falas da sessão aparecem aqui.",
+    "search": "Buscar no original ou na tradução",
+    "onlyMissed": "Só as que passaram rápido demais",
+    "missed": "Passou rápido",
+    "quick": "Tradução rápida",
+    "failed": "Não deu para traduzir esta fala.",
+    "pending": "Traduzindo…",
+    "nothingMatches": "Nenhuma fala com esse filtro.",
+    "empty": "Nenhuma fala ainda. Comece a traduzir um jogo e tudo o que aparecer fica guardado aqui.",
+    "missedBadge": "Falas que passaram antes da tradução ficar pronta"
   }
 }

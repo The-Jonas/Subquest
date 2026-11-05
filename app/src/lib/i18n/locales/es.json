@@ -4,7 +4,8 @@
     "profiles": "Perfiles",
     "settings": "Ajustes",
     "tutorial": "Tutorial",
-    "fonts": "Fuentes"
+    "fonts": "Fuentes",
+    "history": "Historial"
   },
   "core": {
     "ok": "Núcleo listo",
@@ -55,7 +56,8 @@
       "timing": "OCR en {ocr} ms, {total} ms desde la captura",
       "translated": "Traducido en {ms} ms",
       "cached": "Línea repetida, desde la caché en {ms} ms",
-      "adjust": "Ajustar áreas"
+      "adjust": "Ajustar áreas",
+      "quickDone": "Traducción rápida en {ms} ms (el principal no respondió)"
     },
     "back": "Volver",
     "next": "Continuar",
@@ -86,7 +88,7 @@
     "uiLanguage": "Idioma de la interfaz",
     "sourceLanguage": "Idioma del juego",
     "targetLanguage": "Traducir a",
-    "translation": "Traducción",
+    "translation": "Traductor principal",
     "service": "Servicio",
     "baseUrl": "Dirección de la API",
     "model": "Modelo",
@@ -118,7 +120,22 @@
     "testTime": "en {ms} ms",
     "visionModel": "Modelo para detectar fuentes",
     "visionModelHelp": "Opcional. Reconocer fuentes es difícil; un modelo más fuerte (p. ej. uno \"pro\") acierta más. Vacío usa el mismo de la traducción.",
-    "visionModelSame": "El mismo de la traducción"
+    "visionModelSame": "El mismo de la traducción",
+    "translationIntro": "La buena traducción: entiende el contexto y corrige errores de lectura. Reemplaza a la rápida en cuanto llega.",
+    "quick": {
+      "title": "Traductor rápido",
+      "intro": "Tapahuecos: aparece en pocas décimas de segundo mientras el principal piensa, para que las líneas que desaparecen rápido no queden sin traducir.",
+      "engines": {
+        "google": "Google Traductor",
+        "googleHelp": "Gratis y sin clave. No es una API oficial y puede cambiar.",
+        "deepl": "DeepL",
+        "deeplHelp": "API oficial, plan gratis de 500 mil caracteres al mes. Necesita clave.",
+        "off": "Apagado",
+        "offHelp": "Solo el traductor principal."
+      },
+      "deeplKey": "Clave de DeepL",
+      "deeplKeyHelp": "Créala gratis en deepl.com/pro-api. Las claves del plan gratis terminan en \":fx\"."
+    }
   },
   "tutorial": {
     "title": "Cómo usarlo",
@@ -204,5 +221,19 @@
         "smallCaps": "Versalitas"
       }
     }
+  },
+  "history": {
+    "title": "Historial",
+    "summary": "{game}: {count} líneas, {missed} pasaron antes de que la traducción estuviera lista.",
+    "noSession": "Las líneas de la sesión aparecen aquí.",
+    "search": "Buscar en el original o en la traducción",
+    "onlyMissed": "Solo las que pasaron demasiado rápido",
+    "missed": "Pasó rápido",
+    "quick": "Traducción rápida",
+    "failed": "No se pudo traducir esta línea.",
+    "pending": "Traduciendo…",
+    "nothingMatches": "Ninguna línea con este filtro.",
+    "empty": "Todavía no hay líneas. Empieza a traducir un juego y todo lo que aparezca se guarda aquí.",
+    "missedBadge": "Líneas que pasaron antes de que la traducción estuviera lista"
   }
 }

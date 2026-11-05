@@ -7,6 +7,7 @@
   // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
     { id: "play", icon: "M6 4.5v11l9-5.5z" },
+    { id: "history", icon: "M10 3.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 0 0 0-13zM10 6.5V10l2.5 1.6" },
     { id: "profiles", icon: "M5 3.5h10v13l-5-3.5-5 3.5z" },
     { id: "fonts", icon: "M4 16L9 4h2l5 12M6.5 11h7" },
     { id: "settings", icon: "M3 6h9M15 6h2M3 14h2M8 14h9M12 4v4M5 12v4" },
@@ -41,6 +42,10 @@
           {#if item.id === "play" && session.running}
             <!-- The session keeps running on other screens: this dot says so -->
             <span class="live-dot" title={t("play.start.running", { game: session.game?.title ?? "" })}></span>
+          {/if}
+          {#if item.id === "history" && session.unseenMissed > 0}
+            <!-- Lines that passed before their translation was ready -->
+            <span class="badge" title={t("history.missedBadge")}>{session.unseenMissed}</span>
           {/if}
         </button>
       </li>
@@ -150,6 +155,18 @@
     border-radius: 50%;
     background: var(--live);
     box-shadow: 0 0 0 3px rgb(92 200 184 / 0.18);
+  }
+
+  .badge {
+    margin-left: auto;
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--gold);
+    color: var(--gold-ink);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
   }
 
   .sr-only {
