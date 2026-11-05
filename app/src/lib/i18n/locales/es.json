@@ -254,7 +254,10 @@
     "search": "Buscar en Google Fonts",
     "searchTitle": "Fuentes parecidas en Google Fonts",
     "searchHelp": "El modelo mira la captura de este estilo y sugiere fuentes; la elegida vale solo para este estilo.",
-    "forget": "Olvidar"
+    "forget": "Olvidar",
+    "caseAuto": "Como en el juego ({seen})",
+    "caseNone": "Como se traduce",
+    "seenNormal": "letras normales"
   },
   "toolbar": {
     "move": "Arrastra para mover",

@@ -19,7 +19,7 @@
     type LetterCase,
     type TextStyle,
   } from "../api";
-  import { cssFamily, ensureFont, loadAllImported } from "../fonts";
+  import { applyCase, cssFamily, ensureFont, loadAllImported, styleCase } from "../fonts";
   import FontPicker from "../components/FontPicker.svelte";
   import FontDetect from "../components/FontDetect.svelte";
 
@@ -141,19 +141,20 @@
             class="sample"
             style:font-family={cssFamily(s.font)}
             style:color={hex(s.textRgb)}
-            style:text-transform={s.caps === "upper" ? "uppercase" : null}
-            style:font-variant-caps={s.caps === "smallCaps" ? "small-caps" : null}
+            style:font-variant-caps={styleCase(s) === "smallCaps" ? "small-caps" : null}
           >
-            {s.name || t("fonts.sampleText")}
+            {applyCase(s.name || t("fonts.sampleText"), styleCase(s))}
           </p>
           {#if !s.font}<p class="hint">{t("styles.noFont")}</p>{/if}
 
           <div class="row">
             <FontPicker value={s.font} {imported} onchange={(font) => save(s, { font })} />
             <select class="input caps" value={s.caps} onchange={(e) => save(s, { caps: e.currentTarget.value as LetterCase })}>
-              {#each ["", "upper", "smallCaps"] as c (c)}
-                <option value={c}>{t(`fonts.detect.cases.${c || "normal"}`)}</option>
-              {/each}
+              <!-- Default: the case seen on the print, so the translation is written like the game -->
+              <option value="">{t("styles.caseAuto", { seen: s.seenCase ? t(`fonts.detect.cases.${s.seenCase}`) : t("styles.seenNormal") })}</option>
+              <option value="none">{t("styles.caseNone")}</option>
+              <option value="upper">{t("fonts.detect.cases.upper")}</option>
+              <option value="smallCaps">{t("fonts.detect.cases.smallCaps")}</option>
             </select>
             <button class="btn" onclick={() => (open = open === s.id ? null : s.id)}>{t("styles.search")}</button>
             <button class="btn btn-ghost" onclick={() => forget(s)}>{t("styles.forget")}</button>
@@ -168,8 +169,8 @@
               title={t("styles.searchTitle")}
               help={t("styles.searchHelp")}
               showCrop={false}
-              onchoose={(font, caps) => {
-                save(s, { font, caps });
+              onchoose={(font) => {
+                save(s, { font }); // the case stays "as in the game", measured on the print
                 loadAllImported().then((fonts) => (imported = fonts));
               }}
             />

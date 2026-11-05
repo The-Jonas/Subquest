@@ -35,7 +35,7 @@
     type TranslationEvent,
     type OcrTextEvent,
   } from "../api";
-  import { cssFamily, ensureFont } from "../fonts";
+  import { applyCase, cssFamily, ensureFont, styleCase } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { finishSelection, type SelectionPurpose, type Region } from "../api";
   import { layout, pairLines, type Metrics, type Patch } from "./layout";
@@ -136,11 +136,11 @@
   // Canvas used only to measure texts for the in-place layout.
   const measureCtx = document.createElement("canvas").getContext("2d")!;
 
-  // Font and letter case of a line: its style's font (the user's print of
-  // that color), else its area's font, else the default.
+  // Font and letter case of a line: its text style's (the user's print it
+  // looks like), else its area's, else the default.
   function lookFor(a: GameArea, styleId: string | null | undefined): { font: string; caps: LetterCase } {
     const style = styleId ? gameStyles[styleId] : undefined;
-    if (style?.font) return { font: style.font, caps: style.caps };
+    if (style?.font) return { font: style.font, caps: styleCase(style) };
     return { font: a.font, caps: a.caps };
   }
 
@@ -149,7 +149,7 @@
     const family = cssFamily(look.font);
     return (text: string, px: number): Metrics => {
       measureCtx.font = `${look.caps === "smallCaps" ? "small-caps " : ""}${px}px ${family}`;
-      const m = measureCtx.measureText(look.caps === "upper" ? text.toUpperCase() : text);
+      const m = measureCtx.measureText(applyCase(text, look.caps));
       return {
         width: m.width,
         inkAscent: m.actualBoundingBoxAscent,
@@ -300,6 +300,19 @@
     fontReady += 1;
   }
 
+  // A style changed: the lines on screen get their styles again (a static
+  // menu is never read again, so it would keep its old font otherwise).
+  function restyle(matches: [number, (string | null)[]][]) {
+    for (const [event, ids] of matches) {
+      for (const [key, v] of Object.entries(views)) {
+        const current = v.current;
+        if (!current || (current.frameId !== event && !meta(Number(key)).aliases.has(event))) continue;
+        if (ids.length !== current.lines.length) continue; // a re-reading split differently
+        current.lines.forEach((line, i) => (line.style = ids[i]));
+      }
+    }
+  }
+
   // Reloads the game's text styles (a new one was found, or a font changed).
   async function loadStyles() {
     if (!profileKey) return;
@@ -326,6 +339,7 @@
     unlisteners.push(await listen<OcrTextEvent>("ocr-text", (e) => onOcr(e.payload)));
     unlisteners.push(await listen<TranslationEvent>("translation", (e) => onTranslation(e.payload)));
     unlisteners.push(await listen("styles-changed", () => loadStyles()));
+    unlisteners.push(await listen<[number, (string | null)[]][]>("line-styles", (e) => restyle(e.payload)));
     unlisteners.push(await listen<SelectionPurpose>("select-region", (e) => (selecting = e.payload)));
     unlisteners.push(
       await listen<Settings>("settings-changed", (e) => {
@@ -421,7 +435,7 @@
       style:font-family={cssFamily(look.font)}
       style:color={p.textColor}
     >
-      {p.text}
+      {applyCase(p.text, look.caps)}
     </div>
   {/each}
 

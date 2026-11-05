@@ -4,7 +4,7 @@
 //  - built-in: bundled with the app (work offline, same on every PC)
 //  - system:   fonts that ship with Windows
 //  - imported: files the user added in the Fonts screen ("imported:<file>")
-import { candidateFont, listFonts, readFont, type ImportedFont } from "./api";
+import { candidateFont, listFonts, readFont, type ImportedFont, type LetterCase } from "./api";
 
 export interface FontOption {
   value: string; // what is stored in the area ("" = default)
@@ -91,4 +91,24 @@ export async function loadCandidateFont(file: string): Promise<void> {
   const face = new FontFace(`sq-candidate-${file.replace(/[^a-zA-Z0-9_-]/g, "_")}`, bytes);
   await face.load();
   document.fonts.add(face);
+}
+
+// Letter case a text style really uses: "" (as in the game) becomes the case
+// seen on its print, "none" keeps the translation as written.
+export function styleCase(style: { caps: LetterCase; seenCase?: string | null }): LetterCase {
+  if (style.caps === "") return (style.seenCase as LetterCase) || "";
+  return style.caps === "none" ? "" : style.caps;
+}
+
+// Text as it is drawn in a letter case. Small capitals: each word gets one
+// capital and the rest in lowercase, which CSS small-caps then draws as small
+// capitals ("JOGAR" from the model becomes "Jogar", shown like the game's "PLAY").
+export function applyCase(text: string, caps: LetterCase): string {
+  if (caps === "upper") return text.toLocaleUpperCase();
+  if (caps === "smallCaps") {
+    return text
+      .toLocaleLowerCase()
+      .replace(/(^|[\s(\[«"'¡¿-])(\p{L})/gu, (_, before: string, letter: string) => before + letter.toLocaleUpperCase());
+  }
+  return text;
 }

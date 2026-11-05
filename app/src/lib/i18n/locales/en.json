@@ -254,7 +254,10 @@
     "search": "Search Google Fonts",
     "searchTitle": "Similar fonts on Google Fonts",
     "searchHelp": "The model looks at this style's print and suggests fonts; the one you keep applies to this style only.",
-    "forget": "Forget"
+    "forget": "Forget",
+    "caseAuto": "As in the game ({seen})",
+    "caseNone": "As translated",
+    "seenNormal": "regular letters"
   },
   "toolbar": {
     "move": "Drag to move",

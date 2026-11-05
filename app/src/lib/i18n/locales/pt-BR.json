@@ -254,7 +254,10 @@
     "search": "Procurar no Google Fonts",
     "searchTitle": "Fontes parecidas no Google Fonts",
     "searchHelp": "O modelo olha o print deste estilo e sugere fontes; a escolhida vale só para este estilo.",
-    "forget": "Esquecer"
+    "forget": "Esquecer",
+    "caseAuto": "Como no jogo ({seen})",
+    "caseNone": "Como traduzido",
+    "seenNormal": "letras normais"
   },
   "toolbar": {
     "move": "Arraste para mover",

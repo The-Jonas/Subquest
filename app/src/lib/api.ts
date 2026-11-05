@@ -37,7 +37,9 @@ export interface GameArea {
 }
 
 // "" keeps the translation as written; the others copy the game's look.
-export type LetterCase = "" | "upper" | "smallCaps";
+// For areas "" keeps the translation as written. For text styles "" means "as
+// in the game" (the case measured on the print) and "none" keeps it as written.
+export type LetterCase = "" | "none" | "upper" | "smallCaps";
 
 // What Subquest remembers about each game (mirrors GameProfile in settings.rs).
 export interface GameProfile {
@@ -109,12 +111,13 @@ export interface TextStyle {
   textRgb: number; // letter color measured on the print, 0xRRGGBB
   font: string; // chosen font ("" = not chosen yet)
   caps: LetterCase;
+  seenCase?: string | null; // case measured on the print: "", "upper" or "smallCaps"
   manual: boolean;
 }
 
 // Browser mode: one made-up style, with its print drawn on the fly.
 const browserStyles: TextStyle[] = [
-  { id: "s1", name: "", textRgb: 0x3de8a0, font: "", caps: "", manual: true },
+  { id: "s1", name: "", textRgb: 0x3de8a0, font: "", caps: "", seenCase: "smallCaps", manual: true },
 ];
 
 // A game's text styles, in the order they were taken.

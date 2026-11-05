@@ -32,8 +32,9 @@ pub struct TextStyle {
     pub name: String,   // given by the user ("" = unnamed)
     pub text_rgb: u32,  // letter color, measured on the print (0xRRGGBB)
     pub shape: Option<Shape>, // look of the letters, measured on the print
+    pub seen_case: Option<String>, // letter case measured on the print ("", "upper", "smallCaps")
     pub font: String,   // chosen font ("" = not chosen yet)
-    pub caps: String,   // letter case chosen with the font
+    pub caps: String,   // letter case: "" = as in the game (seen_case), "none" = as translated, "upper", "smallCaps"
     pub manual: bool,   // taken by the user (styles from the old automatic version are dropped)
 }
 
@@ -78,7 +79,7 @@ impl StyleBook {
 
     /// Adds a style for a print the user took; returns its id. A full book
     /// drops its oldest style without a font first.
-    pub fn add(&mut self, text_rgb: u32, shape: Option<Shape>) -> (String, Option<String>) {
+    pub fn add(&mut self, text_rgb: u32, shape: Option<Shape>, seen_case: &str) -> (String, Option<String>) {
         let evicted = if self.styles.len() >= MAX_STYLES {
             let i = self.styles.iter().position(|s| s.font.is_empty()).unwrap_or(0);
             Some(self.styles.remove(i).id)
@@ -91,6 +92,7 @@ impl StyleBook {
             id: id.clone(),
             text_rgb,
             shape,
+            seen_case: Some(seen_case.to_string()),
             manual: true,
             ..Default::default()
         });
@@ -161,10 +163,81 @@ impl Rgba {
         Some(Rgba { pixels, width: w as i32, height: h as i32 })
     }
 
-    /// Look of the letters on the print (see shape.rs).
+    /// Look of the letters on the print (see shape.rs). A print may hold
+    /// several lines (a whole menu): each line is measured on its own and the
+    /// results are averaged, weighted by line height, since the measures are
+    /// relative to one line's height.
     pub fn shape(&self) -> Option<Shape> {
         let (ink, background) = self.colors();
-        Shape::measure(self.width as usize, self.height as usize, |x, y| self.rgb(x as i32, y as i32), ink, background)
+        let lines = self.line_bands(ink, background);
+        let measured: Vec<(Shape, f32)> = lines
+            .iter()
+            .filter_map(|&(top, bottom)| {
+                let pixel = |x: usize, y: usize| self.rgb(x as i32, (top + y) as i32);
+                let shape = Shape::measure(self.width as usize, bottom - top, pixel, ink, background)?;
+                Some((shape, (bottom - top) as f32))
+            })
+            .collect();
+        let total: f32 = measured.iter().map(|(_, w)| w).sum();
+        if total <= 0.0 {
+            return None;
+        }
+        let avg = |f: fn(&Shape) -> f32| measured.iter().map(|(s, w)| f(s) * w).sum::<f32>() / total;
+        Some(Shape {
+            stroke: avg(|s| s.stroke),
+            contrast: avg(|s| s.contrast),
+            density: avg(|s| s.density),
+            slant: avg(|s| s.slant),
+        })
+    }
+
+    /// Letter case on the print (see shape::letter_case), voted line by line:
+    /// the answer most lines give, ignoring lines that can't tell.
+    pub fn letter_case(&self) -> &'static str {
+        let (ink, background) = self.colors();
+        let mut votes = std::collections::HashMap::new();
+        for (top, bottom) in self.line_bands(ink, background) {
+            let pixel = |x: usize, y: usize| self.rgb(x as i32, (top + y) as i32);
+            let case = crate::shape::letter_case(self.width as usize, bottom - top, pixel, ink, background);
+            *votes.entry(case).or_insert(0) += 1;
+        }
+        let decided = votes.iter().filter(|(case, _)| !case.is_empty()).max_by_key(|(_, n)| **n);
+        match decided {
+            Some((case, n)) if *n * 2 >= votes.values().sum::<i32>() => case,
+            _ => "",
+        }
+    }
+
+    /// Rows of each line of text on the print, as [top, bottom): runs of rows
+    /// with ink, split where rows are empty. Small gaps (an accent above its
+    /// letter) don't split a line.
+    fn line_bands(&self, ink: u32, background: u32) -> Vec<(usize, usize)> {
+        let is_ink = |c: u32| color_distance(c, ink) < color_distance(c, background);
+        let rows: Vec<bool> = (0..self.height)
+            .map(|y| (0..self.width).filter(|&x| is_ink(self.rgb(x, y))).count() > 1)
+            .collect();
+        let mut bands: Vec<(usize, usize)> = Vec::new();
+        let mut start = None;
+        for (y, &has_ink) in rows.iter().chain(std::iter::once(&false)).enumerate() {
+            match (has_ink, start) {
+                (true, None) => start = Some(y),
+                (false, Some(top)) => {
+                    bands.push((top, y));
+                    start = None;
+                }
+                _ => {}
+            }
+        }
+        // Joins pieces closer than a quarter of the tallest piece (accents, dots).
+        let tallest = bands.iter().map(|(t, b)| b - t).max().unwrap_or(0);
+        let mut lines: Vec<(usize, usize)> = Vec::new();
+        for band in bands {
+            match lines.last_mut() {
+                Some(last) if (band.0 - last.1) * 4 < tallest => last.1 = band.1,
+                _ => lines.push(band),
+            }
+        }
+        lines
     }
 
     /// Color of the letters on the print.
@@ -210,6 +283,10 @@ impl Rgba {
 pub struct StyleStore {
     dir: PathBuf,
     open: Mutex<Option<(String, StyleBook)>>, // (game key, its book)
+    // Last lines read in each area (event id, color and shape per line), so a
+    // style change can restyle what is on screen now: a static menu is never
+    // read again, and would otherwise keep its old font until it changes.
+    last: Mutex<std::collections::HashMap<u32, (u64, Vec<(u32, Option<Shape>)>)>>,
 }
 
 /// File-safe version of a game key ("hades2.exe" stays, odd characters become "_").
@@ -225,6 +302,7 @@ impl StyleStore {
         Self {
             dir: data_dir.join("styles"),
             open: Mutex::new(None),
+            last: Mutex::new(std::collections::HashMap::new()),
         }
     }
 
@@ -281,10 +359,12 @@ impl StyleStore {
     pub fn open(&self, key: &str) {
         let mut book = self.load(key);
         let mut measured = false;
-        for style in book.styles.iter_mut().filter(|s| s.shape.is_none()) {
+        for style in book.styles.iter_mut().filter(|s| s.shape.is_none() || s.seen_case.is_none()) {
             let print = std::fs::read(self.print_path(key, &style.id)).ok();
-            style.shape = print.as_deref().and_then(Rgba::from_png).and_then(|p| p.shape());
-            measured |= style.shape.is_some();
+            let Some(print) = print.as_deref().and_then(Rgba::from_png) else { continue };
+            style.shape = style.shape.or_else(|| print.shape());
+            style.seen_case = Some(print.letter_case().to_string());
+            measured = true;
         }
         if measured {
             let _ = self.save(key, &book);
@@ -297,7 +377,8 @@ impl StyleStore {
         let png = print.png().ok_or_else(|| AppError::other("could not encode the print"))?;
         let color = print.ink_color();
         let shape = print.shape();
-        let (id, evicted) = self.update(key, |book| book.add(color, shape))?;
+        let case = print.letter_case();
+        let (id, evicted) = self.update(key, |book| book.add(color, shape, case))?;
         let path = self.print_path(key, &id);
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| AppError::other(e.to_string()))?;
@@ -310,8 +391,15 @@ impl StyleStore {
     }
 
     /// Style id of each line (letter color and, when measurable, letter shape),
-    /// for the game being translated.
-    pub fn match_lines(&self, lines: &[(u32, Option<Shape>)]) -> Vec<Option<String>> {
+    /// for the game being translated. Remembers them as the area's lines on screen.
+    pub fn match_lines(&self, area: u32, event: u64, lines: Vec<(u32, Option<Shape>)>) -> Vec<Option<String>> {
+        let ids = self.ids_for(&lines);
+        self.last.lock().unwrap().insert(area, (event, lines));
+        ids
+    }
+
+    /// Style ids for lines, with the open book (all None without one).
+    fn ids_for(&self, lines: &[(u32, Option<Shape>)]) -> Vec<Option<String>> {
         let open = self.open.lock().unwrap();
         let Some((_, book)) = open.as_ref() else {
             return vec![None; lines.len()];
@@ -320,6 +408,13 @@ impl StyleStore {
             .iter()
             .map(|(color, shape)| book.style_for(*color, shape.as_ref()).map(|s| s.id.clone()))
             .collect()
+    }
+
+    /// The lines on screen matched again after a style changed: (event id,
+    /// style id per line) for each area.
+    pub fn rematch(&self) -> Vec<(u64, Vec<Option<String>>)> {
+        let last = self.last.lock().unwrap().clone();
+        last.into_values().map(|(event, lines)| (event, self.ids_for(&lines))).collect()
     }
 }
 
@@ -332,7 +427,7 @@ mod tests {
     /// A book with one green style that has a font.
     fn book() -> StyleBook {
         let mut book = StyleBook::default();
-        let (id, _) = book.add(GREEN, None);
+        let (id, _) = book.add(GREEN, None, "");
         book.styles.iter_mut().find(|s| s.id == id).unwrap().font = "imported:Cinzel-700.ttf".into();
         book
     }
@@ -347,13 +442,13 @@ mod tests {
     #[test]
     fn a_style_without_a_font_changes_nothing() {
         let mut book = StyleBook::default();
-        book.add(GREEN, None);
+        book.add(GREEN, None, "");
         assert!(book.style_for(GREEN, None).is_none());
     }
 
     /// A style with a font and a measured shape.
     fn styled(book: &mut StyleBook, color: u32, shape: Shape, font: &str) -> String {
-        let (id, _) = book.add(color, Some(shape));
+        let (id, _) = book.add(color, Some(shape), "");
         book.styles.iter_mut().find(|s| s.id == id).unwrap().font = font.into();
         id
     }
@@ -376,6 +471,58 @@ mod tests {
         // Something in no way like any style (huge strokes, no slant) gets none.
         let poster = Shape { stroke: 0.9, contrast: 4.0, density: 0.9, slant: -0.3 };
         assert!(book.style_for(0xE9E4D6, Some(&poster)).is_none());
+    }
+
+    /// A print with `lines` lines of "letters" (stems 3 px wide, bars 3 px
+    /// thick, `body` px tall), `gap` px apart.
+    fn menu_print(lines: usize, body: i32, gap: i32) -> Rgba {
+        let (width, height) = (120, 10 + lines as i32 * (body + gap));
+        let mut pixels = Vec::new();
+        for y in 0..height {
+            for x in 0..width {
+                let line_y = (y - 10).rem_euclid(body + gap);
+                let in_line = y >= 10 && line_y < body;
+                let stem = (x % 14) < 3;
+                let bar = line_y < 3 || (body / 2..body / 2 + 3).contains(&line_y);
+                let ink = in_line && (10..110).contains(&x) && (stem || bar);
+                pixels.extend_from_slice(if ink { &[0xEB, 0xE4, 0xD6, 255] } else { &[16, 20, 24, 255] });
+            }
+        }
+        Rgba { pixels, width, height }
+    }
+
+    #[test]
+    fn a_print_of_a_whole_menu_measures_like_one_line() {
+        let one = menu_print(1, 30, 18).shape().unwrap();
+        let three = menu_print(3, 30, 18).shape().unwrap();
+        assert!(one.distance(&three) < 0.3, "{one:?} vs {three:?}");
+    }
+
+    #[test]
+    fn tells_small_capitals_from_ordinary_text_on_a_print() {
+        // Letters: (x, width, rise above the baseline, hang below it).
+        let draw = |letters: &[(i32, i32, i32, i32)]| {
+            let (width, height, baseline) = (200, 70, 50);
+            let mut pixels = Vec::new();
+            for y in 0..height {
+                for x in 0..width {
+                    let ink = letters.iter().any(|&(lx, w, rise, hang)| {
+                        (lx..lx + w).contains(&x) && y > baseline - rise && y <= baseline + hang
+                    });
+                    pixels.extend_from_slice(if ink { &[0xEB, 0xE4, 0xD6, 255] } else { &[16, 20, 24, 255] });
+                }
+            }
+            Rgba { pixels, width, height }
+        };
+        // "PLAY" in small capitals: one tall letter, then short ones, nothing hangs.
+        let small_caps = draw(&[(10, 14, 30, 0), (30, 14, 22, 0), (50, 14, 22, 0), (70, 14, 22, 0)]);
+        assert_eq!(small_caps.letter_case(), "smallCaps");
+        // "Play": the l is tall inside the word and the y hangs.
+        let ordinary = draw(&[(10, 14, 30, 0), (30, 6, 32, 0), (42, 14, 22, 0), (62, 14, 22, 8)]);
+        assert_eq!(ordinary.letter_case(), "");
+        // "PLAY": all capitals.
+        let upper = draw(&[(10, 14, 30, 0), (30, 14, 30, 0), (50, 14, 30, 0), (70, 14, 30, 0)]);
+        assert_eq!(upper.letter_case(), "upper");
     }
 
     #[test]

@@ -230,7 +230,7 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
                 .map_err(|e| AppError::other(e.to_string()))??;
             let print = frame.crop(rect).ok_or_else(|| AppError::other("the rectangle is outside the game"))?;
             let id = state.styles.add_from_print(&key, &print)?;
-            let _ = app.emit("styles-changed", ());
+            crate::styles_changed(&app);
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.unminimize();
                 let _ = main.show();

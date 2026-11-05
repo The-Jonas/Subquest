@@ -93,6 +93,14 @@ struct OcrLineEvent {
     style: Option<String>, // id of the game's text style this line belongs to
 }
 
+/// Tells the UI the styles changed, and restyles the lines on screen now
+/// ("line-styles": event id + style per line, for each area), so a new font
+/// shows at once even on a menu that is never read again.
+pub(crate) fn styles_changed(app: &AppHandle) {
+    let _ = app.emit("styles-changed", ());
+    let _ = app.emit("line-styles", app.state::<AppState>().styles.rematch());
+}
+
 /// Shape of a line's letters, measured on the event's area pixels (BGRA) with
 /// the line's own letter and background colors. None when the core sent no
 /// picture or the line is too small to measure.
@@ -182,7 +190,7 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
         .iter()
         .map(|l| (l.text_rgb, if meaningful { line_shape(e, l) } else { None }))
         .collect();
-    let style_ids = app.state::<AppState>().styles.match_lines(&samples);
+    let style_ids = app.state::<AppState>().styles.match_lines(e.area_index, e.frame_id, samples);
     let mut lines: Vec<OcrLineEvent> = found
         .into_iter()
         .zip(raw_lines)
@@ -635,7 +643,7 @@ fn update_style(
             }
         }
     })?;
-    let _ = app.emit("styles-changed", ());
+    styles_changed(&app);
     Ok(())
 }
 
@@ -644,7 +652,7 @@ fn update_style(
 fn remove_style(app: AppHandle, state: State<'_, AppState>, profile_key: String, id: String) -> Result<(), AppError> {
     state.styles.update(&profile_key, |book| book.styles.retain(|s| s.id != id))?;
     let _ = std::fs::remove_file(state.styles.print_path(&profile_key, &id));
-    let _ = app.emit("styles-changed", ());
+    styles_changed(&app);
     Ok(())
 }
 

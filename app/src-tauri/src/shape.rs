@@ -237,3 +237,86 @@ mod tests {
         assert!(Shape::measure(10, 10, |_, _| INK, INK, INK).is_none()); // no contrast
     }
 }
+
+/// How a line's letters are cased, seen on a picture: "upper" (all capitals),
+/// "smallCaps" (each word a capital followed by smaller capitals, like Hades'
+/// menus) or "" (ordinary mixed case, or can't tell). OCR reads small capitals
+/// as plain capitals, so only the picture can tell.
+///
+/// Letters are told apart by empty columns, words by wider gaps, and each
+/// letter's height is measured up from the baseline. Small letters' height
+/// alone can't separate the two (lowercase is about 70% of a capital, small
+/// capitals too), but their pattern does: in ordinary text tall letters also
+/// show up inside words (l, t, h, d, the dot of i) and some letters hang below
+/// the baseline (g, p, y); with small capitals the only tall letter of a word
+/// is its first one, and nothing hangs.
+pub fn letter_case(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u32, ink: u32, background: u32) -> &'static str {
+    if width == 0 || height == 0 || color_gap(ink, background) < 40 * 40 {
+        return "";
+    }
+    let at = |x: usize, y: usize| {
+        let c = pixel(x, y);
+        color_gap(c, ink) < color_gap(c, background)
+    };
+    // Letters: runs of columns with ink, as (left, right, top, bottom).
+    let mut letters: Vec<(usize, usize, usize, usize)> = Vec::new();
+    let mut current: Option<(usize, usize, usize, usize)> = None;
+    for x in 0..=width {
+        let rows: Vec<usize> = if x < width { (0..height).filter(|&y| at(x, y)).collect() } else { Vec::new() };
+        match (rows.first(), rows.last()) {
+            (Some(&top), Some(&bottom)) => match current.as_mut() {
+                Some(letter) => {
+                    letter.1 = x;
+                    letter.2 = letter.2.min(top);
+                    letter.3 = letter.3.max(bottom);
+                }
+                None => current = Some((x, x, top, bottom)),
+            },
+            _ => letters.extend(current.take()),
+        }
+    }
+    // Specks (dots, commas, noise) don't count: letters at least a third of the tallest.
+    let size = |l: &(usize, usize, usize, usize)| l.3 - l.2 + 1;
+    let tallest = letters.iter().map(size).max().unwrap_or(0);
+    letters.retain(|l| size(l) * 3 >= tallest);
+    if letters.len() < 3 || tallest < MIN_BODY {
+        return "";
+    }
+
+    let mut bottoms: Vec<usize> = letters.iter().map(|l| l.3).collect();
+    bottoms.sort_unstable();
+    let baseline = bottoms[bottoms.len() / 2];
+    let rise = |l: &(usize, usize, usize, usize)| baseline.saturating_sub(l.2) + 1;
+    let mut rises: Vec<usize> = letters.iter().map(rise).collect();
+    rises.sort_unstable();
+    let cap = rises[rises.len() * 9 / 10].max(1);
+    let tall = |l: &(usize, usize, usize, usize)| rise(l) * 100 >= cap * 88;
+    let short_count = letters.iter().filter(|l| !tall(l)).count();
+    if short_count * 5 < letters.len() {
+        return "upper"; // (almost) every letter is a capital
+    }
+
+    // Words: a gap wider than twice the usual gap between letters.
+    let mut gaps: Vec<usize> = letters.windows(2).map(|w| w[1].0.saturating_sub(w[0].1)).collect();
+    gaps.sort_unstable();
+    let usual_gap = gaps[gaps.len() / 2].max(1);
+    let mut word_start = true;
+    let mut tall_inside_word = false;
+    let mut hanging = false;
+    for (i, letter) in letters.iter().enumerate() {
+        if i > 0 {
+            word_start = letter.0.saturating_sub(letters[i - 1].1) > usual_gap * 2 + 1;
+        }
+        if tall(letter) && !word_start {
+            tall_inside_word = true;
+        }
+        if !tall(letter) && letter.3 > baseline + cap / 8 {
+            hanging = true; // a small letter below the line: g, p, y...
+        }
+    }
+    if tall_inside_word || hanging {
+        ""
+    } else {
+        "smallCaps"
+    }
+}
