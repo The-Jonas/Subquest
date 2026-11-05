@@ -57,7 +57,7 @@ Requirements: Visual Studio 2022 (C++ workload), CMake 3.24+, Rust (stable), Nod
 cd core
 cmake --preset windows-release
 cmake --build --preset release
-ctest --preset release
+ctest --test-dir build -C Release --output-on-failure
 
 # 2. App
 cd ../app
