@@ -294,6 +294,7 @@
     gap: 10px;
   }
   .engine {
+    position: relative; /* keeps the hidden radio inside the card */
     display: grid;
     gap: 4px;
     align-content: start;

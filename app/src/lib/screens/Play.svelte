@@ -406,6 +406,7 @@
     gap: 10px;
   }
   .choice {
+    position: relative; /* keeps the hidden radio inside the card */
     display: grid;
     gap: 6px;
     align-content: start;

@@ -53,6 +53,10 @@ body {
 
 #app {
   height: 100%;
+  /* Nothing may make the page itself scrollable: only <main> scrolls. Without
+     this, focusing a hidden radio button near the bottom of a screen scrolled
+     the whole window up and left it stuck half empty. */
+  overflow: clip;
 }
 
 h1,

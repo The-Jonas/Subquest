@@ -238,6 +238,7 @@
     gap: 10px;
   }
   .choice {
+    position: relative; /* keeps the hidden radio inside the card */
     display: grid;
     gap: 4px;
     padding: 12px 14px;
