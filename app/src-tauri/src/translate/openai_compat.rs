@@ -52,7 +52,10 @@ impl OpenAiCompatTranslator {
             "You translate video game text from {src} to {dst}.\n\
              The input comes from OCR and may contain recognition errors \
              (e.g. 'l' read as 'I', missing spaces, stray symbols). Silently fix them.\n\
-             Keep the tone, the character's voice and line breaks. \
+             Keep the tone and the character's voice.\n\
+             Answer with exactly as many lines as the input, one translated line \
+             per input line, in the same order, even when lines repeat \
+             (several characters may say the same line at once).\n\
              Answer with the translation only, no notes.",
             src = language_name(&request.source_lang),
             dst = language_name(&request.target_lang),
@@ -298,6 +301,13 @@ mod tests {
         let prompt = OpenAiCompatTranslator::system_prompt(&request());
         assert!(prompt.contains("from English to Brazilian Portuguese"));
         assert!(prompt.contains("Pale King => Rei Pálido"));
+    }
+
+    #[test]
+    fn prompt_asks_to_keep_repeated_lines() {
+        let prompt = OpenAiCompatTranslator::system_prompt(&request());
+        assert!(prompt.contains("exactly as many lines as the input"));
+        assert!(prompt.contains("even when lines repeat"));
     }
 
     #[test]
