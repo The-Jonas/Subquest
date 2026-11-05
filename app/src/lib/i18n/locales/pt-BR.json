@@ -54,10 +54,13 @@
       "change": "Trocar jogo",
       "timing": "OCR em {ocr} ms, {total} ms desde a captura",
       "translated": "Traduzido em {ms} ms",
-      "cached": "Repetida, veio do cache em {ms} ms"
+      "cached": "Repetida, veio do cache em {ms} ms",
+      "adjust": "Ajustar áreas"
     },
     "back": "Voltar",
-    "next": "Continuar"
+    "next": "Continuar",
+    "cancel": "Cancelar",
+    "apply": "Aplicar"
   },
   "profiles": {
     "title": "Perfis de jogo",

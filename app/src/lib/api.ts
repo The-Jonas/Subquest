@@ -156,6 +156,12 @@ export async function startSession(windowHandle: number, profileKey: string) {
   await invoke("start_session", { windowHandle, profileKey });
 }
 
+// Makes the running session read the areas saved in its profile (no restart of the overlay).
+export async function applyAreas() {
+  if (!inTauri) return;
+  await invoke("apply_areas");
+}
+
 // Profile key of the game being translated (the overlay styles itself from it).
 export async function activeProfile(): Promise<string | null> {
   if (!inTauri) return null;

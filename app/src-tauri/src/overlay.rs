@@ -22,6 +22,16 @@ use crate::AppState;
 
 pub const LABEL: &str = "overlay";
 const FOLLOW_INTERVAL: Duration = Duration::from_millis(250); // how often the game's position is checked
+const MISSES_BEFORE_HIDING: u32 = 3; // failed position reads in a row before the overlay hides
+
+/// WebView2 flags, the same for BOTH windows (WebView2 refuses two windows of
+/// one app with different flags). The first three disabled features are wry's
+/// defaults. The rest stop Chromium from pausing a window it believes is
+/// covered: over a fullscreen game the overlay counts as "covered", so new
+/// translations were only painted after an Alt+Tab. Keep in sync with
+/// `additionalBrowserArgs` in tauri.conf.json.
+pub const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion \
+    --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling";
 
 /// Where the overlay goes, in screen pixels: [x, y, width, height].
 pub type Placement = (i32, i32, u32, u32);
@@ -54,6 +64,7 @@ fn window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
         .focused(false)
         .resizable(false)
         .visible(false)
+        .additional_browser_args(BROWSER_ARGS)
         .build()
         .map_err(|e| AppError::other(format!("could not create the overlay: {e}")))?;
     window
@@ -61,6 +72,33 @@ fn window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
         .map_err(|e| AppError::other(e.to_string()))?;
     Ok(window)
 }
+
+/// Puts the overlay back at the top of the topmost windows, without taking
+/// focus. A game that gets the foreground (or toggles fullscreen) can end up
+/// above it even though the overlay is "always on top"; this undoes that.
+#[cfg(windows)]
+fn raise(overlay: &WebviewWindow) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOOWNERZORDER, SWP_NOSIZE,
+    };
+    if let Ok(hwnd) = overlay.hwnd() {
+        // SAFETY: a valid window handle of ours; only the z-order changes.
+        unsafe {
+            SetWindowPos(
+                hwnd.0 as _,
+                HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER,
+            );
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn raise(_overlay: &WebviewWindow) {}
 
 /// Shows the overlay over the game and starts following the game window.
 /// Any previous follow loop is stopped first.
@@ -74,6 +112,7 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
     tauri::async_runtime::spawn(async move {
         let mut last: Option<Placement> = None;
         let mut visible = false;
+        let mut misses = 0;
         while running.load(Ordering::SeqCst) {
             let state = app.state::<AppState>();
             let bounds = match state.core.as_ref() {
@@ -82,6 +121,7 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
             };
             match bounds {
                 Ok((rect, false)) => {
+                    misses = 0;
                     let place = placement(rect);
                     if last != Some(place) {
                         let _ = overlay.set_position(PhysicalPosition::new(place.0, place.1));
@@ -92,10 +132,20 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                         let _ = overlay.show();
                         visible = true;
                     }
+                    raise(&overlay);
                 }
-                Ok((_, true)) | Err(_) => {
-                    // Minimized or closed: get out of the way until it comes back.
+                Ok((_, true)) => {
+                    // Minimized: get out of the way until it comes back.
                     if visible {
+                        let _ = overlay.hide();
+                        visible = false;
+                    }
+                }
+                Err(_) => {
+                    // Closed, or a read that failed once: only a few misses in a row
+                    // hide it, so a hiccup doesn't make the overlay blink.
+                    misses += 1;
+                    if visible && misses >= MISSES_BEFORE_HIDING {
                         let _ = overlay.hide();
                         visible = false;
                     }

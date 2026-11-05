@@ -26,6 +26,9 @@ futures-util = "0.3.34"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 tokio = { version = "1", features = ["sync", "time"] }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+
 [profile.release]
 lto = true
 codegen-units = 1

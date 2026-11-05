@@ -54,10 +54,13 @@
       "change": "Change game",
       "timing": "OCR in {ocr} ms, {total} ms since capture",
       "translated": "Translated in {ms} ms",
-      "cached": "Repeated line, from cache in {ms} ms"
+      "cached": "Repeated line, from cache in {ms} ms",
+      "adjust": "Adjust areas"
     },
     "back": "Back",
-    "next": "Continue"
+    "next": "Continue",
+    "cancel": "Cancel",
+    "apply": "Apply"
   },
   "profiles": {
     "title": "Game profiles",

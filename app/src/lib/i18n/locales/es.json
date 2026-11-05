@@ -54,10 +54,13 @@
       "change": "Cambiar de juego",
       "timing": "OCR en {ocr} ms, {total} ms desde la captura",
       "translated": "Traducido en {ms} ms",
-      "cached": "Línea repetida, desde la caché en {ms} ms"
+      "cached": "Línea repetida, desde la caché en {ms} ms",
+      "adjust": "Ajustar áreas"
     },
     "back": "Volver",
-    "next": "Continuar"
+    "next": "Continuar",
+    "cancel": "Cancelar",
+    "apply": "Aplicar"
   },
   "profiles": {
     "title": "Perfiles de juego",

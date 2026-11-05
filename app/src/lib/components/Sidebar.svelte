@@ -2,6 +2,7 @@
 <script lang="ts">
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
+  import { session } from "../stores/session.svelte";
 
   // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
@@ -37,6 +38,10 @@
             <path d={item.icon} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" />
           </svg>
           {t(`nav.${item.id}`)}
+          {#if item.id === "play" && session.running}
+            <!-- The session keeps running on other screens: this dot says so -->
+            <span class="live-dot" title={t("play.start.running", { game: session.game?.title ?? "" })}></span>
+          {/if}
         </button>
       </li>
     {/each}
@@ -136,6 +141,15 @@
   }
   .core.ok .dot {
     background: var(--live);
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: var(--live);
+    box-shadow: 0 0 0 3px rgb(92 200 184 / 0.18);
   }
 
   .sr-only {

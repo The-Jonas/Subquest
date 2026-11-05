@@ -18,7 +18,8 @@
         "minWidth": 820,
         "minHeight": 560,
         "center": true,
-        "backgroundColor": "#151A2E"
+        "backgroundColor": "#151A2E",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling"
       }
     ],
     "security": {

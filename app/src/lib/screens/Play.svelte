@@ -1,21 +1,19 @@
 <!--
   Play — the main three-step flow: game -> area -> start.
-  Each step is a "line" of the dialogue box.
+  Each step is a "line" of the dialogue box. While translating, the areas can
+  be adjusted ("Adjust areas") without stopping: the session keeps running and
+  picks up the new areas when they are applied.
 -->
 <script lang="ts">
-  import { onDestroy } from "svelte";
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
   import FontDetect from "../components/FontDetect.svelte";
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
+  import { session, startTranslating, stopTranslating, applyAreas } from "../stores/session.svelte";
   import {
     inTauri,
     listWindows,
-    startSession,
-    stopSession,
-    onOcrText,
-    onTranslation,
     errorKind,
     profileKey,
     newArea,
@@ -28,18 +26,20 @@
 
   type Step = 0 | 1 | 2;
 
-  let step = $state<Step>(0);
+  // Coming back to Play during a session shows the running game again.
+  let step = $state<Step>(session.running ? 2 : 0);
   let windows = $state<GameWindow[]>([]);
   let loading = $state(false);
-  let game = $state<GameWindow | null>(null);
+  let game = $state<GameWindow | null>(session.game);
   let areas = $state<GameArea[]>([newArea()]); // the game's screen areas, edited in the area step
   let selected = $state(0); // area being edited
   let preview = $state<GamePreview>();
-  let running = $state(false);
+  let editing = $state(false); // adjusting the areas of the running session
+  let applying = $state(false);
   let error = $state<string | null>(null);
-  let lines = $state<OcrTextEvent[]>([]);
-  let translations = $state<Record<number, TranslationEvent>>({}); // by frame id
-  let unlisteners: (() => void)[] = [];
+
+  const running = $derived(session.running);
+  const showFeed = $derived(running && !editing);
 
   const stepKeys = ["game", "area", "start"] as const;
   const areaModes: AreaMode[] = ["dialogue", "screen"];
@@ -51,7 +51,9 @@
   const coreMissing = $derived(inTauri && !app.core.loaded);
 
   const question = $derived(
-    running ? t("play.start.running", { game: game?.title ?? "" }) : t(`play.${stepKeys[step]}.question`),
+    showFeed
+      ? t("play.start.running", { game: game?.title ?? "" })
+      : t(`play.${stepKeys[editing ? 1 : step]}.question`),
   );
 
   // Fetches open windows; keeps the previous list on error.
@@ -76,14 +78,43 @@
     return a.name.trim() || t("play.area.defaultName", { n: String(i + 1) });
   }
 
+  // Loads a game's saved areas (or one new area) into the editor.
+  function loadAreas(w: GameWindow) {
+    const saved = app.settings.profiles[profileKey(w)]?.areas;
+    areas = saved?.length ? $state.snapshot(saved) : [newArea()];
+    selected = 0;
+  }
+
   // Picks the game, restores its saved areas (if any) and moves on to the area step.
   function pick(w: GameWindow) {
     game = w;
     error = null;
-    const saved = app.settings.profiles[profileKey(w)]?.areas;
-    areas = saved?.length ? $state.snapshot(saved) : [newArea()];
-    selected = 0;
+    loadAreas(w);
     step = 1;
+  }
+
+  // Opens the area editor over the running session.
+  function adjust() {
+    if (!game) return;
+    error = null;
+    loadAreas(game);
+    editing = true;
+  }
+
+  // Saves the edited areas and hands them to the running session.
+  async function apply() {
+    if (!game || !canContinue) return;
+    applying = true;
+    error = null;
+    try {
+      await saveAreas();
+      await applyAreas();
+      editing = false;
+    } catch (e) {
+      error = t(`errors.${errorKind(e)}`);
+    } finally {
+      applying = false;
+    }
   }
 
   // Adds an area and selects it, so the next drag marks it.
@@ -100,50 +131,39 @@
     selected = Math.min(selected, areas.length - 1);
   }
 
-  // Saves the areas in the game's profile and moves on to the summary.
+  // Writes the edited areas into the game's profile (the session reads them from there).
+  async function saveAreas() {
+    if (!game) return;
+    app.settings.profiles[profileKey(game)] = { title: game.title, areas: $state.snapshot(areas) };
+    await persistSettings();
+  }
+
+  // Saves the areas and moves on to the summary.
   async function confirmArea() {
     if (!game || !canContinue) return;
-    const key = profileKey(game);
-    app.settings.profiles[key] = { title: game.title, areas: $state.snapshot(areas) };
     try {
-      await persistSettings();
+      await saveAreas();
     } catch (e) {
       errorKind(e); // not fatal: the session still works, it just won't be remembered
     }
     step = 2;
   }
 
-  // Stops listening to OCR and translation events.
-  function unlistenAll() {
-    unlisteners.forEach((fn) => fn());
-    unlisteners = [];
-  }
-
-  // Starts the core session and begins listening for recognized lines and their translations.
+  // Starts translating: the session lives in its own store, so it survives leaving this screen.
   async function start() {
     if (!game) return;
     error = null;
-    lines = [];
-    translations = {};
     try {
-      unlisteners.push(await onOcrText((e) => e.text && (lines = [e, ...lines].slice(0, 6))));
-      unlisteners.push(await onTranslation((e) => (translations[e.frameId] = e)));
-      await startSession(game.handle, profileKey(game));
-      running = true;
+      await startTranslating(game);
     } catch (e) {
-      unlistenAll();
       error = t(`errors.${errorKind(e)}`);
     }
   }
 
   // Stops the session and goes back to the summary.
   async function stop() {
-    try {
-      await stopSession();
-    } finally {
-      unlistenAll();
-      running = false;
-    }
+    editing = false;
+    await stopTranslating().catch((e) => (error = t(`errors.${errorKind(e)}`)));
   }
 
   // Timing line for a line: OCR always, translation once it is done.
@@ -154,21 +174,16 @@
     return `${ocr}. ${t(key, { ms: String(Math.round(tr.elapsedMs)) })}`;
   }
 
-  // Leaving the Play screen ends the session, so nothing keeps capturing in the background.
-  onDestroy(() => {
-    if (running) stopSession().catch(errorKind);
-    unlistenAll();
-  });
-  refresh();
+  if (!session.running) refresh();
 </script>
 
 <!-- The area step gets a wider layout: a bigger preview makes marking precise -->
-<div class="play" class:wide={step === 1 && !running}>
+<div class="play" class:wide={(step === 1 && !running) || editing}>
   <DialogueBox speaker={t("play.speaker")} line={question}>
-    {#if running}
+    {#if showFeed}
       <ol class="feed" aria-live="polite">
-        {#each lines as l (l.frameId)}
-          {@const tr = translations[l.frameId]}
+        {#each session.lines as l (l.frameId)}
+          {@const tr = session.translations[l.frameId]}
           <li>
             {#if tr?.errorKind}
               <p class="text">{l.text}</p>
@@ -186,31 +201,10 @@
         {/each}
       </ol>
       <div class="actions">
+        <button class="btn btn-ghost" onclick={adjust}>{t("play.start.adjust")}</button>
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
       </div>
-    {:else if step === 0 && coreMissing}
-      <div class="notice" role="status">
-        <strong>{t("core.missing")}</strong>
-        <p>{t("core.missingHelp")}</p>
-      </div>
-    {:else if step === 0}
-      <p class="muted">{t("play.game.hint")}</p>
-      <ul class="windows">
-        {#each windows as w (w.handle)}
-          <li>
-            <button class="window" class:selected={game?.handle === w.handle} onclick={() => pick(w)}>
-              <strong>{w.title}</strong>
-              <span>{w.process}</span>
-            </button>
-          </li>
-        {:else}
-          <li class="muted">{loading ? "…" : t("play.game.empty")}</li>
-        {/each}
-      </ul>
-      <div class="actions">
-        <button class="btn btn-ghost" onclick={refresh} disabled={loading}>{t("play.game.refresh")}</button>
-      </div>
-    {:else if step === 1}
+    {:else if editing || step === 1}
       <!-- One tab per area of the game: dialogue, song lyrics, names... -->
       <div class="area-tabs" role="tablist">
         {#each areas as a, i (i)}
@@ -283,8 +277,36 @@
         />
       {/key}
       <div class="actions">
-        <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
-        <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>
+        {#if editing}
+          <!-- Live session: changes go to the game only when applied -->
+          <button class="btn btn-ghost" onclick={() => (editing = false)} disabled={applying}>{t("play.cancel")}</button>
+          <button class="btn btn-primary" onclick={apply} disabled={!canContinue || applying}>{t("play.apply")}</button>
+        {:else}
+          <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
+          <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>
+        {/if}
+      </div>
+    {:else if step === 0 && coreMissing}
+      <div class="notice" role="status">
+        <strong>{t("core.missing")}</strong>
+        <p>{t("core.missingHelp")}</p>
+      </div>
+    {:else if step === 0}
+      <p class="muted">{t("play.game.hint")}</p>
+      <ul class="windows">
+        {#each windows as w (w.handle)}
+          <li>
+            <button class="window" class:selected={game?.handle === w.handle} onclick={() => pick(w)}>
+              <strong>{w.title}</strong>
+              <span>{w.process}</span>
+            </button>
+          </li>
+        {:else}
+          <li class="muted">{loading ? "…" : t("play.game.empty")}</li>
+        {/each}
+      </ul>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick={refresh} disabled={loading}>{t("play.game.refresh")}</button>
       </div>
     {:else}
       <p class="summary">
@@ -296,6 +318,8 @@
       </p>
       <div class="actions">
         <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.start.change")}</button>
+        <!-- Back to the areas without picking the game again -->
+        <button class="btn btn-ghost" onclick={() => game && (loadAreas(game), (step = 1))}>{t("play.start.adjust")}</button>
         <button class="btn btn-primary" onclick={start}>{t("play.start.button")}</button>
       </div>
     {/if}

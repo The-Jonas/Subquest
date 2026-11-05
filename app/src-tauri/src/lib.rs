@@ -36,6 +36,7 @@ struct AppState {
     config_dir: PathBuf,
     data_dir: PathBuf, // app data folder (imported fonts live here)
     session_user_data: Mutex<Option<*mut AppHandle>>, // AppHandle lent to the core during a session
+    session_window: Mutex<Option<u64>>,                 // game being translated (None = no session)
     preview_user_data: Mutex<Option<*mut PreviewChannel>>, // channel lent to the core during the preview
     translation: TranslationState,
     overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
@@ -204,24 +205,15 @@ fn session_areas(profile: Option<&settings::GameProfile>) -> Vec<SqRect> {
     areas
 }
 
-/// Starts translating the chosen window, reading every area of its profile.
-#[tauri::command]
-async fn start_session(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    window_handle: u64,
-    profile_key: String,
-) -> Result<(), AppError> {
-    let core = core(&state)?;
+/// Starts the core reading the profile's areas of a window. Only the core:
+/// the overlay and the translation context are left as they are.
+fn start_core(app: &AppHandle, state: &AppState, window_handle: u64, profile_key: &str) -> Result<(), AppError> {
+    let core = core(state)?;
     let (language, areas) = {
         let settings = state.settings.lock().unwrap();
-        let areas = session_areas(settings.profiles.get(&profile_key));
+        let areas = session_areas(settings.profiles.get(profile_key));
         (settings.source_language.clone(), areas)
     };
-    *state.active_profile.lock().unwrap() = Some(profile_key.clone());
-    let _ = app.emit("session-started", profile_key); // the overlay loads this game's look
-    state.translation.reset_context();
-
     let mut slot = state.session_user_data.lock().unwrap();
     let user = Box::into_raw(Box::new(app.clone()));
     let result = core.start(
@@ -236,8 +228,32 @@ async fn start_session(
         // SAFETY: the core refused the session, so it didn't keep the pointer.
         Err(_) => drop(unsafe { Box::from_raw(user) }),
     }
-    result?;
-    drop(slot);
+    result
+}
+
+/// Stops the core and takes back the AppHandle lent to it.
+fn stop_core(state: &AppState) -> Result<(), AppError> {
+    let result = core(state)?.stop();
+    if let Some(user) = state.session_user_data.lock().unwrap().take() {
+        // SAFETY: sq_stop already waited for the OCR thread; nobody uses the pointer anymore.
+        drop(unsafe { Box::from_raw(user) });
+    }
+    result
+}
+
+/// Starts translating the chosen window, reading every area of its profile.
+#[tauri::command]
+async fn start_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    window_handle: u64,
+    profile_key: String,
+) -> Result<(), AppError> {
+    *state.active_profile.lock().unwrap() = Some(profile_key.clone());
+    let _ = app.emit("session-started", profile_key.clone()); // the overlay loads this game's look
+    state.translation.reset_context();
+    start_core(&app, &state, window_handle, &profile_key)?;
+    *state.session_window.lock().unwrap() = Some(window_handle);
 
     // The session works even if the overlay fails; the translations still show in the app.
     if let Err(e) = overlay::open(&app, window_handle) {
@@ -246,16 +262,29 @@ async fn start_session(
     Ok(())
 }
 
-/// Stops the session and takes back the AppHandle lent to the core.
+/// Applies the profile's areas (just saved by the UI) to the running session:
+/// the core restarts reading the new areas in a fraction of a second, while
+/// the overlay and the translation context stay. Nothing to do without a session.
+#[tauri::command]
+async fn apply_areas(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    let Some(window_handle) = *state.session_window.lock().unwrap() else {
+        return Ok(());
+    };
+    let Some(profile_key) = state.active_profile.lock().unwrap().clone() else {
+        return Ok(());
+    };
+    stop_core(&state)?;
+    // Area indexes may have changed: the overlay starts the game's areas over.
+    let _ = app.emit("session-started", profile_key.clone());
+    start_core(&app, &state, window_handle, &profile_key)
+}
+
+/// Stops the session and hides the overlay.
 #[tauri::command]
 async fn stop_session(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
     overlay::close(&app);
-    let result = core(&state)?.stop();
-    if let Some(user) = state.session_user_data.lock().unwrap().take() {
-        // SAFETY: sq_stop already waited for the OCR thread; nobody uses the pointer anymore.
-        drop(unsafe { Box::from_raw(user) });
-    }
-    result
+    *state.session_window.lock().unwrap() = None;
+    stop_core(&state)
 }
 
 /// Preview callback (capture thread): packs [width, height, source width,
@@ -531,6 +560,7 @@ pub fn run() {
                 config_dir,
                 data_dir,
                 session_user_data: Mutex::new(None),
+                session_window: Mutex::new(None),
                 preview_user_data: Mutex::new(None),
                 translation: TranslationState::new(),
                 overlay_running: Mutex::new(None),
@@ -544,6 +574,7 @@ pub fn run() {
             list_windows,
             start_session,
             stop_session,
+            apply_areas,
             start_preview,
             stop_preview,
             test_translator,
