@@ -15,6 +15,9 @@ each under its own license. Keep this file updated whenever a dependency is adde
 | [tokio](https://github.com/tokio-rs/tokio) | Pauses between retries | MIT |
 | [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) | UI typeface | SIL OFL 1.1 |
 | [Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont/) | UI typeface | SIL OFL 1.1 |
+| [Cinzel](https://github.com/NDISCOVER/Cinzel) | Overlay font option | SIL OFL 1.1 |
+| [Crimson Pro](https://github.com/Fonthausen/CrimsonPro) | Overlay font option | SIL OFL 1.1 |
+| [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans) | Overlay font option | SIL OFL 1.1 |
 
 Planned (not yet included):
 

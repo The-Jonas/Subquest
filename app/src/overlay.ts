@@ -1,5 +1,9 @@
 // Overlay window entry point: a separate page, so it loads only what it needs.
 import "@fontsource-variable/atkinson-hyperlegible-next";
+// Fonts offered for the overlay (see lib/fonts.ts)
+import "@fontsource-variable/cinzel";
+import "@fontsource-variable/crimson-pro";
+import "@fontsource-variable/pixelify-sans";
 import { mount } from "svelte";
 import Overlay from "./lib/overlay/Overlay.svelte";
 

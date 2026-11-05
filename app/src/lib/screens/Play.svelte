@@ -17,6 +17,7 @@
     onTranslation,
     errorKind,
     profileKey,
+    newArea,
     type AreaMode,
     type GameWindow,
     type OcrTextEvent,
@@ -69,8 +70,8 @@
   function pick(w: GameWindow) {
     game = w;
     error = null;
-    const saved = app.settings.profiles[profileKey(w)];
-    areaMode = saved?.areaMode ?? "dialogue";
+    const saved = app.settings.profiles[profileKey(w)]?.areas[0];
+    areaMode = saved?.mode ?? "dialogue";
     region = saved?.region ?? null;
     step = 1;
   }
@@ -78,7 +79,11 @@
   // Saves the area choice in the game's profile and moves on to the summary.
   async function confirmArea() {
     if (!game || !canContinue) return;
-    app.settings.profiles[profileKey(game)] = { title: game.title, areaMode, region };
+    // Keep the area's look (font, style) when only its position changes.
+    const key = profileKey(game);
+    const existing = app.settings.profiles[key];
+    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region };
+    app.settings.profiles[key] = { title: game.title, areas: [area, ...(existing?.areas.slice(1) ?? [])] };
     try {
       await persistSettings();
     } catch (e) {
@@ -102,7 +107,7 @@
     try {
       unlisteners.push(await onOcrText((e) => (lines = [e, ...lines].slice(0, 6))));
       unlisteners.push(await onTranslation((e) => (translations[e.frameId] = e)));
-      await startSession(game.handle, areaMode === "dialogue" ? region : null);
+      await startSession(game.handle, areaMode === "dialogue" ? region : null, profileKey(game));
       running = true;
     } catch (e) {
       unlistenAll();

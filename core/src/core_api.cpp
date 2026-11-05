@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "capture/wgc_capture.h"
 #include "capture/window_list.h"
@@ -76,7 +77,17 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     s.pipeline = std::make_unique<Pipeline>(std::make_unique<WgcCapture>(), std::make_unique<WinOcrEngine>());
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
-        callback(r.full_text.c_str(), r.frame_id, r.elapsed_ms, r.total_ms, user_data);
+        // Plain C view of the result; the strings stay owned by `r` during the call.
+        std::vector<SqLine> lines;
+        lines.reserve(r.lines.size());
+        for (const OcrLine& l : r.lines) {
+            lines.push_back({l.text.c_str(), {l.box.x, l.box.y, l.box.width, l.box.height}, l.background_rgb,
+                             l.text_rgb});
+        }
+        const SqOcrEvent event{r.full_text.c_str(), lines.data(), uint32_t(lines.size()), r.frame_id,
+                               r.elapsed_ms, r.total_ms, r.frame_width, r.frame_height,
+                               r.background_rgb, r.text_rgb};
+        callback(&event, user_data);
     });
     switch (result) {
         case StartError::None: return SQ_OK;

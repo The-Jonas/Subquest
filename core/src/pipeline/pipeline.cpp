@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include "vision/palette.h"
+
 namespace subquest {
 
 // Takes the concrete implementations (dependency injection makes testing easier).
@@ -61,6 +63,17 @@ void Pipeline::ocr_loop() {
         result.total_ms = double(now_us - int64_t(frame->timestamp_us)) / 1000.0;
         if (result.full_text.empty() || result.full_text == last_text_) continue;
         last_text_ = result.full_text;
+        // Colors only for new text: cheap enough (a few thousand pixels per line).
+        const TextColors colors = sample_colors(*frame, result.lines);
+        result.background_rgb = colors.background;
+        result.text_rgb = colors.text;
+        for (OcrLine& line : result.lines) {
+            const TextColors c = sample_line_colors(*frame, line.box);
+            line.background_rgb = c.background;
+            line.text_rgb = c.text;
+        }
+        result.frame_width = frame->width;
+        result.frame_height = frame->height;
         if (on_text_) on_text_(result);
     }
 }

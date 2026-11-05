@@ -20,12 +20,63 @@ pub struct Settings {
 }
 
 /// What Subquest remembers about each game, so it starts ready next time.
+/// A game can have several areas (dialogue, song lyrics, names...), each with
+/// its own look, because games use different fonts and colors for each.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 pub struct GameProfile {
-    pub title: String,            // window title when it was saved, for display
-    pub area_mode: String,        // "dialogue" | "screen"
+    pub title: String,        // window title when it was saved, for display
+    pub areas: Vec<GameArea>, // the UI uses the first one for now
+
+    // Fields from the first profile format (one area, no look). Read only to
+    // migrate old settings.json files; never written back.
+    #[serde(skip_serializing)]
+    area_mode: Option<String>,
+    #[serde(skip_serializing)]
+    region: Option<[i32; 4]>,
+}
+
+/// One area of the game screen that Subquest reads and covers.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct GameArea {
+    pub name: String,             // shown in the UI, e.g. "Dialogue"
+    pub mode: String,             // "dialogue" (marked rectangle) | "screen" (whole window)
     pub region: Option<[i32; 4]>, // [x, y, width, height] in capture pixels
+    pub font: String, // overlay font: a family name or "imported:<file>"; empty = default
+    pub style: String, // "inPlace" (each line redrawn where it is, in the game's colors) | "classic" (subtitle box)
+}
+
+impl Default for GameArea {
+    /// A dialogue area drawn in place, like part of the game: the most common case.
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            mode: "dialogue".into(),
+            region: None,
+            font: String::new(),
+            style: "inPlace".into(),
+        }
+    }
+}
+
+impl GameProfile {
+    /// Upgrades older formats: the first one (area_mode + region at the top)
+    /// becomes one area, and the "game" style became "inPlace".
+    fn migrate(&mut self) {
+        for area in &mut self.areas {
+            if area.style == "game" {
+                area.style = "inPlace".into();
+            }
+        }
+        if self.areas.is_empty() && (self.area_mode.is_some() || self.region.is_some()) {
+            self.areas.push(GameArea {
+                mode: self.area_mode.take().unwrap_or_else(|| "dialogue".into()),
+                region: self.region.take(),
+                ..GameArea::default()
+            });
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -92,11 +143,17 @@ pub fn settings_path(config_dir: &Path) -> PathBuf {
 }
 
 /// Reads the settings; falls back to defaults if the file is missing or corrupt.
+/// Old profile formats are upgraded on the way in.
 pub fn load(config_dir: &Path) -> Settings {
-    std::fs::read_to_string(settings_path(config_dir))
+    let mut settings: Settings = std::fs::read_to_string(settings_path(config_dir))
         .ok()
         .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    settings
+        .profiles
+        .values_mut()
+        .for_each(GameProfile::migrate);
+    settings
 }
 
 /// Writes the settings, creating the folder if needed.
@@ -127,13 +184,31 @@ mod tests {
             "hades2.exe".into(),
             GameProfile {
                 title: "Hades II".into(),
-                area_mode: "dialogue".into(),
-                region: Some([120, 840, 1680, 200]),
+                areas: vec![GameArea {
+                    name: "Dialogue".into(),
+                    region: Some([120, 840, 1680, 200]),
+                    font: "Cinzel Variable".into(),
+                    ..GameArea::default()
+                }],
+                ..GameProfile::default()
             },
         );
         let json = serde_json::to_string(&s).unwrap();
-        assert!(json.contains("\"areaMode\":\"dialogue\""));
+        assert!(json.contains("\"style\":\"inPlace\""));
         let back: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(back, s);
+    }
+
+    #[test]
+    fn first_format_profiles_become_one_area() {
+        let json = r#"{ "profiles": { "hades2.exe": {
+            "title": "Hades II", "areaMode": "dialogue", "region": [1, 2, 3, 4] } } }"#;
+        let mut s: Settings = serde_json::from_str(json).unwrap();
+        s.profiles.values_mut().for_each(GameProfile::migrate);
+        let p = &s.profiles["hades2.exe"];
+        assert_eq!(p.areas.len(), 1);
+        assert_eq!(p.areas[0].region, Some([1, 2, 3, 4]));
+        assert_eq!(p.areas[0].style, "inPlace");
+        assert!(!serde_json::to_string(p).unwrap().contains("areaMode"));
     }
 }

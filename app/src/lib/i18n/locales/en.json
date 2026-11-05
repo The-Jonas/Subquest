@@ -3,7 +3,8 @@
     "play": "Play",
     "profiles": "Profiles",
     "settings": "Settings",
-    "tutorial": "Tutorial"
+    "tutorial": "Tutorial",
+    "fonts": "Fonts"
   },
   "core": {
     "ok": "Core ready",
@@ -58,7 +59,17 @@
     "empty": "No profiles yet. Once you translate a game, its dialogue area, language and glossary are saved here.",
     "dialogueArea": "Dialogue box of {width} × {height} px",
     "wholeScreen": "Whole window",
-    "forget": "Forget"
+    "forget": "Forget",
+    "look": "Look",
+    "font": "Translation font",
+    "style": "Style",
+    "styles": {
+      "inPlace": "Part of the game",
+      "inPlaceHelp": "Each translated line is drawn over the original one, in the game's colors and size.",
+      "classic": "Classic",
+      "classicHelp": "Dark box with white text, like a movie subtitle."
+    },
+    "sample": "Seas reflect her gleaming beauty"
   },
   "settings": {
     "title": "Settings",
@@ -147,5 +158,21 @@
     "translatorNetwork": "Couldn't reach the translation service. Check your internet and the address in Settings.",
     "translatorProvider": "The translation service refused the request. Check the key and model in Settings; if it is a usage limit, wait a bit.",
     "translatorBusy": "The model is overloaded right now (high demand). Try again in a few seconds or pick another model in Settings; the \"flash-lite\" ones are usually free."
+  },
+  "fonts": {
+    "title": "Fonts",
+    "intro": "Import font files so the translation looks like the game. They're kept in Subquest's folder; nothing is installed in Windows.",
+    "import": "Import font",
+    "importHelp": "Click or drop .ttf, .otf, .woff or .woff2 files here.",
+    "importError": "Couldn't import {name}: {detail}",
+    "none": "No imported fonts yet.",
+    "remove": "Remove",
+    "sampleText": "Seas reflect her gleaming beauty",
+    "default": "{name} (default)",
+    "groups": {
+      "builtIn": "Included with Subquest",
+      "windows": "From Windows",
+      "imported": "Imported"
+    }
   }
 }

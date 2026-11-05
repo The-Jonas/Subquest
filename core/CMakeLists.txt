@@ -11,6 +11,7 @@ option(SUBQUEST_BUILD_TESTS "Build the core tests" ON)
 add_library(subquest_portable STATIC
     src/vision/change_detector.cpp
     src/vision/image_ops.cpp
+    src/vision/palette.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
 
@@ -61,4 +62,8 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(image_ops_test tests/image_ops_test.cpp)
     target_link_libraries(image_ops_test PRIVATE subquest_portable)
     add_test(NAME image_ops COMMAND image_ops_test)
+
+    add_executable(palette_test tests/palette_test.cpp)
+    target_link_libraries(palette_test PRIVATE subquest_portable)
+    add_test(NAME palette COMMAND palette_test)
 endif()

@@ -27,8 +27,10 @@ struct Frame {
 };
 
 struct OcrLine {
-    std::string text; // UTF-8
-    Rect box;         // line position inside the frame
+    std::string text;                   // UTF-8
+    Rect box;                           // line position inside the frame
+    uint32_t background_rgb = 0x000000; // color right around this line (0xRRGGBB)
+    uint32_t text_rgb = 0xFFFFFF;       // color of this line's letters (0xRRGGBB)
 };
 
 struct OcrResult {
@@ -37,6 +39,10 @@ struct OcrResult {
     uint64_t frame_id = 0;
     double elapsed_ms = 0;  // time spent on recognition only
     double total_ms = 0;    // from frame capture until the text was ready
+    int32_t frame_width = 0;  // size of the captured area, so line boxes can be scaled
+    int32_t frame_height = 0;
+    uint32_t background_rgb = 0x000000; // dialogue box color (0xRRGGBB), sampled from the frame
+    uint32_t text_rgb = 0xFFFFFF;       // text color (0xRRGGBB), sampled from the letters
 };
 
 } // namespace subquest

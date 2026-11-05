@@ -27,15 +27,25 @@ const FOLLOW_INTERVAL: Duration = Duration::from_millis(250); // how often the g
 pub type Placement = (i32, i32, u32, u32);
 
 /// Overlay placement for a game window. With a dialogue area, the overlay
-/// covers exactly that area (the translation replaces the original text).
-/// Without one, it's a subtitle band near the bottom of the window.
-pub fn placement(window: SqRect, region: Option<SqRect>) -> Placement {
+/// covers exactly that area. Without one, it covers the whole window when
+/// translations are drawn in place (`in_place`), or is a subtitle band near
+/// the bottom otherwise. The overlay always matches the captured area exactly,
+/// so line positions from the OCR map 1:1 onto it.
+pub fn placement(window: SqRect, region: Option<SqRect>, in_place: bool) -> Placement {
     if let Some(r) = region.filter(|r| r.width > 0 && r.height > 0) {
         return (
             window.x + r.x,
             window.y + r.y,
             r.width as u32,
             r.height as u32,
+        );
+    }
+    if in_place {
+        return (
+            window.x,
+            window.y,
+            window.width.max(1) as u32,
+            window.height.max(1) as u32,
         );
     }
     let width = window.width * 7 / 10;
@@ -71,7 +81,12 @@ fn window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
 
 /// Shows the overlay over the game and starts following the game window.
 /// Any previous follow loop is stopped first.
-pub fn open(app: &AppHandle, game: u64, region: Option<SqRect>) -> Result<(), AppError> {
+pub fn open(
+    app: &AppHandle,
+    game: u64,
+    region: Option<SqRect>,
+    in_place: bool,
+) -> Result<(), AppError> {
     close(app);
     let overlay = window(app)?;
     let running = Arc::new(AtomicBool::new(true));
@@ -89,7 +104,7 @@ pub fn open(app: &AppHandle, game: u64, region: Option<SqRect>) -> Result<(), Ap
             };
             match bounds {
                 Ok((rect, false)) => {
-                    let place = placement(rect, region);
+                    let place = placement(rect, region, in_place);
                     if last != Some(place) {
                         let _ = overlay.set_position(PhysicalPosition::new(place.0, place.1));
                         let _ = overlay.set_size(PhysicalSize::new(place.2, place.3));
@@ -152,12 +167,18 @@ mod tests {
             width: 1200,
             height: 200,
         };
-        assert_eq!(placement(game(), Some(area)), (400, 870, 1200, 200));
+        assert_eq!(placement(game(), Some(area), true), (400, 870, 1200, 200));
+        assert_eq!(placement(game(), Some(area), false), (400, 870, 1200, 200));
     }
 
     #[test]
-    fn without_an_area_it_is_a_band_at_the_bottom() {
-        let (x, y, w, h) = placement(game(), None);
+    fn without_an_area_in_place_covers_the_whole_window() {
+        assert_eq!(placement(game(), None, true), (100, 50, 1920, 1080));
+    }
+
+    #[test]
+    fn without_an_area_classic_is_a_band_at_the_bottom() {
+        let (x, y, w, h) = placement(game(), None, false);
         assert_eq!((w, h), (1344, 237));
         assert_eq!(x, 100 + (1920 - 1344) / 2);
         assert!(

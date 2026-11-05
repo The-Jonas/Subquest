@@ -22,11 +22,27 @@ export type Region = [number, number, number, number];
 
 export type AreaMode = "dialogue" | "screen";
 
+export type AreaStyle = "inPlace" | "classic";
+
+// One area of the game screen (mirrors GameArea in settings.rs). Games use
+// different fonts and colors for dialogue, songs, names..., so the look lives here.
+export interface GameArea {
+  name: string;
+  mode: AreaMode;
+  region: Region | null;
+  font: string; // family name, "imported:<file>", or "" for the default
+  style: AreaStyle;
+}
+
 // What Subquest remembers about each game (mirrors GameProfile in settings.rs).
 export interface GameProfile {
   title: string;
-  areaMode: AreaMode;
-  region: Region | null;
+  areas: GameArea[]; // the UI uses the first one for now
+}
+
+// A new area with the most common setup: dialogue box, game colors, default font.
+export function newArea(): GameArea {
+  return { name: "", mode: "dialogue", region: null, font: "", style: "inPlace" };
 }
 
 export interface Settings {
@@ -58,6 +74,19 @@ export interface OcrTextEvent {
   frameId: number;
   ocrMs: number; // recognition only
   totalMs: number; // from frame capture until the text was ready
+  boxColor: string; // dialogue box color sampled from the game ("#rrggbb")
+  textColor: string; // text color sampled from the game ("#rrggbb")
+  frameWidth: number; // captured area size: line rects are in these pixels
+  frameHeight: number;
+  lines: OcrLine[];
+}
+
+// One recognized line, with its place and its own colors.
+export interface OcrLine {
+  text: string;
+  rect: Region; // [x, y, width, height] inside the captured area
+  boxColor: string; // color right around the line
+  textColor: string; // color of the line's letters
 }
 
 // True when the page runs inside the Tauri app.
@@ -116,9 +145,59 @@ export async function listWindows(): Promise<GameWindow[]> {
 }
 
 // Starts translating; `region` = [x, y, width, height] or null for the whole window.
-export async function startSession(windowHandle: number, region: Region | null) {
+export async function startSession(windowHandle: number, region: Region | null, profileKey: string) {
   if (!inTauri) return;
-  await invoke("start_session", { windowHandle, region });
+  await invoke("start_session", { windowHandle, region, profileKey });
+}
+
+// Profile key of the game being translated (the overlay styles itself from it).
+export async function activeProfile(): Promise<string | null> {
+  if (!inTauri) return null;
+  return invoke("active_profile");
+}
+
+// A font imported by the user into the app's folder.
+export interface ImportedFont {
+  file: string; // id
+  name: string; // display name
+}
+
+let browserFonts: ImportedFont[] = []; // browser mode keeps imports in memory only
+const browserFontBytes = new Map<string, ArrayBuffer>();
+
+// Lists the imported fonts.
+export async function listFonts(): Promise<ImportedFont[]> {
+  if (!inTauri) return [...browserFonts];
+  return invoke("list_fonts");
+}
+
+// Imports a font file chosen by the user; the bytes travel raw, the name in a header.
+export async function importFont(file: File): Promise<ImportedFont> {
+  const bytes = await file.arrayBuffer();
+  if (!inTauri) {
+    const entry = { file: file.name, name: file.name.replace(/\.[^.]+$/, "") };
+    browserFonts = [...browserFonts.filter((f) => f.file !== entry.file), entry];
+    browserFontBytes.set(entry.file, bytes);
+    return entry;
+  }
+  return invoke("import_font", new Uint8Array(bytes), {
+    headers: { "x-file-name": encodeURIComponent(file.name) },
+  });
+}
+
+// Bytes of an imported font, to register it with the FontFace API.
+export async function readFont(file: string): Promise<ArrayBuffer> {
+  if (!inTauri) return browserFontBytes.get(file) ?? new ArrayBuffer(0);
+  return invoke("read_font", { file });
+}
+
+// Deletes an imported font.
+export async function removeFont(file: string): Promise<void> {
+  if (!inTauri) {
+    browserFonts = browserFonts.filter((f) => f.file !== file);
+    return;
+  }
+  await invoke("remove_font", { file });
 }
 
 // Stops translating.
@@ -275,7 +354,17 @@ function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
   const timer = setInterval(() => {
     const text = samples[frameId % samples.length];
     frameId += 1;
-    handler({ text, frameId, ocrMs: 9 + Math.random() * 6, totalMs: 11 + Math.random() * 8 });
+    handler({
+      text,
+      frameId,
+      ocrMs: 9 + Math.random() * 6,
+      totalMs: 11 + Math.random() * 8,
+      boxColor: "#14181f",
+      textColor: frameId % 3 === 2 ? "#5fb56b" : "#e9e4d6",
+      frameWidth: 1460,
+      frameHeight: 281,
+      lines: [{ text, rect: [120, 110, 760, 44], boxColor: "#14181f", textColor: "#e9e4d6" }],
+    });
     fakeTranslate(frameId, text);
   }, 1800);
   return () => clearInterval(timer);

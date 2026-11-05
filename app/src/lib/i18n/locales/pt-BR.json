@@ -3,7 +3,8 @@
     "play": "Jogar",
     "profiles": "Perfis",
     "settings": "Ajustes",
-    "tutorial": "Tutorial"
+    "tutorial": "Tutorial",
+    "fonts": "Fontes"
   },
   "core": {
     "ok": "Núcleo pronto",
@@ -58,7 +59,17 @@
     "empty": "Nenhum perfil ainda. Quando você traduzir um jogo, a área das falas, o idioma e o glossário dele ficam salvos aqui.",
     "dialogueArea": "Caixa de diálogo de {width} × {height} px",
     "wholeScreen": "Janela inteira",
-    "forget": "Esquecer"
+    "forget": "Esquecer",
+    "look": "Aparência",
+    "font": "Fonte da tradução",
+    "style": "Estilo",
+    "styles": {
+      "inPlace": "Integrada ao jogo",
+      "inPlaceHelp": "Cada linha traduzida é desenhada no lugar da original, com as cores e o tamanho do jogo.",
+      "classic": "Clássico",
+      "classicHelp": "Caixa escura com texto branco, como uma legenda de filme."
+    },
+    "sample": "Mares refletem sua beleza radiante"
   },
   "settings": {
     "title": "Ajustes",
@@ -147,5 +158,21 @@
     "translatorNetwork": "Não consegui falar com o serviço de tradução. Confira a internet e o endereço em Ajustes.",
     "translatorProvider": "O serviço de tradução recusou o pedido. Confira a chave e o modelo em Ajustes; se for limite de uso, espere um pouco.",
     "translatorBusy": "O modelo está sobrecarregado agora (muita gente usando). Tente de novo em alguns segundos ou escolha outro modelo em Ajustes; os \"flash-lite\" costumam estar livres."
+  },
+  "fonts": {
+    "title": "Fontes",
+    "intro": "Importe arquivos de fonte para a tradução ficar com a cara do jogo. Eles ficam guardados na pasta do Subquest; nada é instalado no Windows.",
+    "import": "Importar fonte",
+    "importHelp": "Clique ou arraste arquivos .ttf, .otf, .woff ou .woff2 para cá.",
+    "importError": "Não deu para importar {name}: {detail}",
+    "none": "Nenhuma fonte importada ainda.",
+    "remove": "Remover",
+    "sampleText": "Mares refletem sua beleza radiante",
+    "default": "{name} (padrão)",
+    "groups": {
+      "builtIn": "Incluídas no Subquest",
+      "windows": "Do Windows",
+      "imported": "Importadas"
+    }
   }
 }

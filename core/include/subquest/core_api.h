@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 5u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 7u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -51,10 +51,31 @@ typedef struct SqSessionConfig {
     float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
 } SqSessionConfig;
 
-/* Called on the OCR thread when NEW text is recognized.
- * ocr_ms = recognition only; total_ms = from frame capture until the text was ready. */
-typedef void (*SqTextCallback)(const char* utf8_text, uint64_t frame_id, double ocr_ms, double total_ms,
-                               void* user_data);
+/* One recognized line: where it is and what it looks like, so the overlay can
+ * draw its translation in the same place, size and colors. */
+typedef struct SqLine {
+    const char* utf8_text;
+    SqRect box;              /* inside the captured area, in capture pixels */
+    uint32_t background_rgb; /* color right around the line (0xRRGGBB) */
+    uint32_t text_rgb;       /* color of the line's letters (0xRRGGBB) */
+} SqLine;
+
+/* Everything about one piece of NEW text. Pointers are valid only during the callback. */
+typedef struct SqOcrEvent {
+    const char* utf8_text;   /* all lines joined by '\n' */
+    const SqLine* lines;
+    uint32_t line_count;
+    uint64_t frame_id;
+    double ocr_ms;           /* recognition only */
+    double total_ms;         /* from frame capture until the text was ready */
+    int32_t frame_width;     /* size of the captured area, to scale line boxes */
+    int32_t frame_height;
+    uint32_t background_rgb; /* whole area: box color (0xRRGGBB) */
+    uint32_t text_rgb;       /* whole area: text color (0xRRGGBB) */
+} SqOcrEvent;
+
+/* Called on the OCR thread when NEW text is recognized. */
+typedef void (*SqTextCallback)(const SqOcrEvent* event, void* user_data);
 
 /* Called for every preview frame: contiguous RGBA, width * height * 4 bytes.
  * source_width/height = real capture size, to convert coordinates. */

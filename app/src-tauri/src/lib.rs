@@ -3,6 +3,7 @@
 
 mod core_ffi;
 mod error;
+mod fonts;
 mod overlay;
 mod settings;
 mod translate;
@@ -31,10 +32,12 @@ struct AppState {
     core: Result<Core, String>, // Err = DLL missing or incompatible (the app opens anyway)
     settings: Mutex<Settings>,
     config_dir: PathBuf,
+    data_dir: PathBuf, // app data folder (imported fonts live here)
     session_user_data: Mutex<Option<*mut AppHandle>>, // AppHandle lent to the core during a session
     preview_user_data: Mutex<Option<*mut PreviewChannel>>, // channel lent to the core during the preview
     translation: TranslationState,
     overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
+    active_profile: Mutex<Option<String>>, // profile key of the game being translated (the overlay styles itself from it)
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -51,14 +54,39 @@ struct CoreStatus {
     error: Option<String>,
 }
 
-/// Line recognized by OCR, sent to the UI as an event.
+/// Text recognized by OCR, sent to the UI (and the overlay) as an event.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct OcrTextEvent {
     text: String,
     frame_id: u64,
-    ocr_ms: f64,   // recognition only
-    total_ms: f64, // from frame capture until the text was ready
+    ocr_ms: f64,        // recognition only
+    total_ms: f64,      // from frame capture until the text was ready
+    box_color: String,  // dialogue box color sampled from the game, "#rrggbb"
+    text_color: String, // text color sampled from the game, "#rrggbb"
+    frame_width: i32,   // captured area size: line boxes are in these pixels
+    frame_height: i32,
+    lines: Vec<OcrLineEvent>,
+}
+
+/// One recognized line with its place and colors, for drawing its translation in place.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OcrLineEvent {
+    text: String,
+    rect: [i32; 4], // [x, y, width, height] inside the captured area
+    box_color: String,
+    text_color: String,
+}
+
+/// Formats 0xRRGGBB as a CSS color.
+fn css_color(rgb: u32) -> String {
+    format!("#{:06x}", rgb & 0xFF_FFFF)
+}
+
+/// Copies a C string into an owned String (lossy on invalid UTF-8).
+unsafe fn owned(text: *const c_char) -> String {
+    CStr::from_ptr(text).to_string_lossy().into_owned()
 }
 
 /// Returns the loaded core or the `coreMissing` error.
@@ -95,26 +123,40 @@ fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, AppError
 /// Callback called by the core (OCR thread): forwards the text to the UI and
 /// hands it to the translator on the async runtime, so the OCR thread never waits
 /// on the network. The overlay window listens to the same events.
-unsafe extern "C" fn on_ocr_text(
-    text: *const c_char,
-    frame_id: u64,
-    ocr_ms: f64,
-    total_ms: f64,
-    user: *mut c_void,
-) {
+unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void) {
     let app = &*(user as *const AppHandle);
-    let text = CStr::from_ptr(text).to_string_lossy().into_owned();
+    let e = &*event;
+    let raw_lines = if e.lines.is_null() || e.line_count == 0 {
+        &[][..]
+    } else {
+        std::slice::from_raw_parts(e.lines, e.line_count as usize)
+    };
+    let lines = raw_lines
+        .iter()
+        .map(|l| OcrLineEvent {
+            text: owned(l.utf8_text),
+            rect: [l.rect.x, l.rect.y, l.rect.width, l.rect.height],
+            box_color: css_color(l.background_rgb),
+            text_color: css_color(l.text_rgb),
+        })
+        .collect();
+    let text = owned(e.utf8_text);
     let _ = app.emit(
         "ocr-text",
         OcrTextEvent {
             text: text.clone(),
-            frame_id,
-            ocr_ms,
-            total_ms,
+            frame_id: e.frame_id,
+            ocr_ms: e.ocr_ms,
+            total_ms: e.total_ms,
+            box_color: css_color(e.background_rgb),
+            text_color: css_color(e.text_rgb),
+            frame_width: e.frame_width,
+            frame_height: e.frame_height,
+            lines,
         },
     );
     let app = app.clone();
-    tauri::async_runtime::spawn(translation::translate_line(app, text, frame_id));
+    tauri::async_runtime::spawn(translation::translate_line(app, text, e.frame_id));
 }
 
 /// Starts translating the chosen window, in the chosen region.
@@ -124,8 +166,11 @@ async fn start_session(
     state: State<'_, AppState>,
     window_handle: u64,
     region: Option<(i32, i32, i32, i32)>,
+    profile_key: String,
 ) -> Result<(), AppError> {
     let core = core(&state)?;
+    *state.active_profile.lock().unwrap() = Some(profile_key.clone());
+    let _ = app.emit("session-started", profile_key); // the overlay loads this game's look
     let language = state.settings.lock().unwrap().source_language.clone();
     state.translation.reset_context();
     let (x, y, width, height) = region.unwrap_or_default();
@@ -154,8 +199,19 @@ async fn start_session(
     result?;
     drop(slot);
 
+    // In-place translations need the overlay over the whole captured area: the
+    // marked area, or the whole window when reading the whole screen.
+    let in_place = state
+        .active_profile
+        .lock()
+        .unwrap()
+        .as_ref()
+        .and_then(|key| state.settings.lock().unwrap().profiles.get(key).cloned())
+        .and_then(|p| p.areas.first().map(|a| a.style != "classic"))
+        .unwrap_or(true);
+
     // The session works even if the overlay fails; the translations still show in the app.
-    if let Err(e) = overlay::open(&app, window_handle, region.map(|_| area)) {
+    if let Err(e) = overlay::open(&app, window_handle, region.map(|_| area), in_place) {
         eprintln!("[subquest] overlay: {}", e.detail);
     }
     Ok(())
@@ -293,6 +349,68 @@ async fn list_models(
         .map_err(AppError::from_translate)
 }
 
+/// Imports a font sent as raw bytes; the original file name comes in the
+/// `x-file-name` header (URL-encoded by the UI, since headers are ASCII-only).
+#[tauri::command]
+fn import_font(
+    state: State<'_, AppState>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<fonts::FontEntry, AppError> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err(AppError::other("expected the font file as raw bytes"));
+    };
+    let name = request
+        .headers()
+        .get("x-file-name")
+        .and_then(|v| v.to_str().ok())
+        .map(percent_decode)
+        .ok_or_else(|| AppError::other("missing file name"))?;
+    fonts::import(&state.data_dir, &name, bytes)
+}
+
+/// Decodes "%20"-style escapes (enough for file names sent by encodeURIComponent).
+fn percent_decode(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(v) = u8::from_str_radix(&text[i + 1..i + 3], 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Lists the imported fonts.
+#[tauri::command]
+fn list_fonts(state: State<'_, AppState>) -> Vec<fonts::FontEntry> {
+    fonts::list(&state.data_dir)
+}
+
+/// Sends an imported font's bytes to the UI (raw, no JSON).
+#[tauri::command]
+fn read_font(state: State<'_, AppState>, file: String) -> Result<tauri::ipc::Response, AppError> {
+    fonts::read(&state.data_dir, &file).map(tauri::ipc::Response::new)
+}
+
+/// Deletes an imported font.
+#[tauri::command]
+fn remove_font(state: State<'_, AppState>, file: String) -> Result<(), AppError> {
+    fonts::remove(&state.data_dir, &file)
+}
+
+/// Profile key of the game being translated, so the overlay can apply its font and style.
+#[tauri::command]
+fn active_profile(state: State<'_, AppState>) -> Option<String> {
+    state.active_profile.lock().unwrap().clone()
+}
+
 /// Returns the current settings.
 #[tauri::command]
 fn get_settings(state: State<'_, AppState>) -> Settings {
@@ -318,6 +436,7 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
+            let data_dir = app.path().app_data_dir()?;
             let resource_dir = app.path().resource_dir().ok();
 
             let mut errors = Vec::new();
@@ -337,10 +456,12 @@ pub fn run() {
                 core,
                 settings: Mutex::new(settings::load(&config_dir)),
                 config_dir,
+                data_dir,
                 session_user_data: Mutex::new(None),
                 preview_user_data: Mutex::new(None),
                 translation: TranslationState::new(),
                 overlay_running: Mutex::new(None),
+                active_profile: Mutex::new(None),
             });
             Ok(())
         })
@@ -353,6 +474,11 @@ pub fn run() {
             stop_preview,
             test_translator,
             list_models,
+            active_profile,
+            import_font,
+            list_fonts,
+            read_font,
+            remove_font,
             get_settings,
             save_settings
         ])

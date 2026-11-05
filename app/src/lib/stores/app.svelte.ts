@@ -2,7 +2,7 @@
 import { getSettings, saveSettings, defaultSettings, coreStatus, type Settings, type CoreStatus } from "../api";
 import { setLocale, type Locale } from "../i18n/index.svelte";
 
-export type Screen = "play" | "profiles" | "settings" | "tutorial";
+export type Screen = "play" | "profiles" | "fonts" | "settings" | "tutorial";
 
 export const app = $state({
   screen: "play" as Screen,

@@ -3,6 +3,7 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Play from "./lib/screens/Play.svelte";
   import Profiles from "./lib/screens/Profiles.svelte";
+  import Fonts from "./lib/screens/Fonts.svelte";
   import Settings from "./lib/screens/Settings.svelte";
   import Tutorial from "./lib/screens/Tutorial.svelte";
   import { app, boot } from "./lib/stores/app.svelte";
@@ -18,6 +19,8 @@
         <Play />
       {:else if app.screen === "profiles"}
         <Profiles />
+      {:else if app.screen === "fonts"}
+        <Fonts />
       {:else if app.screen === "settings"}
         <Settings />
       {:else}
