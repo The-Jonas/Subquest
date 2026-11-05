@@ -12,6 +12,7 @@ add_library(subquest_portable STATIC
     src/vision/change_detector.cpp
     src/vision/image_ops.cpp
     src/vision/palette.cpp
+    src/ocr/line_cleanup.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
 
@@ -70,4 +71,8 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(latest_slots_test tests/latest_slots_test.cpp)
     target_link_libraries(latest_slots_test PRIVATE subquest_portable)
     add_test(NAME latest_slots COMMAND latest_slots_test)
+
+    add_executable(line_cleanup_test tests/line_cleanup_test.cpp)
+    target_link_libraries(line_cleanup_test PRIVATE subquest_portable)
+    add_test(NAME line_cleanup COMMAND line_cleanup_test)
 endif()

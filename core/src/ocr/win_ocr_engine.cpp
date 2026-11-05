@@ -1,4 +1,5 @@
 #include "ocr/win_ocr_engine.h"
+#include "ocr/line_cleanup.h"
 
 #ifdef _WIN32
 
@@ -7,6 +8,7 @@
 #include <cstring>
 #include <cwctype>
 #include <string>
+#include <vector>
 
 #include <unknwn.h>
 #include <windows.h>
@@ -46,9 +48,9 @@ bool starts_with_ci(const std::wstring& text, const std::wstring& prefix) {
 }
 
 // Union of the word rectangles, i.e. the box around a whole line.
-Rect line_box(const ocr::OcrLine& line) {
+Rect line_box(const std::vector<ocr::OcrWord>& words) {
     float left = 1e9f, top = 1e9f, right = -1e9f, bottom = -1e9f;
-    for (const auto& word : line.Words()) {
+    for (const auto& word : words) {
         const auto r = word.BoundingRect();
         left = std::min(left, r.X);
         top = std::min(top, r.Y);
@@ -118,10 +120,29 @@ OcrResult WinOcrEngine::recognize(const Frame& frame) {
 
         const auto ocr_result = impl_->engine.RecognizeAsync(bitmap).get();
         for (const auto& line : ocr_result.Lines()) {
-            Rect box = line_box(line);
+            // Words without letters at the line's edges are game art read as
+            // "(" or "|": they leave both the text and the box.
+            std::vector<ocr::OcrWord> all;
+            std::vector<std::wstring> texts;
+            for (const auto& word : line.Words()) {
+                all.push_back(word);
+                texts.emplace_back(word.Text());
+            }
+            const auto [first, last] = kept_words(texts);
+            if (first == last) continue; // nothing but symbols
+            const std::vector<ocr::OcrWord> words(all.begin() + first, all.begin() + last);
+            Rect box = line_box(words);
             box = {int32_t(box.x * scale), int32_t(box.y * scale), int32_t(box.width * scale),
                    int32_t(box.height * scale)};
-            std::string text = winrt::to_string(line.Text());
+            std::string text;
+            if (first == 0 && last == all.size()) {
+                text = winrt::to_string(line.Text()); // untouched: keep Windows' own spacing
+            } else {
+                for (size_t i = first; i < last; ++i) {
+                    if (!text.empty()) text += ' ';
+                    text += winrt::to_string(texts[i]);
+                }
+            }
             if (!result.full_text.empty()) result.full_text += '\n';
             result.full_text += text;
             result.lines.push_back({std::move(text), box});
