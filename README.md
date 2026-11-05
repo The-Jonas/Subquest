@@ -77,7 +77,7 @@ To work only on the interface, `npm run dev` runs it in the browser with sample 
 
 ## Contributing
 
-Code identifiers and file names are in English; code comments are in Portuguese. To translate the interface, copy `app/src/lib/i18n/locales/pt-BR.json` to a new language file and register it in `app/src/lib/i18n/index.svelte.ts`.
+Code, comments and commit messages are in English. To translate the interface, copy `app/src/lib/i18n/locales/pt-BR.json` to a new language file and register it in `app/src/lib/i18n/index.svelte.ts`.
 
 ## License
 

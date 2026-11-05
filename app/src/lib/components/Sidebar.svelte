@@ -1,9 +1,9 @@
-<!-- Sidebar — navegação principal, troca de idioma e status do núcleo. -->
+<!-- Sidebar — main navigation, language switch and core status. -->
 <script lang="ts">
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
 
-  // Ícones de traço simples, desenhados à mão no mesmo grid de 20px.
+  // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
     { id: "play", icon: "M6 4.5v11l9-5.5z" },
     { id: "profiles", icon: "M5 3.5h10v13l-5-3.5-5 3.5z" },
@@ -11,7 +11,7 @@
     { id: "tutorial", icon: "M3 5l5-2 4 2 5-2v12l-5 2-4-2-5 2zM8 3v12M12 5v12" },
   ];
 
-  // Troca o idioma da interface e grava a escolha.
+  // Switches the UI language and saves the choice.
   async function changeLocale(event: Event) {
     app.settings.uiLanguage = (event.currentTarget as HTMLSelectElement).value;
     await persistSettings();
@@ -101,7 +101,7 @@
   li button:hover {
     color: var(--ink);
   }
-  /* Item ativo: marcador dourado à esquerda, como o cursor de um menu de jogo */
+  /* Active item: gold marker on the left, like a game menu cursor */
   li button.active {
     color: var(--ink);
     background: var(--panel);

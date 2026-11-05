@@ -15,7 +15,8 @@
     "steps": {
       "game": "Juego",
       "area": "Área",
-      "start": "Empezar"
+      "start": "Empezar",
+      "label": "Progreso"
     },
     "game": {
       "question": "¿Qué juego vamos a traducir?",

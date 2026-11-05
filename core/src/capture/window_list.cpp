@@ -15,7 +15,7 @@ namespace subquest {
 
 #ifdef _WIN32
 
-// Converte UTF-16 (API do Windows) para UTF-8 (o que atravessa a DLL).
+// Converts UTF-16 (Windows API) to UTF-8 (what crosses the DLL).
 static std::string to_utf8(const wchar_t* text, int length) {
     if (length <= 0) return {};
     const int size = WideCharToMultiByte(CP_UTF8, 0, text, length, nullptr, 0, nullptr, nullptr);
@@ -24,7 +24,7 @@ static std::string to_utf8(const wchar_t* text, int length) {
     return out;
 }
 
-// Descobre o nome do executável dono da janela (só o nome, sem a pasta).
+// Finds the name of the executable that owns the window (name only, no folder).
 static std::string process_name(HWND hwnd) {
     DWORD pid = 0;
     GetWindowThreadProcessId(hwnd, &pid);
@@ -43,9 +43,9 @@ static std::string process_name(HWND hwnd) {
     return name;
 }
 
-// Filtra o que o usuário reconheceria como "uma janela de jogo/app":
-// visível, com título, não minimizada, não ferramenta, não "cloaked" (UWP escondido)
-// e que não seja do próprio Subquest (a DLL roda dentro do processo do app).
+// Keeps what a user would recognize as "a game/app window": visible, titled,
+// not minimized, not a tool window, not "cloaked" (hidden UWP) and not Subquest
+// itself (the DLL runs inside the app's process).
 static bool is_capturable(HWND hwnd) {
     if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return false;
     DWORD pid = 0;
@@ -58,7 +58,7 @@ static bool is_capturable(HWND hwnd) {
     return !cloaked;
 }
 
-// Callback do EnumWindows: acumula as janelas aprovadas no vetor recebido em lparam.
+// EnumWindows callback: collects accepted windows into the vector passed in lparam.
 static BOOL CALLBACK collect_window(HWND hwnd, LPARAM lparam) {
     if (!is_capturable(hwnd)) return TRUE;
     auto* out = reinterpret_cast<std::vector<WindowInfo>*>(lparam);
@@ -68,7 +68,7 @@ static BOOL CALLBACK collect_window(HWND hwnd, LPARAM lparam) {
     return TRUE;
 }
 
-// Percorre as janelas de nível superior em ordem Z (a mais à frente primeiro).
+// Walks top-level windows in Z order (front-most first).
 std::vector<WindowInfo> list_capturable_windows() {
     std::vector<WindowInfo> windows;
     EnumWindows(collect_window, reinterpret_cast<LPARAM>(&windows));
@@ -77,7 +77,7 @@ std::vector<WindowInfo> list_capturable_windows() {
 
 #else
 
-// Fora do Windows não há o que listar (o núcleo só compila de verdade no Windows).
+// Nothing to list outside Windows (the core only really builds on Windows).
 std::vector<WindowInfo> list_capturable_windows() { return {}; }
 
 #endif

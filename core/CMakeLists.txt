@@ -5,16 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(SUBQUEST_BUILD_TESTS "Compila os testes do núcleo" ON)
+option(SUBQUEST_BUILD_TESTS "Build the core tests" ON)
 
-# --- Partes portáveis (compilam em qualquer SO; é o que os testes usam) ---
+# --- Portable parts (build on any OS; this is what the tests use) ---
 add_library(subquest_portable STATIC
     src/vision/change_detector.cpp
     src/vision/image_ops.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
 
-# --- DLL do núcleo (Windows) ---
+# --- Core DLL (Windows) ---
 add_library(subquest_core SHARED
     src/core_api.cpp
     src/pipeline/pipeline.cpp
@@ -37,8 +37,8 @@ if(WIN32)
 endif()
 
 if(MSVC)
-    # /utf-8: fontes e literais em UTF-8 (comentários em português)
-    # /permissive-: exigido pelo C++/WinRT
+    # /utf-8: sources and literals are UTF-8
+    # /permissive-: required by C++/WinRT
     target_compile_options(subquest_portable PRIVATE /W4 /utf-8)
     target_compile_options(subquest_core PRIVATE /W4 /utf-8 /permissive-)
 else()
@@ -46,7 +46,7 @@ else()
     target_compile_options(subquest_core PRIVATE -Wall -Wextra -fvisibility=hidden)
 endif()
 
-# Copia a DLL para onde o app Tauri procura em modo dev
+# Copies the DLL to where the Tauri app looks for it in dev mode
 set(SUBQUEST_APP_BIN "${CMAKE_CURRENT_SOURCE_DIR}/../app/src-tauri/bin")
 add_custom_command(TARGET subquest_core POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${SUBQUEST_APP_BIN}"

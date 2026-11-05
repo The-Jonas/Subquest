@@ -17,11 +17,11 @@ CMakeUserPresets.json
 *.pdb
 *.ilk
 
-# --- Modelos de OCR (baixados na primeira execução, nunca versionados) ---
+# --- OCR models (downloaded on first run, never versioned) ---
 models/
 *.onnx
 
-# --- Segredos e config local do usuário ---
+# --- Secrets and local user config ---
 .env
 .env.*
 config.local.json
@@ -35,5 +35,5 @@ config.local.json
 Thumbs.db
 .DS_Store
 
-# --- DLL do núcleo copiada pelo CMake para o app ---
+# --- Core DLL copied into the app by CMake ---
 app/src-tauri/bin/

@@ -1,9 +1,9 @@
 /*
- * core_api.h — API pública em C da subquest_core.dll.
+ * core_api.h — public C API of subquest_core.dll.
  *
- * Esta é a ÚNICA fronteira entre o núcleo em C++ e o app em Rust (Tauri).
- * Só tipos de C aqui: nada de std::string, exceções ou classes atravessam a DLL.
- * Toda string é UTF-8 terminada em '\0'.
+ * This is the ONLY boundary between the C++ core and the Rust (Tauri) app.
+ * C types only: no std::string, exceptions or classes cross the DLL.
+ * Every string is null-terminated UTF-8.
  */
 #ifndef SUBQUEST_CORE_API_H
 #define SUBQUEST_CORE_API_H
@@ -24,53 +24,53 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 2u /* incrementar sempre que a ABI mudar */
+#define SQ_API_VERSION 2u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
-    SQ_ERR_INVALID_ARG = 1,     /* ponteiro nulo ou valor fora do intervalo */
-    SQ_ERR_ALREADY_RUNNING = 2, /* sq_start chamado com sessão ativa */
-    SQ_ERR_NOT_RUNNING = 3,     /* sq_stop sem sessão ativa */
-    SQ_ERR_PLATFORM = 4,        /* falha numa API do Windows (captura, OCR...) */
-    SQ_ERR_NOT_IMPLEMENTED = 5  /* recurso ainda em stub */
+    SQ_ERR_INVALID_ARG = 1,     /* null pointer or value out of range */
+    SQ_ERR_ALREADY_RUNNING = 2, /* sq_start called while a session is active */
+    SQ_ERR_NOT_RUNNING = 3,     /* sq_stop with no active session */
+    SQ_ERR_PLATFORM = 4,        /* a Windows API failed (capture, OCR...) */
+    SQ_ERR_NOT_IMPLEMENTED = 5  /* feature still a stub */
 } SqStatus;
 
 typedef struct SqRect {
-    int32_t x;      /* em pixels da imagem capturada (a mesma da miniatura, antes de reduzir) */
+    int32_t x;      /* in pixels of the captured image (same as the preview, before downscaling) */
     int32_t y;
     int32_t width;
     int32_t height;
 } SqRect;
 
 typedef struct SqSessionConfig {
-    uint64_t window_handle;      /* HWND do jogo, convertido para inteiro */
-    SqRect region;               /* área do diálogo; width/height = 0 => janela inteira */
+    uint64_t window_handle;      /* game HWND, cast to an integer */
+    SqRect region;               /* dialogue area; width/height = 0 => whole window */
     const char* ocr_language;    /* tag BCP-47: "en", "ja", "zh-Hans", "ko" */
-    uint32_t settle_frames;      /* quadros iguais seguidos antes de rodar o OCR (padrão 3) */
-    float change_threshold;      /* diferença média mínima (0..1) para contar como mudança (padrão 0.02) */
+    uint32_t settle_frames;      /* identical frames in a row before running OCR (default 3) */
+    float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
 } SqSessionConfig;
 
-/* Chamado na thread de OCR quando um texto NOVO é reconhecido. */
+/* Called on the OCR thread when NEW text is recognized. */
 typedef void (*SqTextCallback)(const char* utf8_text, uint64_t frame_id, double ocr_ms, void* user_data);
 
-/* Chamado a cada quadro da miniatura: RGBA contíguo, width * height * 4 bytes.
- * source_width/height = tamanho real da captura, para converter coordenadas. */
+/* Called for every preview frame: contiguous RGBA, width * height * 4 bytes.
+ * source_width/height = real capture size, to convert coordinates. */
 typedef void (*SqPreviewCallback)(const uint8_t* rgba, int32_t width, int32_t height,
                                   int32_t source_width, int32_t source_height, void* user_data);
 
-/* Chamado uma vez por janela visível durante sq_list_windows. */
+/* Called once per visible window during sq_list_windows. */
 typedef void (*SqWindowCallback)(uint64_t window_handle, const char* utf8_title, const char* utf8_process, void* user_data);
 
-SQ_API uint32_t sq_api_version(void);                                    /* versão da ABI, para o Rust checar compatibilidade */
-SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user_data); /* enumera janelas de nível superior visíveis */
-SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data); /* inicia captura + OCR */
-SQ_API SqStatus sq_stop(void);                                            /* para a sessão e espera as threads terminarem */
+SQ_API uint32_t sq_api_version(void);                                    /* ABI version, so Rust can check compatibility */
+SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user_data); /* enumerates visible top-level windows */
+SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data); /* starts capture + OCR */
+SQ_API SqStatus sq_stop(void);                                            /* stops the session and waits for its threads */
 SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_width,
-                                 SqPreviewCallback callback, void* user_data); /* miniatura ao vivo (~8 fps) */
-SQ_API SqStatus sq_preview_stop(void);                                    /* para a miniatura e espera a captura encerrar */
-SQ_API SqStatus sq_overlay_set_text(const char* utf8_text);               /* troca o texto exibido no overlay */
-SQ_API SqStatus sq_overlay_set_visible(int32_t visible);                  /* mostra (1) ou esconde (0) o overlay */
-SQ_API const char* sq_last_error(void);                                   /* mensagem do último erro (válida até a próxima chamada) */
+                                 SqPreviewCallback callback, void* user_data); /* live preview (~8 fps) */
+SQ_API SqStatus sq_preview_stop(void);                                    /* stops the preview and waits for capture to end */
+SQ_API SqStatus sq_overlay_set_text(const char* utf8_text);               /* replaces the text shown in the overlay */
+SQ_API SqStatus sq_overlay_set_visible(int32_t visible);                  /* shows (1) or hides (0) the overlay */
+SQ_API const char* sq_last_error(void);                                   /* last error message (valid until the next call) */
 
 #ifdef __cplusplus
 }

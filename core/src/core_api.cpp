@@ -1,4 +1,4 @@
-// core_api.cpp — implementação da API em C: traduz chamadas C para objetos C++.
+// core_api.cpp — C API implementation: turns C calls into C++ objects.
 #include "subquest/core_api.h"
 
 #include <memory>
@@ -16,7 +16,7 @@ using namespace subquest;
 
 namespace {
 
-// Estado global do núcleo: uma sessão por vez é suficiente para um jogo por vez.
+// Global core state: one session at a time is enough for one game at a time.
 struct CoreState {
     std::mutex mutex;
     std::unique_ptr<Pipeline> pipeline;
@@ -25,13 +25,13 @@ struct CoreState {
     std::string last_error;
 };
 
-// Instância única criada no primeiro uso (evita problemas de ordem de inicialização).
+// Single instance created on first use (avoids static initialization order issues).
 CoreState& state() {
     static CoreState s;
     return s;
 }
 
-// Registra a mensagem de erro e devolve o código, para usar em "return fail(...)".
+// Stores the error message and returns the code, for use as "return fail(...)".
 SqStatus fail(SqStatus code, const char* message) {
     state().last_error = message;
     return code;
@@ -39,24 +39,24 @@ SqStatus fail(SqStatus code, const char* message) {
 
 } // namespace
 
-// Versão da ABI; o Rust recusa carregar uma DLL com versão diferente.
+// ABI version; Rust refuses to load a DLL with a different version.
 extern "C" SQ_API uint32_t sq_api_version(void) { return SQ_API_VERSION; }
 
-// Chama o callback uma vez por janela capturável.
+// Calls the callback once per capturable window.
 extern "C" SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user_data) {
-    if (!callback) return fail(SQ_ERR_INVALID_ARG, "callback nulo");
+    if (!callback) return fail(SQ_ERR_INVALID_ARG, "null callback");
     for (const WindowInfo& w : list_capturable_windows())
         callback(w.handle, w.title.c_str(), w.process.c_str(), user_data);
     return SQ_OK;
 }
 
-// Monta o pipeline com as implementações do Windows e inicia a sessão.
+// Builds the pipeline with the Windows implementations and starts the session.
 extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data) {
-    if (!config || !callback || !config->ocr_language) return fail(SQ_ERR_INVALID_ARG, "config ou callback nulo");
+    if (!config || !callback || !config->ocr_language) return fail(SQ_ERR_INVALID_ARG, "null config or callback");
 
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
-    if (s.pipeline && s.pipeline->running()) return fail(SQ_ERR_ALREADY_RUNNING, "sessão já ativa");
+    if (s.pipeline && s.pipeline->running()) return fail(SQ_ERR_ALREADY_RUNNING, "session already running");
 
     PipelineConfig pc;
     pc.window_handle = config->window_handle;
@@ -73,30 +73,30 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     });
     switch (result) {
         case StartError::None: return SQ_OK;
-        case StartError::AlreadyRunning: return fail(SQ_ERR_ALREADY_RUNNING, "sessão já ativa");
-        case StartError::Ocr: return fail(SQ_ERR_NOT_IMPLEMENTED, "OCR ainda não implementado");
+        case StartError::AlreadyRunning: return fail(SQ_ERR_ALREADY_RUNNING, "session already running");
+        case StartError::Ocr: return fail(SQ_ERR_NOT_IMPLEMENTED, "OCR not implemented yet");
         case StartError::Capture: return fail(SQ_ERR_PLATFORM, s.pipeline->capture_error().c_str());
     }
-    return fail(SQ_ERR_PLATFORM, "erro desconhecido");
+    return fail(SQ_ERR_PLATFORM, "unknown error");
 }
 
-// Encerra a sessão ativa.
+// Ends the active session.
 extern "C" SQ_API SqStatus sq_stop(void) {
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
-    if (!s.pipeline || !s.pipeline->running()) return fail(SQ_ERR_NOT_RUNNING, "nenhuma sessão ativa");
+    if (!s.pipeline || !s.pipeline->running()) return fail(SQ_ERR_NOT_RUNNING, "no active session");
     s.pipeline->stop();
     return SQ_OK;
 }
 
-// Liga a miniatura ao vivo da janela (8 fps bastam para escolher a área).
+// Starts the live window preview (8 fps is enough to pick the area).
 extern "C" SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_width,
                                             SqPreviewCallback callback, void* user_data) {
-    if (!callback || max_width <= 0) return fail(SQ_ERR_INVALID_ARG, "callback nulo ou largura inválida");
+    if (!callback || max_width <= 0) return fail(SQ_ERR_INVALID_ARG, "null callback or invalid width");
 
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
-    if (s.preview && s.preview->running()) return fail(SQ_ERR_ALREADY_RUNNING, "miniatura já ativa");
+    if (s.preview && s.preview->running()) return fail(SQ_ERR_ALREADY_RUNNING, "preview already running");
 
     s.preview = std::make_unique<PreviewStream>(std::make_unique<WgcCapture>(8));
     const bool ok = s.preview->start(window_handle, max_width,
@@ -107,18 +107,18 @@ extern "C" SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_
     return SQ_OK;
 }
 
-// Desliga a miniatura; ao retornar, o callback não será mais chamado.
+// Stops the preview; once this returns, the callback is no longer called.
 extern "C" SQ_API SqStatus sq_preview_stop(void) {
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
-    if (!s.preview || !s.preview->running()) return fail(SQ_ERR_NOT_RUNNING, "miniatura não está ativa");
+    if (!s.preview || !s.preview->running()) return fail(SQ_ERR_NOT_RUNNING, "preview is not running");
     s.preview->stop();
     return SQ_OK;
 }
 
-// Repassa a tradução pronta para o overlay.
+// Hands the finished translation to the overlay.
 extern "C" SQ_API SqStatus sq_overlay_set_text(const char* utf8_text) {
-    if (!utf8_text) return fail(SQ_ERR_INVALID_ARG, "texto nulo");
+    if (!utf8_text) return fail(SQ_ERR_INVALID_ARG, "null text");
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
     if (!s.overlay) s.overlay = std::make_unique<OverlayWindow>();
@@ -126,14 +126,14 @@ extern "C" SQ_API SqStatus sq_overlay_set_text(const char* utf8_text) {
     return SQ_OK;
 }
 
-// Mostra ou esconde o overlay (atalho global do usuário).
+// Shows or hides the overlay (user's global hotkey).
 extern "C" SQ_API SqStatus sq_overlay_set_visible(int32_t visible) {
     CoreState& s = state();
     std::lock_guard lock(s.mutex);
-    if (!s.overlay) return fail(SQ_ERR_NOT_RUNNING, "overlay ainda não criado");
+    if (!s.overlay) return fail(SQ_ERR_NOT_RUNNING, "overlay not created yet");
     s.overlay->set_visible(visible != 0);
     return SQ_OK;
 }
 
-// Última mensagem de erro registrada por fail().
+// Last error message stored by fail().
 extern "C" SQ_API const char* sq_last_error(void) { return state().last_error.c_str(); }

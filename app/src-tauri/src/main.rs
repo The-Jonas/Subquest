@@ -1,7 +1,7 @@
-// Esconde o console extra no Windows em builds de release.
+// Hides the extra console window on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// Ponto de entrada: toda a lógica fica na lib (padrão do Tauri v2).
+// Entry point: all the logic lives in the lib (Tauri v2 convention).
 fn main() {
     subquest_lib::run()
 }

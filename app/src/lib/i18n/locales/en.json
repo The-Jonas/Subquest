@@ -15,7 +15,8 @@
     "steps": {
       "game": "Game",
       "area": "Area",
-      "start": "Start"
+      "start": "Start",
+      "label": "Progress"
     },
     "game": {
       "question": "Which game are we translating?",

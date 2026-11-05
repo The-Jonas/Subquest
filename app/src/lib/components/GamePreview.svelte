@@ -1,6 +1,6 @@
 <!--
-  GamePreview — miniatura ao vivo da janela do jogo.
-  Liga a captura ao montar e desliga ao desmontar (ou ao trocar de jogo).
+  GamePreview — live thumbnail of the game window.
+  Starts capture on mount and stops it on unmount (or when the game changes).
 -->
 <script lang="ts">
   import { startPreview, errorKind, type PreviewFrame } from "../api";
@@ -8,13 +8,13 @@
 
   let { windowHandle }: { windowHandle: number } = $props();
 
-  const MAX_WIDTH = 640; // largura da miniatura: suficiente para enxergar a caixa de diálogo
+  const MAX_WIDTH = 640; // preview width: enough to make out the dialogue box
 
   let canvas = $state<HTMLCanvasElement>();
   let live = $state(false);
   let error = $state<string | null>(null);
 
-  // Desenha cada quadro recebido no canvas, ajustando o tamanho se a janela mudar.
+  // Draws each received frame on the canvas, resizing it if the window changes.
   function draw(frame: PreviewFrame) {
     if (!canvas) return;
     if (canvas.width !== frame.image.width || canvas.height !== frame.image.height) {
@@ -25,7 +25,7 @@
     live = true;
   }
 
-  // (Re)liga a captura sempre que o jogo escolhido muda; a limpeza desliga a anterior.
+  // (Re)starts capture whenever the chosen game changes; cleanup stops the previous one.
   $effect(() => {
     const handle = windowHandle;
     let stop: (() => Promise<void>) | null = null;
@@ -68,7 +68,7 @@
     display: grid;
     place-items: center;
   }
-  /* Com imagem, a proporção passa a ser a do próprio jogo */
+  /* Once there is an image, the aspect ratio becomes the game's own */
   .preview.live {
     aspect-ratio: auto;
   }

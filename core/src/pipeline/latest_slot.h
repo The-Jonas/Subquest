@@ -1,8 +1,8 @@
-// latest_slot.h — "fila" de uma posição só: o item novo substitui o antigo.
+// latest_slot.h — a one-item "queue": a new item replaces the old one.
 //
-// É o coração da baixa latência: se o OCR ainda está ocupado e chegam três
-// quadros novos, só o MAIS RECENTE espera na vaga. Os outros são descartados
-// em vez de formar uma fila que deixaria a tradução cada vez mais atrasada.
+// This is the heart of low latency: if OCR is still busy and three new frames
+// arrive, only the NEWEST waits in the slot. The others are dropped instead of
+// forming a queue that would make the translation fall further and further behind.
 #pragma once
 
 #include <condition_variable>
@@ -14,7 +14,7 @@ namespace subquest {
 template <typename T>
 class LatestSlot {
 public:
-    // Coloca um item na vaga, descartando o que estiver lá; acorda quem espera.
+    // Puts an item in the slot, dropping whatever was there; wakes up the waiter.
     void put(T item) {
         {
             std::lock_guard lock(mutex_);
@@ -23,7 +23,7 @@ public:
         cv_.notify_one();
     }
 
-    // Bloqueia até ter um item (retorna-o) ou até close() (retorna vazio).
+    // Blocks until there is an item (returns it) or until close() (returns empty).
     std::optional<T> take() {
         std::unique_lock lock(mutex_);
         cv_.wait(lock, [this] { return item_.has_value() || closed_; });
@@ -33,7 +33,7 @@ public:
         return out;
     }
 
-    // Libera todas as threads presas em take(); usado ao encerrar a sessão.
+    // Releases every thread blocked in take(); used when the session ends.
     void close() {
         {
             std::lock_guard lock(mutex_);
@@ -42,7 +42,7 @@ public:
         cv_.notify_all();
     }
 
-    // Reabre a vaga para uma nova sessão.
+    // Reopens the slot for a new session.
     void reset() {
         std::lock_guard lock(mutex_);
         item_.reset();

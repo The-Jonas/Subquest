@@ -1,5 +1,5 @@
-//! Configurações do usuário, salvas em JSON na pasta de config do app
-//! (`%APPDATA%\io.github.the-jonas.subquest\settings.json`). Nunca no repositório.
+//! User settings, saved as JSON in the app's config folder
+//! (`%APPDATA%\io.github.the-jonas.subquest\settings.json`). Never in the repository.
 
 use std::path::{Path, PathBuf};
 
@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
-    pub ui_language: String,     // idioma da interface: "pt-BR", "en", "es"
-    pub source_language: String, // idioma do jogo
-    pub target_language: String, // idioma da tradução
+    pub ui_language: String,     // UI language: "pt-BR", "en", "es"
+    pub source_language: String, // game language
+    pub target_language: String, // translation language
     pub ocr_engine: String,      // "windows" | "paddle"
     pub translator: TranslatorSettings,
     pub overlay: OverlaySettings,
-    pub tutorial_done: bool, // false => abre o tutorial na primeira execução
+    pub tutorial_done: bool, // false => opens the tutorial on first run
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -23,7 +23,7 @@ pub struct TranslatorSettings {
     pub kind: String, // "openai-compatible" | "deepl"
     pub base_url: String,
     pub model: String,
-    // TODO(fase 3): mover a chave para o Gerenciador de Credenciais do Windows.
+    // TODO(phase 3): move the key to Windows Credential Manager.
     pub api_key: String,
 }
 
@@ -32,11 +32,11 @@ pub struct TranslatorSettings {
 pub struct OverlaySettings {
     pub font_size: u32,
     pub background_opacity: f32, // 0..1
-    pub show_original: bool,     // mostrar o texto original acima da tradução
+    pub show_original: bool,     // show the original text above the translation
 }
 
 impl Default for Settings {
-    /// Padrões pensados para o caso mais comum: jogo em inglês, tradução para PT-BR.
+    /// Defaults for the most common case: English game, translated to PT-BR.
     fn default() -> Self {
         Self {
             ui_language: "pt-BR".into(),
@@ -51,7 +51,7 @@ impl Default for Settings {
 }
 
 impl Default for TranslatorSettings {
-    /// Começa apontando para um Ollama local: funciona sem chave nenhuma.
+    /// Starts pointing at a local Ollama: works with no key at all.
     fn default() -> Self {
         Self {
             kind: "openai-compatible".into(),
@@ -63,7 +63,7 @@ impl Default for TranslatorSettings {
 }
 
 impl Default for OverlaySettings {
-    /// Fonte grande e fundo escuro o bastante para ler sobre qualquer cenário.
+    /// Large font and a background dark enough to read over any scene.
     fn default() -> Self {
         Self {
             font_size: 22,
@@ -73,12 +73,12 @@ impl Default for OverlaySettings {
     }
 }
 
-/// Caminho do arquivo de configurações dentro da pasta de config do app.
+/// Path of the settings file inside the app's config folder.
 pub fn settings_path(config_dir: &Path) -> PathBuf {
     config_dir.join("settings.json")
 }
 
-/// Lê as configurações; se o arquivo não existe ou está corrompido, volta aos padrões.
+/// Reads the settings; falls back to defaults if the file is missing or corrupt.
 pub fn load(config_dir: &Path) -> Settings {
     std::fs::read_to_string(settings_path(config_dir))
         .ok()
@@ -86,7 +86,7 @@ pub fn load(config_dir: &Path) -> Settings {
         .unwrap_or_default()
 }
 
-/// Grava as configurações, criando a pasta se preciso.
+/// Writes the settings, creating the folder if needed.
 pub fn save(config_dir: &Path, settings: &Settings) -> Result<(), String> {
     std::fs::create_dir_all(config_dir).map_err(|e| e.to_string())?;
     let text = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
@@ -98,8 +98,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn campos_faltando_usam_o_padrao() {
-        // Simula um settings.json de uma versão antiga, sem as seções novas.
+    fn missing_fields_use_defaults() {
+        // Simulates a settings.json from an older version, without the new sections.
         let s: Settings = serde_json::from_str(r#"{ "uiLanguage": "en" }"#).unwrap();
         assert_eq!(s.ui_language, "en");
         assert_eq!(s.target_language, "pt-BR");

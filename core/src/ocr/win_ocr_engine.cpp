@@ -2,17 +2,17 @@
 
 namespace subquest {
 
-// TODO(fase 1): OcrEngine::TryCreateFromLanguage(Language(lang)).
-// Retorna false se o pacote de idioma do Windows não estiver instalado; a
-// interface deve então explicar ao usuário como instalar.
+// TODO(phase 1): OcrEngine::TryCreateFromLanguage(Language(lang)).
+// Returns false if the Windows language pack isn't installed; the UI should
+// then explain to the user how to install it.
 bool WinOcrEngine::load(const std::string& language) {
     language_ = language;
     return false;
 }
 
-// TODO(fase 1): copiar Frame::bgra para um SoftwareBitmap (BGRA8, premultiplied),
-// chamar RecognizeAsync e converter cada OcrLine (texto + retângulo) para OcrResult.
-// Medir só o reconhecimento em elapsed_ms (std::chrono::steady_clock).
+// TODO(phase 1): copy Frame::bgra into a SoftwareBitmap (BGRA8, premultiplied),
+// call RecognizeAsync and convert each OcrLine (text + rectangle) to OcrResult.
+// Measure only the recognition in elapsed_ms (std::chrono::steady_clock).
 OcrResult WinOcrEngine::recognize(const Frame& frame) {
     OcrResult result;
     result.frame_id = frame.id;

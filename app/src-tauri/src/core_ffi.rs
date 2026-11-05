@@ -1,10 +1,10 @@
-//! Ponte com a `subquest_core.dll` (C++), carregada em tempo de execução.
+//! Bridge to `subquest_core.dll` (C++), loaded at runtime.
 //!
-//! Por que carregar dinamicamente (libloading) em vez de linkar?
-//! - O app abre mesmo sem a DLL e mostra um aviso amigável em vez de não iniciar.
-//! - Dá para trocar a DLL em dev sem recompilar o Rust.
+//! Why load it dynamically (libloading) instead of linking?
+//! - The app opens even without the DLL and shows a friendly notice instead of failing to start.
+//! - The DLL can be swapped in dev without recompiling Rust.
 //!
-//! As assinaturas abaixo DEVEM bater com `core/include/subquest/core_api.h`.
+//! The signatures below MUST match `core/include/subquest/core_api.h`.
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use libloading::Library;
 
 use crate::error::AppError;
 
-/// Versão da ABI que este código espera (`SQ_API_VERSION` no header).
+/// ABI version this code expects (`SQ_API_VERSION` in the header).
 pub const EXPECTED_API_VERSION: u32 = 2;
 
 #[repr(C)]
@@ -48,7 +48,7 @@ type FnSetText = unsafe extern "C" fn(*const c_char) -> i32;
 type FnSetVisible = unsafe extern "C" fn(i32) -> i32;
 type FnLastError = unsafe extern "C" fn() -> *const c_char;
 
-/// Janela capturável, como o núcleo a reporta.
+/// A capturable window, as reported by the core.
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct WindowEntry {
     pub handle: u64,
@@ -56,8 +56,8 @@ pub struct WindowEntry {
     pub process: String,
 }
 
-/// Biblioteca carregada + ponteiros para as funções exportadas.
-/// A `Library` precisa viver enquanto os ponteiros forem usados.
+/// Loaded library + pointers to the exported functions.
+/// The `Library` must outlive every use of those pointers.
 pub struct Core {
     _lib: Library,
     api_version: FnApiVersion,
@@ -71,27 +71,27 @@ pub struct Core {
     last_error: FnLastError,
 }
 
-/// Lê um símbolo da DLL e copia o ponteiro de função (falha com o nome do símbolo).
+/// Reads a DLL symbol and copies the function pointer (fails with the symbol name).
 unsafe fn symbol<T: Copy>(lib: &Library, name: &str) -> Result<T, String> {
     lib.get::<T>(name.as_bytes())
         .map(|s| *s)
-        .map_err(|e| format!("símbolo `{name}` não encontrado: {e}"))
+        .map_err(|e| format!("symbol `{name}` not found: {e}"))
 }
 
 impl Core {
-    /// Carrega a DLL do caminho dado, resolve todos os símbolos e confere a versão da ABI.
+    /// Loads the DLL from the given path, resolves every symbol and checks the ABI version.
     pub fn load(path: &Path) -> Result<Self, String> {
-        // SAFETY: a DLL é nossa e as assinaturas seguem o core_api.h.
+        // SAFETY: the DLL is ours and the signatures follow core_api.h.
         unsafe {
             let lib = Library::new(path)
-                .map_err(|e| format!("não consegui abrir {}: {e}", path.display()))?;
-            // A versão é conferida antes dos outros símbolos: uma DLL antiga
-            // não teria as funções novas e o erro de "símbolo" confundiria.
+                .map_err(|e| format!("could not open {}: {e}", path.display()))?;
+            // The version is checked before the other symbols: an old DLL
+            // wouldn't have the new functions and a "symbol" error would be confusing.
             let api_version: FnApiVersion = symbol(&lib, "sq_api_version")?;
             let version = api_version();
             if version != EXPECTED_API_VERSION {
                 return Err(format!(
-                    "versão da ABI incompatível: DLL {version}, app {EXPECTED_API_VERSION} (recompile a pasta core)"
+                    "incompatible ABI version: DLL {version}, app {EXPECTED_API_VERSION} (rebuild the core folder)"
                 ));
             }
             Ok(Core {
@@ -109,14 +109,14 @@ impl Core {
         }
     }
 
-    /// Versão da ABI informada pela DLL.
+    /// ABI version reported by the DLL.
     pub fn api_version(&self) -> u32 {
         unsafe { (self.api_version)() }
     }
 
-    /// Lista as janelas capturáveis, na ordem em que estão na tela (a da frente primeiro).
+    /// Lists capturable windows in on-screen order (front-most first).
     pub fn list_windows(&self) -> Result<Vec<WindowEntry>, AppError> {
-        // Callback em C que empurra cada janela no Vec recebido via user_data.
+        // C callback that pushes each window into the Vec passed via user_data.
         unsafe extern "C" fn collect(
             handle: u64,
             title: *const c_char,
@@ -136,7 +136,7 @@ impl Core {
         Ok(windows)
     }
 
-    /// Inicia a sessão. `user_data` é repassado intacto para o callback na thread de OCR.
+    /// Starts the session. `user_data` reaches the callback on the OCR thread untouched.
     pub fn start(
         &self,
         window_handle: u64,
@@ -150,20 +150,20 @@ impl Core {
             window_handle,
             region,
             ocr_language: lang.as_ptr(),
-            settle_frames: 0,      // 0 = usar o padrão do núcleo
-            change_threshold: 0.0, // idem
+            settle_frames: 0,      // 0 = use the core default
+            change_threshold: 0.0, // same
         };
         let status = unsafe { (self.start)(&config, callback, user_data) };
         self.check(status)
     }
 
-    /// Para a sessão ativa.
+    /// Stops the active session.
     pub fn stop(&self) -> Result<(), AppError> {
         let status = unsafe { (self.stop)() };
         self.check(status)
     }
 
-    /// Liga a miniatura ao vivo. `user_data` chega intacto em cada chamada do callback.
+    /// Starts the live preview. `user_data` reaches every callback call untouched.
     pub fn preview_start(
         &self,
         window_handle: u64,
@@ -175,26 +175,26 @@ impl Core {
         self.check(status)
     }
 
-    /// Desliga a miniatura; ao retornar, o callback não é mais chamado.
+    /// Stops the preview; once this returns, the callback is no longer called.
     pub fn preview_stop(&self) -> Result<(), AppError> {
         let status = unsafe { (self.preview_stop)() };
         self.check(status)
     }
 
-    /// Mostra a tradução no overlay.
+    /// Shows the translation in the overlay.
     pub fn overlay_set_text(&self, text: &str) -> Result<(), AppError> {
         let text = CString::new(text).map_err(|e| AppError::other(e.to_string()))?;
         let status = unsafe { (self.overlay_set_text)(text.as_ptr()) };
         self.check(status)
     }
 
-    /// Mostra ou esconde o overlay.
+    /// Shows or hides the overlay.
     pub fn overlay_set_visible(&self, visible: bool) -> Result<(), AppError> {
         let status = unsafe { (self.overlay_set_visible)(visible as i32) };
         self.check(status)
     }
 
-    /// Converte um SqStatus em Result, anexando a mensagem de sq_last_error como detalhe.
+    /// Turns an SqStatus into a Result, attaching sq_last_error's message as the detail.
     fn check(&self, status: i32) -> Result<(), AppError> {
         if status == 0 {
             return Ok(());
@@ -206,7 +206,7 @@ impl Core {
     }
 }
 
-/// Procura a DLL: primeiro ao lado do executável/recursos (instalado), depois em `src-tauri/bin` (dev).
+/// Looks for the DLL: first next to the executable/resources (installed), then in `src-tauri/bin` (dev).
 pub fn candidate_paths(resource_dir: Option<PathBuf>) -> Vec<PathBuf> {
     let file = libloading::library_filename("subquest_core");
     let mut paths = Vec::new();

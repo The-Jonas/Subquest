@@ -1,7 +1,7 @@
-// api.ts — chamadas ao lado Rust (comandos Tauri).
+// api.ts — calls into the Rust side (Tauri commands).
 //
-// Fora do Tauri (rodando só `npm run dev` no navegador) as funções devolvem
-// dados de exemplo. Assim dá para mexer no visual sem compilar Rust nem C++.
+// Outside Tauri (running just `npm run dev` in the browser) the functions return
+// sample data, so the UI can be worked on without building Rust or C++.
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -27,13 +27,13 @@ export interface Settings {
   tutorialDone: boolean;
 }
 
-// Erro vindo do Rust: `kind` é a chave em `errors.<kind>` nos arquivos de idioma.
+// Error coming from Rust: `kind` is the key in `errors.<kind>` in the locale files.
 export interface AppError {
   kind: string;
   detail: string;
 }
 
-// Quadro da miniatura: imagem reduzida + tamanho real da captura (para converter coordenadas).
+// Preview frame: downscaled image + real capture size (to convert coordinates).
 export interface PreviewFrame {
   image: ImageData;
   sourceWidth: number;
@@ -46,10 +46,10 @@ export interface OcrTextEvent {
   ocrMs: number;
 }
 
-// Verdadeiro quando a página roda dentro do app Tauri.
+// True when the page runs inside the Tauri app.
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-// Padrões espelhados de settings.rs, usados no modo navegador.
+// Defaults mirrored from settings.rs, used in browser mode.
 export const defaultSettings: Settings = {
   uiLanguage: "pt-BR",
   sourceLanguage: "en",
@@ -66,7 +66,7 @@ const mockWindows: GameWindow[] = [
   { handle: 3, title: "Discord", process: "Discord.exe" },
 ];
 
-// Extrai o `kind` de qualquer erro (do Rust ou não) e registra o detalhe no console.
+// Extracts the `kind` from any error (from Rust or not) and logs the detail to the console.
 export function errorKind(e: unknown): string {
   if (e && typeof e === "object" && "kind" in e) {
     const err = e as AppError;
@@ -77,44 +77,44 @@ export function errorKind(e: unknown): string {
   return "unknown";
 }
 
-// Situação do núcleo C++ (DLL carregada ou não).
+// Status of the C++ core (DLL loaded or not).
 export async function coreStatus(): Promise<CoreStatus> {
   if (!inTauri) return { loaded: false, apiVersion: null, error: "modo navegador" };
   return invoke("core_status");
 }
 
-// Janelas abertas que podem ser capturadas.
+// Open windows that can be captured.
 export async function listWindows(): Promise<GameWindow[]> {
   if (!inTauri) return mockWindows;
   return invoke("list_windows");
 }
 
-// Inicia a tradução; `region` = [x, y, largura, altura] ou null para a janela inteira.
+// Starts translating; `region` = [x, y, width, height] or null for the whole window.
 export async function startSession(windowHandle: number, region: [number, number, number, number] | null) {
   if (!inTauri) return;
   await invoke("start_session", { windowHandle, region });
 }
 
-// Para a tradução.
+// Stops translating.
 export async function stopSession() {
   if (!inTauri) return;
   await invoke("stop_session");
 }
 
-// Lê as configurações salvas.
+// Reads the saved settings.
 export async function getSettings(): Promise<Settings> {
   if (!inTauri) return structuredClone(defaultSettings);
   return invoke("get_settings");
 }
 
-// Grava as configurações.
+// Saves the settings.
 export async function saveSettings(settings: Settings) {
   if (!inTauri) return;
   await invoke("save_settings", { settings });
 }
 
-// Lê o cabeçalho de 16 bytes (4 x u32: largura, altura, largura real, altura real)
-// seguido dos pixels RGBA, no formato montado por `on_preview_frame` no Rust.
+// Reads the 16-byte header (4 x u32: width, height, source width, source height)
+// followed by the RGBA pixels, in the layout built by `on_preview_frame` in Rust.
 function decodePreview(buffer: ArrayBuffer): PreviewFrame {
   const header = new DataView(buffer, 0, 16);
   const width = header.getUint32(0, true);
@@ -127,7 +127,7 @@ function decodePreview(buffer: ArrayBuffer): PreviewFrame {
   };
 }
 
-// Quadro falso para o modo navegador: céu, chão e uma "caixa de diálogo".
+// Fake frame for browser mode: a sky and a "dialogue box".
 function fakePreview(width: number): PreviewFrame {
   const height = Math.round((width * 9) / 16);
   const canvas = new OffscreenCanvas(width, height);
@@ -145,7 +145,7 @@ function fakePreview(width: number): PreviewFrame {
   return { image: ctx.getImageData(0, 0, width, height), sourceWidth: 1920, sourceHeight: 1080 };
 }
 
-// Liga a miniatura ao vivo; `onFrame` recebe cada quadro. Devolve a função que desliga.
+// Starts the live preview; `onFrame` gets every frame. Returns the function that stops it.
 export async function startPreview(
   windowHandle: number,
   maxWidth: number,
@@ -163,7 +163,7 @@ export async function startPreview(
   };
 }
 
-// Escuta as falas reconhecidas pelo OCR; devolve a função que cancela a escuta.
+// Listens for lines recognized by OCR; returns the function that stops listening.
 export async function onOcrText(handler: (e: OcrTextEvent) => void): Promise<UnlistenFn> {
   if (!inTauri) return () => {};
   return listen<OcrTextEvent>("ocr-text", (event) => handler(event.payload));

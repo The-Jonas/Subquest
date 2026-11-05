@@ -1,22 +1,22 @@
-//! Backend para qualquer API compatível com o formato da OpenAI
+//! Backend for any API compatible with the OpenAI format
 //! (`POST {base_url}/chat/completions`).
 //!
-//! Uma implementação cobre vários serviços, mudando só `base_url` e `model`:
-//! OpenAI, Google Gemini (endpoint compatível), OpenRouter, Ollama e
+//! One implementation covers many services by changing only `base_url` and `model`:
+//! OpenAI, Google Gemini (compatible endpoint), OpenRouter, Ollama and
 //! llama.cpp server / LM Studio rodando localmente.
 
 use super::{TranslateError, TranslationRequest, Translator};
 
 pub struct OpenAiCompatTranslator {
     pub base_url: String, // ex.: "http://localhost:11434/v1" (Ollama)
-    pub api_key: String,  // vazio para servidores locais
+    pub api_key: String,  // empty for local servers
     pub model: String,
 }
 
 impl OpenAiCompatTranslator {
-    /// Monta o prompt de sistema: papel, idiomas, glossário e regras de saída.
-    /// Pedimos explicitamente para corrigir erros prováveis de OCR, que é onde
-    /// tradutores tradicionais (e o MORT) mais erram.
+    /// Builds the system prompt: role, languages, glossary and output rules.
+    /// We explicitly ask it to fix likely OCR mistakes, which is where
+    /// traditional translators (and MORT) fail the most.
     pub fn system_prompt(request: &TranslationRequest) -> String {
         let mut prompt = format!(
             "You translate video game text from {src} to {dst}.\n\
@@ -36,8 +36,8 @@ impl OpenAiCompatTranslator {
         prompt
     }
 
-    /// Monta as mensagens: falas anteriores como pares user/assistant (contexto)
-    /// e, por último, a fala atual.
+    /// Builds the messages: previous lines as user/assistant pairs (context)
+    /// and, last, the current line.
     pub fn messages(request: &TranslationRequest) -> Vec<(&'static str, String)> {
         let mut messages = vec![("system", Self::system_prompt(request))];
         for line in &request.context {
@@ -50,19 +50,19 @@ impl OpenAiCompatTranslator {
 }
 
 impl Translator for OpenAiCompatTranslator {
-    /// Identificador usado no cache e nas configurações.
+    /// Identifier used by the cache and the settings.
     fn id(&self) -> &'static str {
         "openai-compatible"
     }
 
-    /// TODO(fase 1): enviar `messages()` com reqwest (stream: true) e repassar
-    /// os pedaços para o overlay conforme chegam; temperature baixa (0.2–0.3).
+    /// TODO(phase 1): send `messages()` with reqwest (stream: true) and forward
+    /// chunks to the overlay as they arrive; low temperature (0.2–0.3).
     fn translate(&self, _request: &TranslationRequest) -> Result<String, TranslateError> {
         if self.base_url.trim().is_empty() {
-            return Err(TranslateError::NotConfigured("endereço da API".into()));
+            return Err(TranslateError::NotConfigured("API address".into()));
         }
         if self.model.trim().is_empty() {
-            return Err(TranslateError::NotConfigured("modelo".into()));
+            return Err(TranslateError::NotConfigured("model".into()));
         }
         Err(TranslateError::NotImplemented)
     }
@@ -87,14 +87,14 @@ mod tests {
     }
 
     #[test]
-    fn prompt_inclui_glossario_e_idiomas() {
+    fn prompt_includes_glossary_and_languages() {
         let prompt = OpenAiCompatTranslator::system_prompt(&request());
         assert!(prompt.contains("from en to pt-BR"));
         assert!(prompt.contains("Pale King => Rei Pálido"));
     }
 
     #[test]
-    fn contexto_vem_antes_da_fala_atual() {
+    fn context_comes_before_current_line() {
         let msgs = OpenAiCompatTranslator::messages(&request());
         assert_eq!(msgs.len(), 4);
         assert_eq!(msgs[1], ("user", "Hello.".to_string()));
@@ -103,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn sem_endereco_avisa_o_que_falta() {
+    fn missing_address_reports_what_is_missing() {
         let t = OpenAiCompatTranslator {
             base_url: "".into(),
             api_key: "".into(),
@@ -111,7 +111,7 @@ mod tests {
         };
         assert_eq!(
             t.translate(&request()),
-            Err(TranslateError::NotConfigured("endereço da API".into()))
+            Err(TranslateError::NotConfigured("API address".into()))
         );
     }
 }

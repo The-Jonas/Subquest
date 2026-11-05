@@ -1,4 +1,4 @@
-// Estado global da interface: configurações e qual tela está aberta.
+// Global UI state: settings and which screen is open.
 import { getSettings, saveSettings, defaultSettings, coreStatus, type Settings, type CoreStatus } from "../api";
 import { setLocale, type Locale } from "../i18n/index.svelte";
 
@@ -11,7 +11,7 @@ export const app = $state({
   ready: false,
 });
 
-// Carrega configurações e status do núcleo; abre o tutorial na primeira vez.
+// Loads settings and core status; opens the tutorial the first time.
 export async function boot() {
   const [settings, core] = await Promise.all([getSettings(), coreStatus()]);
   app.settings = settings;
@@ -21,7 +21,7 @@ export async function boot() {
   app.ready = true;
 }
 
-// Grava as configurações atuais e aplica o idioma da interface.
+// Saves the current settings and applies the UI language.
 export async function persistSettings() {
   setLocale(app.settings.uiLanguage as Locale);
   await saveSettings($state.snapshot(app.settings));

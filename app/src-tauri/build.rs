@@ -1,4 +1,4 @@
-// Gera os recursos do Windows (ícone, manifesto) e valida o tauri.conf.json.
+// Generates the Windows resources (icon, manifest) and validates tauri.conf.json.
 fn main() {
     tauri_build::build()
 }

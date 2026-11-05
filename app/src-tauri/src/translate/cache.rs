@@ -1,11 +1,11 @@
-//! Cache de traduções: a mesma fala com o mesmo tradutor e idioma sai na hora.
+//! Translation cache: the same line with the same translator and language comes back instantly.
 //!
-//! Por enquanto fica em memória. TODO(fase 3): persistir em SQLite por jogo,
-//! para que o cache sobreviva entre sessões.
+//! In memory for now. TODO(phase 3): persist to SQLite per game so the cache
+//! survives between sessions.
 
 use std::collections::{HashMap, VecDeque};
 
-/// Cache com limite de itens; quando enche, descarta o mais antigo (FIFO).
+/// Size-limited cache; when full, drops the oldest entry (FIFO).
 pub struct TranslationCache {
     entries: HashMap<String, String>,
     order: VecDeque<String>,
@@ -13,7 +13,7 @@ pub struct TranslationCache {
 }
 
 impl TranslationCache {
-    /// Cria um cache que guarda no máximo `capacity` traduções.
+    /// Creates a cache that holds at most `capacity` translations.
     pub fn new(capacity: usize) -> Self {
         Self {
             entries: HashMap::new(),
@@ -22,18 +22,18 @@ impl TranslationCache {
         }
     }
 
-    /// Monta a chave: tradutor + idiomas + texto normalizado (espaços colapsados).
+    /// Builds the key: translator + languages + normalized text (collapsed whitespace).
     pub fn key(translator: &str, source: &str, target: &str, text: &str) -> String {
         let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
         format!("{translator}\u{1f}{source}\u{1f}{target}\u{1f}{normalized}")
     }
 
-    /// Busca uma tradução já feita.
+    /// Looks up an existing translation.
     pub fn get(&self, key: &str) -> Option<&str> {
         self.entries.get(key).map(String::as_str)
     }
 
-    /// Guarda uma tradução, descartando a mais antiga se o cache estiver cheio.
+    /// Stores a translation, dropping the oldest one if the cache is full.
     pub fn insert(&mut self, key: String, translation: String) {
         if self.entries.contains_key(&key) {
             self.entries.insert(key, translation);
@@ -48,7 +48,7 @@ impl TranslationCache {
         self.entries.insert(key, translation);
     }
 
-    /// Quantidade de traduções guardadas.
+    /// Number of stored translations.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
@@ -59,14 +59,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn espacos_diferentes_geram_a_mesma_chave() {
+    fn different_whitespace_gives_same_key() {
         let a = TranslationCache::key("llm", "en", "pt-BR", "Hello,   traveler!\n");
         let b = TranslationCache::key("llm", "en", "pt-BR", "Hello, traveler!");
         assert_eq!(a, b);
     }
 
     #[test]
-    fn descarta_o_mais_antigo_quando_enche() {
+    fn drops_oldest_when_full() {
         let mut cache = TranslationCache::new(2);
         cache.insert("a".into(), "1".into());
         cache.insert("b".into(), "2".into());

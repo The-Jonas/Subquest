@@ -1,7 +1,7 @@
 <!--
-  DialogueBox — a caixa de diálogo de RPG que é a marca do Subquest.
-  A fala (`line`) aparece letra por letra, como nos jogos, e termina com o ▼
-  piscando. É a única animação automática da interface.
+  DialogueBox — the RPG dialogue box that is Subquest's signature.
+  The line (`line`) appears letter by letter, like in games, and ends with a
+  bobbing ▼. It is the only automatic animation in the UI.
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -11,7 +11,7 @@
   let typed = $state("");
   let done = $state(false);
 
-  // Reinicia o efeito de digitação sempre que a fala muda.
+  // Restarts the typing effect whenever the line changes.
   $effect(() => {
     const full = line;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -55,7 +55,7 @@
     box-shadow: 0 0 0 6px var(--night), 0 24px 48px -24px rgb(0 0 0 / 0.6);
   }
 
-  /* Plaquinha com o nome de quem fala, montada sobre a borda superior */
+  /* Nameplate with the speaker's name, sitting on the top border */
   .nameplate {
     position: absolute;
     top: -16px;

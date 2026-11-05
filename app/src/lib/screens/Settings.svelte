@@ -1,4 +1,4 @@
-<!-- Settings — idiomas, serviço de tradução e aparência da legenda, com prévia ao vivo. -->
+<!-- Settings — languages, translation service and subtitle look, with a live preview. -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
@@ -10,7 +10,7 @@
   let saved = $state(false);
   let error = $state<string | null>(null);
 
-  // Grava e mostra a confirmação por alguns segundos.
+  // Saves and shows the confirmation for a few seconds.
   async function save() {
     error = null;
     try {
@@ -90,7 +90,7 @@
       </label>
     </div>
 
-    <!-- Prévia: um "cenário" listrado para mostrar a legenda sobre fundo irregular -->
+    <!-- Preview: a striped "scene" to show the subtitle over a busy background -->
     <figure class="preview" aria-label={t("settings.preview")}>
       <div class="subtitle" style:font-size="{app.settings.overlay.fontSize}px" style:background="rgb(10 12 24 / {app.settings.overlay.backgroundOpacity})">
         {#if app.settings.overlay.showOriginal}

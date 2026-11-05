@@ -1,4 +1,4 @@
-<!-- App — layout: barra lateral + tela atual. -->
+<!-- App — layout: sidebar + current screen. -->
 <script lang="ts">
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Play from "./lib/screens/Play.svelte";

@@ -1,8 +1,8 @@
-// change_detector.h — decide QUANDO vale a pena rodar o OCR.
+// change_detector.h — decides WHEN it is worth running OCR.
 //
-// Ideia: reduzir o quadro a uma miniatura em tons de cinza e comparar com a
-// anterior. Só dispara quando o texto MUDOU em relação ao último disparo e
-// depois ficou PARADO por alguns quadros (efeito máquina de escrever acabou).
+// Idea: shrink the frame to a grayscale thumbnail and compare it with the
+// previous one. Fires only when the text CHANGED since the last fire and then
+// stayed STILL for a few frames (the typewriter effect is over).
 #pragma once
 
 #include <cstdint>
@@ -13,30 +13,30 @@
 namespace subquest {
 
 struct ChangeDetectorConfig {
-    int32_t thumb_width = 96;        // miniatura larga e baixa: caixas de diálogo são assim
+    int32_t thumb_width = 96;        // wide, short thumbnail: dialogue boxes look like that
     int32_t thumb_height = 24;
-    float change_threshold = 0.02f;  // diferença média (0..1) que conta como "mudou"
-    float still_threshold = 0.004f;  // diferença abaixo disso conta como "parado"
-    uint32_t settle_frames = 3;      // quadros parados seguidos antes de disparar
+    float change_threshold = 0.02f;  // mean difference (0..1) that counts as "changed"
+    float still_threshold = 0.004f;  // difference below this counts as "still"
+    uint32_t settle_frames = 3;      // still frames in a row before firing
 };
 
 class ChangeDetector {
 public:
     explicit ChangeDetector(ChangeDetectorConfig config = {});
 
-    bool feed(const Frame& frame); // true => quadro estável e diferente do último disparo: rode o OCR
-    void reset();                  // esquece o histórico (nova sessão ou região trocada)
+    bool feed(const Frame& frame); // true => stable frame, different from the last fire: run OCR
+    void reset();                  // forgets history (new session or region changed)
 
-    // Exposto para testes: diferença média absoluta entre duas miniaturas (0..1).
+    // Exposed for tests: mean absolute difference between two thumbnails (0..1).
     static float mean_abs_diff(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b);
 
 private:
-    std::vector<uint8_t> make_thumbnail(const Frame& frame) const; // reduz o quadro para thumb_width x thumb_height em cinza
+    std::vector<uint8_t> make_thumbnail(const Frame& frame) const; // shrinks the frame to thumb_width x thumb_height grayscale
 
     ChangeDetectorConfig config_;
-    std::vector<uint8_t> previous_;  // miniatura do quadro anterior
-    std::vector<uint8_t> last_fired_; // miniatura do último quadro que disparou o OCR
-    uint32_t still_count_ = 0;       // quadros parados seguidos
+    std::vector<uint8_t> previous_;  // thumbnail of the previous frame
+    std::vector<uint8_t> last_fired_; // thumbnail of the last frame that fired OCR
+    uint32_t still_count_ = 0;       // still frames in a row
 };
 
 } // namespace subquest

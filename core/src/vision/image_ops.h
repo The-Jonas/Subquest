@@ -1,4 +1,4 @@
-// image_ops.h — operações simples de imagem, sem dependências (portáveis e testáveis).
+// image_ops.h — simple image operations with no dependencies (portable and testable).
 #pragma once
 
 #include <cstdint>
@@ -9,11 +9,11 @@
 namespace subquest {
 
 struct RgbaImage {
-    std::vector<uint8_t> pixels; // RGBA 8 bits, linhas contíguas (stride = width * 4)
+    std::vector<uint8_t> pixels; // RGBA 8 bits, contiguous rows (stride = width * 4)
     int32_t width = 0;
     int32_t height = 0;
 };
 
-RgbaImage downscale_to_rgba(const Frame& src, int32_t max_width); // reduz mantendo a proporção (nunca amplia) e troca BGRA -> RGBA
+RgbaImage downscale_to_rgba(const Frame& src, int32_t max_width); // shrinks keeping aspect ratio (never enlarges) and swaps BGRA -> RGBA
 
 } // namespace subquest

@@ -2,15 +2,15 @@
 
 namespace subquest {
 
-// Recebe as implementações concretas (injeção de dependência facilita testes).
+// Takes the concrete implementations (dependency injection makes testing easier).
 Pipeline::Pipeline(std::unique_ptr<ICaptureSource> capture, std::unique_ptr<IOcrEngine> ocr)
     : capture_(std::move(capture)), ocr_(std::move(ocr)) {}
 
-// Para tudo antes de destruir para não deixar threads soltas.
+// Stops everything before being destroyed so no thread is left dangling.
 Pipeline::~Pipeline() { stop(); }
 
-// Carrega o OCR, sobe a thread de OCR e só então liga a captura.
-// A ordem importa: a captura não pode entregar quadros para ninguém.
+// Loads OCR, starts the OCR thread and only then starts capture.
+// Order matters: capture must never deliver frames to nobody.
 StartError Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
     if (running_) return StartError::AlreadyRunning;
     if (!ocr_->load(config.ocr_language)) return StartError::Ocr;
@@ -31,7 +31,7 @@ StartError Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
     return StartError::None;
 }
 
-// Desliga a captura primeiro (para de produzir), depois fecha a vaga e espera o OCR.
+// Stops capture first (no more producing), then closes the slot and waits for OCR.
 void Pipeline::stop() {
     if (!running_.exchange(false)) return;
     capture_->stop();
@@ -39,13 +39,13 @@ void Pipeline::stop() {
     if (ocr_thread_.joinable()) ocr_thread_.join();
 }
 
-// Só repassa para o OCR os quadros que o detector aprovar.
+// Forwards to OCR only the frames the detector approves.
 void Pipeline::on_frame(Frame&& frame) {
     if (!running_) return;
     if (detector_.feed(frame)) ocr_slot_.put(std::move(frame));
 }
 
-// Consome a vaga até a sessão fechar; ignora texto vazio ou repetido.
+// Drains the slot until the session closes; skips empty or repeated text.
 void Pipeline::ocr_loop() {
     while (auto frame = ocr_slot_.take()) {
         OcrResult result = ocr_->recognize(*frame);

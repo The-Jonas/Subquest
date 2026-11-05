@@ -1,6 +1,6 @@
 <!--
-  Play — o fluxo principal em três passos: jogo -> área -> começar.
-  Cada passo é uma "fala" da caixa de diálogo.
+  Play — the main three-step flow: game -> area -> start.
+  Each step is a "line" of the dialogue box.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
@@ -35,14 +35,14 @@
   const stepKeys = ["game", "area", "start"] as const;
   const areaModes: AreaMode[] = ["dialogue", "screen"];
 
-  // No app de verdade, sem a DLL do núcleo não há o que listar nem traduzir.
+  // In the real app, without the core DLL there is nothing to list or translate.
   const coreMissing = $derived(inTauri && !app.core.loaded);
 
   const question = $derived(
     running ? t("play.start.running", { game: game?.title ?? "" }) : t(`play.${stepKeys[step]}.question`),
   );
 
-  // Busca as janelas abertas; mantém a lista anterior se der erro.
+  // Fetches open windows; keeps the previous list on error.
   async function refresh() {
     if (coreMissing) return;
     loading = true;
@@ -56,14 +56,14 @@
     }
   }
 
-  // Escolhe o jogo e avança para a área.
+  // Picks the game and moves on to the area step.
   function pick(w: GameWindow) {
     game = w;
     error = null;
     step = 1;
   }
 
-  // Liga a sessão no núcleo e passa a escutar as falas reconhecidas.
+  // Starts the core session and begins listening for recognized lines.
   async function start() {
     if (!game) return;
     error = null;
@@ -77,7 +77,7 @@
     }
   }
 
-  // Para a sessão e volta para o resumo.
+  // Stops the session and goes back to the summary.
   async function stop() {
     try {
       await stopSession();
@@ -166,8 +166,8 @@
     {/if}
   </DialogueBox>
 
-  <!-- Trilha dos passos: aqui a numeração faz sentido, é uma sequência real -->
-  <ol class="track" aria-label="progresso">
+  <!-- Step track: numbering makes sense here, it is a real sequence -->
+  <ol class="track" aria-label={t("play.steps.label")}>
     {#each stepKeys as key, i (key)}
       <li class:done={i < step || running} class:current={i === step && !running}>
         <span class="num">{i + 1}</span>
@@ -190,7 +190,7 @@
     color: var(--ink-dim);
   }
 
-  /* Aviso de núcleo ausente: borda de alerta, sem despejar o erro técnico na tela */
+  /* Missing-core notice: alert border, without dumping the technical error on screen */
   .notice {
     display: grid;
     gap: 6px;

@@ -1,4 +1,4 @@
-<!-- Profiles — perfis por jogo (área, idioma, glossário). Vazio até a fase 3. -->
+<!-- Profiles — per-game profiles (area, language, glossary). Empty until phase 3. -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import { app } from "../stores/app.svelte";

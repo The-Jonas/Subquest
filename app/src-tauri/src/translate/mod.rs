@@ -1,52 +1,52 @@
-//! Tradução: interface comum + backends + cache.
+//! Translation: common interface + backends + cache.
 //!
-//! Todo backend implementa `Translator`. O resto do app não sabe se a tradução
-//! vem do DeepL, de uma API de LLM na nuvem ou de um modelo local.
+//! Every backend implements `Translator`. The rest of the app doesn't know whether
+//! the translation comes from DeepL, a cloud LLM API or a local model.
 
 pub mod cache;
 pub mod openai_compat;
 
 use serde::{Deserialize, Serialize};
 
-/// Uma fala anterior já traduzida, usada como contexto para o LLM.
+/// A previous, already translated line, used as context for the LLM.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ContextLine {
     pub source: String,
     pub translation: String,
 }
 
-/// Tudo o que um backend precisa para traduzir uma fala.
+/// Everything a backend needs to translate one line.
 #[derive(Clone, Debug)]
 pub struct TranslationRequest {
     pub text: String,
     pub source_lang: String,             // "en", "ja", ...
     pub target_lang: String,             // "pt-BR", ...
-    pub context: Vec<ContextLine>,       // últimas falas, da mais antiga para a mais nova
-    pub glossary: Vec<(String, String)>, // termo original -> tradução fixa (nomes, golpes, lugares)
+    pub context: Vec<ContextLine>,       // latest lines, oldest first
+    pub glossary: Vec<(String, String)>, // source term -> fixed translation (names, moves, places)
 }
 
 #[derive(Debug, PartialEq)]
 pub enum TranslateError {
-    NotConfigured(String), // falta chave, URL ou modelo
-    Network(String),       // falha de conexão / timeout
-    Provider(String),      // a API respondeu com erro
-    NotImplemented,        // backend ainda em stub
+    NotConfigured(String), // missing key, URL or model
+    Network(String),       // connection failure / timeout
+    Provider(String),      // the API answered with an error
+    NotImplemented,        // backend is still a stub
 }
 
 impl std::fmt::Display for TranslateError {
-    /// Mensagem curta, pensada para aparecer na interface.
+    /// Short message, meant for logs and the UI detail.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TranslateError::NotConfigured(what) => write!(f, "falta configurar: {what}"),
-            TranslateError::Network(e) => write!(f, "erro de conexão: {e}"),
-            TranslateError::Provider(e) => write!(f, "o serviço de tradução recusou: {e}"),
-            TranslateError::NotImplemented => write!(f, "tradutor ainda não implementado"),
+            TranslateError::NotConfigured(what) => write!(f, "not configured: {what}"),
+            TranslateError::Network(e) => write!(f, "connection error: {e}"),
+            TranslateError::Provider(e) => write!(f, "the translation service refused: {e}"),
+            TranslateError::NotImplemented => write!(f, "translator not implemented yet"),
         }
     }
 }
 
-/// Contrato de qualquer backend de tradução.
+/// Contract for any translation backend.
 pub trait Translator: Send + Sync {
-    fn id(&self) -> &'static str; // identificador estável, usado no cache e nas configurações
-    fn translate(&self, request: &TranslationRequest) -> Result<String, TranslateError>; // traduz uma fala
+    fn id(&self) -> &'static str; // stable identifier, used by the cache and settings
+    fn translate(&self, request: &TranslationRequest) -> Result<String, TranslateError>; // translates one line
 }

@@ -1,7 +1,7 @@
-// preview_stream.h — miniatura ao vivo da janela do jogo, para a interface.
+// preview_stream.h — live thumbnail of the game window, for the UI.
 //
-// Usa a mesma captura da sessão, mas com FPS baixo e a imagem reduzida e já
-// convertida para RGBA, pronta para desenhar num <canvas>.
+// Uses the same capture as a session, but at low FPS and with the image
+// downscaled and already converted to RGBA, ready to draw on a <canvas>.
 #pragma once
 
 #include <atomic>
@@ -14,7 +14,7 @@
 
 namespace subquest {
 
-// Recebe a imagem reduzida e o tamanho real da captura (para converter coordenadas).
+// Receives the downscaled image and the real capture size (to convert coordinates).
 using PreviewCallback = std::function<void(const RgbaImage&, int32_t source_width, int32_t source_height)>;
 
 class PreviewStream {
@@ -22,8 +22,8 @@ public:
     explicit PreviewStream(std::unique_ptr<ICaptureSource> capture);
     ~PreviewStream();
 
-    bool start(uint64_t window_handle, int32_t max_width, PreviewCallback on_image); // false => ver error()
-    void stop();                                                                      // idempotente
+    bool start(uint64_t window_handle, int32_t max_width, PreviewCallback on_image); // false => see error()
+    void stop();                                                                      // idempotent
     bool running() const { return running_; }
     const std::string& error() const { return capture_->error(); }
 

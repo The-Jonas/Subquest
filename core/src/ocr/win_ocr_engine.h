@@ -1,4 +1,4 @@
-// win_ocr_engine.h — OCR nativo do Windows (Windows.Media.Ocr).
+// win_ocr_engine.h — native Windows OCR (Windows.Media.Ocr).
 #pragma once
 
 #include "ocr/ocr_engine.h"
@@ -12,7 +12,7 @@ public:
     const char* name() const override { return "Windows OCR"; }
 
 private:
-    std::string language_; // idioma carregado; vazio = não carregado
+    std::string language_; // loaded language; empty = not loaded
 };
 
 } // namespace subquest

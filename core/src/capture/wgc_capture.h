@@ -1,7 +1,7 @@
-// wgc_capture.h — captura de janela via Windows.Graphics.Capture (GPU).
+// wgc_capture.h — window capture through Windows.Graphics.Capture (GPU).
 //
-// Os tipos do D3D11/WinRT ficam escondidos no .cpp (idioma "pimpl"), para que
-// quem inclui este header não precise puxar os headers pesados do Windows.
+// D3D11/WinRT types are hidden in the .cpp (the "pimpl" idiom), so code that
+// includes this header doesn't pull in the heavy Windows headers.
 #pragma once
 
 #include <memory>
@@ -13,7 +13,7 @@ namespace subquest {
 
 class WgcCapture final : public ICaptureSource {
 public:
-    explicit WgcCapture(uint32_t max_fps = 30); // limita quantos quadros por segundo são entregues
+    explicit WgcCapture(uint32_t max_fps = 30); // caps how many frames per second are delivered
     ~WgcCapture() override;
 
     bool start(uint64_t window_handle, Rect region, FrameCallback on_frame) override;
@@ -22,7 +22,7 @@ public:
     const std::string& error() const override { return error_; }
 
 private:
-    struct Impl;                 // definido no .cpp (Windows) ou vazio (outros SOs)
+    struct Impl;                 // defined in the .cpp (Windows) or empty (other OSes)
     std::unique_ptr<Impl> impl_;
     uint32_t max_fps_;
     std::string error_;

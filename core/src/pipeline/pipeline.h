@@ -1,10 +1,10 @@
-// pipeline.h — liga captura -> detector de mudança -> OCR -> callback.
+// pipeline.h — wires capture -> change detector -> OCR -> callback.
 //
-//   [thread de captura]                 [thread de OCR]
-//   quadro -> ChangeDetector --put-->  LatestSlot --take--> OCR -> callback(texto)
+//   [capture thread]                   [OCR thread]
+//   frame -> ChangeDetector --put-->  LatestSlot --take--> OCR -> callback(text)
 //
-// A tradução NÃO acontece aqui: o texto vai para o Rust pelo callback, e o Rust
-// devolve a tradução via sq_overlay_set_text.
+// Translation does NOT happen here: the text goes to Rust through the callback,
+// and Rust sends the translation back via sq_overlay_set_text.
 #pragma once
 
 #include <atomic>
@@ -27,23 +27,23 @@ struct PipelineConfig {
     ChangeDetectorConfig detector;
 };
 
-using TextCallback = std::function<void(const OcrResult&)>; // chamado na thread de OCR
+using TextCallback = std::function<void(const OcrResult&)>; // called on the OCR thread
 
-enum class StartError { None, AlreadyRunning, Ocr, Capture }; // qual etapa impediu a sessão de começar
+enum class StartError { None, AlreadyRunning, Ocr, Capture }; // which stage kept the session from starting
 
 class Pipeline {
 public:
     Pipeline(std::unique_ptr<ICaptureSource> capture, std::unique_ptr<IOcrEngine> ocr);
     ~Pipeline();
 
-    StartError start(const PipelineConfig& config, TextCallback on_text); // None = sessão rodando
-    void stop();                                                    // idempotente; espera as threads
+    StartError start(const PipelineConfig& config, TextCallback on_text); // None = session running
+    void stop();                                                    // idempotent; waits for the threads
     bool running() const { return running_; }
     const std::string& capture_error() const { return capture_->error(); }
 
 private:
-    void on_frame(Frame&& frame); // roda na thread de captura: só decide e repassa, nunca bloqueia
-    void ocr_loop();              // roda na thread de OCR
+    void on_frame(Frame&& frame); // runs on the capture thread: only decides and forwards, never blocks
+    void ocr_loop();              // runs on the OCR thread
 
     std::unique_ptr<ICaptureSource> capture_;
     std::unique_ptr<IOcrEngine> ocr_;
@@ -52,7 +52,7 @@ private:
     TextCallback on_text_;
     std::thread ocr_thread_;
     std::atomic<bool> running_{false};
-    std::string last_text_; // só acessado na thread de OCR
+    std::string last_text_; // only touched on the OCR thread
 };
 
 } // namespace subquest

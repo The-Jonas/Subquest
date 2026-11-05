@@ -1,4 +1,4 @@
-<!-- Tutorial — passo a passo de uso, mostrado na primeira execução e sempre acessível no menu. -->
+<!-- Tutorial — usage walkthrough, shown on first run and always available in the menu. -->
 <script lang="ts">
   import DialogueBox from "../components/DialogueBox.svelte";
   import { t, tRaw } from "../i18n/index.svelte";
@@ -11,7 +11,7 @@
   const page = $derived(pages[index]);
   const last = $derived(index === pages.length - 1);
 
-  // Marca o tutorial como visto e leva para a tela de jogar.
+  // Marks the tutorial as seen and goes to the Play screen.
   async function finish() {
     app.settings.tutorialDone = true;
     await persistSettings();

@@ -2,13 +2,13 @@
 
 namespace subquest {
 
-// Recebe a fonte de captura (no app real, uma WgcCapture com FPS baixo).
+// Takes the capture source (in the real app, a low-FPS WgcCapture).
 PreviewStream::PreviewStream(std::unique_ptr<ICaptureSource> capture) : capture_(std::move(capture)) {}
 
-// Para a captura antes de destruir.
+// Stops capture before being destroyed.
 PreviewStream::~PreviewStream() { stop(); }
 
-// Captura a janela inteira (região vazia) e entrega cada quadro já reduzido.
+// Captures the whole window (empty region) and delivers each frame downscaled.
 bool PreviewStream::start(uint64_t window_handle, int32_t max_width, PreviewCallback on_image) {
     if (running_) return false;
     const bool ok = capture_->start(window_handle, Rect{}, [max_width, on_image = std::move(on_image)](Frame&& frame) {
@@ -18,7 +18,7 @@ bool PreviewStream::start(uint64_t window_handle, int32_t max_width, PreviewCall
     return ok;
 }
 
-// Encerra a captura; depois disso o callback não é mais chamado.
+// Stops capture; after this the callback is no longer called.
 void PreviewStream::stop() {
     if (!running_.exchange(false)) return;
     capture_->stop();

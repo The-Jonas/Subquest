@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <thread>
 
-#include <unknwn.h> // precisa vir antes do C++/WinRT para o com_ptr funcionar com COM clássico
+#include <unknwn.h> // must come before C++/WinRT so com_ptr works with classic COM
 #include <windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
@@ -30,14 +30,14 @@ namespace subquest {
 
 namespace {
 
-// Cria o dispositivo D3D11 (GPU padrão) com suporte a BGRA, exigido pela captura.
+// Creates the D3D11 device (default GPU) with BGRA support, required by capture.
 void create_d3d_device(winrt::com_ptr<ID3D11Device>& device, winrt::com_ptr<ID3D11DeviceContext>& context) {
     winrt::check_hresult(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
                                            D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0,
                                            D3D11_SDK_VERSION, device.put(), nullptr, context.put()));
 }
 
-// Embrulha o dispositivo D3D11 no tipo do WinRT que o frame pool espera.
+// Wraps the D3D11 device in the WinRT type the frame pool expects.
 wdx::Direct3D11::IDirect3DDevice to_winrt_device(const winrt::com_ptr<ID3D11Device>& device) {
     auto dxgi = device.as<IDXGIDevice>();
     winrt::com_ptr<::IInspectable> inspectable;
@@ -45,7 +45,7 @@ wdx::Direct3D11::IDirect3DDevice to_winrt_device(const winrt::com_ptr<ID3D11Devi
     return inspectable.as<wdx::Direct3D11::IDirect3DDevice>();
 }
 
-// Cria o "item de captura" a partir do HWND do jogo.
+// Creates the "capture item" from the game's HWND.
 wgc::GraphicsCaptureItem create_item_for_window(HWND hwnd) {
     auto interop = winrt::get_activation_factory<wgc::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
     wgc::GraphicsCaptureItem item{nullptr};
@@ -54,7 +54,7 @@ wgc::GraphicsCaptureItem create_item_for_window(HWND hwnd) {
     return item;
 }
 
-// Extrai a textura D3D11 de dentro da superfície WinRT entregue a cada quadro.
+// Pulls the D3D11 texture out of the WinRT surface delivered with each frame.
 winrt::com_ptr<ID3D11Texture2D> surface_texture(const wdx::Direct3D11::IDirect3DSurface& surface) {
     auto access = surface.as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
     winrt::com_ptr<ID3D11Texture2D> texture;
@@ -62,19 +62,19 @@ winrt::com_ptr<ID3D11Texture2D> surface_texture(const wdx::Direct3D11::IDirect3D
     return texture;
 }
 
-// Converte o texto de erro do WinRT (UTF-16) para UTF-8.
+// Converts WinRT error text (UTF-16) to UTF-8.
 std::string hresult_text(const winrt::hresult_error& e) {
     return winrt::to_string(e.message());
 }
 
 } // namespace
 
-// Estado interno da captura. Tudo que é D3D/WinRT mora aqui.
+// Internal capture state. Everything D3D/WinRT lives here.
 struct WgcCapture::Impl {
-    std::thread thread;           // dona do apartamento COM (MTA) e da sessão
-    HANDLE stop_event = nullptr;  // sinaliza para a thread encerrar
+    std::thread thread;           // owns the COM apartment (MTA) and the session
+    HANDLE stop_event = nullptr;  // tells the thread to finish
 
-    std::mutex mutex;             // protege tudo abaixo (callback x stop x set_region)
+    std::mutex mutex;             // guards everything below (callback vs stop vs set_region)
     bool running = false;
     Rect region;
     FrameCallback on_frame;
@@ -84,7 +84,7 @@ struct WgcCapture::Impl {
 
     winrt::com_ptr<ID3D11Device> device;
     winrt::com_ptr<ID3D11DeviceContext> context;
-    winrt::com_ptr<ID3D11Texture2D> staging; // textura que a CPU consegue ler
+    winrt::com_ptr<ID3D11Texture2D> staging; // texture the CPU can read
     D3D11_TEXTURE2D_DESC staging_desc{};
     wdx::Direct3D11::IDirect3DDevice winrt_device{nullptr};
     wgc::GraphicsCaptureItem item{nullptr};
@@ -93,12 +93,12 @@ struct WgcCapture::Impl {
     wgc::Direct3D11CaptureFramePool::FrameArrived_revoker frame_arrived;
     winrt::Windows::Graphics::SizeInt32 last_size{};
 
-    void thread_main(HWND hwnd, std::promise<std::string> ready); // monta, espera o stop e desmonta
-    void on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender); // recorta, copia e entrega um quadro
-    void ensure_staging(UINT width, UINT height, DXGI_FORMAT format);    // (re)cria a textura de leitura no tamanho certo
+    void thread_main(HWND hwnd, std::promise<std::string> ready); // sets up, waits for stop and tears down
+    void on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender); // crops, copies and delivers one frame
+    void ensure_staging(UINT width, UINT height, DXGI_FORMAT format);    // (re)creates the readback texture at the right size
 };
 
-// Garante uma textura STAGING do tamanho da região; recria só quando o tamanho muda.
+// Ensures a STAGING texture the size of the region; recreates it only when the size changes.
 void WgcCapture::Impl::ensure_staging(UINT width, UINT height, DXGI_FORMAT format) {
     if (staging && staging_desc.Width == width && staging_desc.Height == height) return;
     D3D11_TEXTURE2D_DESC desc{};
@@ -115,9 +115,9 @@ void WgcCapture::Impl::ensure_staging(UINT width, UINT height, DXGI_FORMAT forma
     staging_desc = desc;
 }
 
-// Chamado numa thread do sistema a cada quadro novo. Respeita o limite de FPS,
-// recorta a região NA GPU (CopySubresourceRegion) e só então copia para a CPU:
-// é isso que mantém o custo baixo mesmo com o jogo em 4K.
+// Called on a system thread for every new frame. Honors the FPS cap, crops the
+// region ON THE GPU (CopySubresourceRegion) and only then copies to the CPU:
+// that is what keeps the cost low even with the game at 4K.
 void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender) {
     auto frame = sender.TryGetNextFrame();
     if (!frame) return;
@@ -125,7 +125,7 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
     std::lock_guard lock(mutex);
     if (!running) return;
 
-    // Janela redimensionada: recria o pool no novo tamanho (o quadro atual ainda serve).
+    // Window resized: recreate the pool at the new size (the current frame is still usable).
     const auto content = frame.ContentSize();
     if (content.Width != last_size.Width || content.Height != last_size.Height) {
         last_size = content;
@@ -141,7 +141,7 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
         D3D11_TEXTURE2D_DESC desc{};
         texture->GetDesc(&desc);
 
-        // A textura pode ser maior que o conteúdo; vale o menor dos dois.
+        // The texture may be larger than the content; use the smaller of the two.
         const int32_t full_w = std::min<int32_t>(content.Width, int32_t(desc.Width));
         const int32_t full_h = std::min<int32_t>(content.Height, int32_t(desc.Height));
 
@@ -174,18 +174,18 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
                                         now.time_since_epoch()).count());
         if (on_frame) on_frame(std::move(out));
     } catch (const winrt::hresult_error&) {
-        // Quadro perdido (ex.: dispositivo da GPU resetado). O próximo tenta de novo.
+        // Frame lost (e.g. GPU device reset). The next one tries again.
     }
 }
 
-// Vida inteira da sessão numa thread própria: inicializa o COM em modo MTA
-// (a thread principal do Tauri já é STA por causa do WebView), monta tudo,
-// avisa start() pelo promise, espera o stop e desmonta na ordem inversa.
+// The whole session lives on its own thread: initializes COM as MTA (Tauri's
+// main thread is already STA because of the WebView), sets everything up,
+// notifies start() through the promise, waits for stop and tears down in reverse.
 void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
     try {
         if (!wgc::GraphicsCaptureSession::IsSupported())
-            throw std::runtime_error("Windows.Graphics.Capture não é suportado neste Windows");
+            throw std::runtime_error("Windows.Graphics.Capture is not supported on this Windows version");
 
         create_d3d_device(device, context);
         winrt_device = to_winrt_device(device);
@@ -195,7 +195,7 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
             winrt_device, wdx::DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, last_size);
         session = pool.CreateCaptureSession(item);
 
-        // Opcionais: sem cursor e sem a borda amarela (a borda só pode sumir no Windows 11).
+        // Optional: no cursor and no yellow border (the border can only be hidden on Windows 11).
         try { session.IsCursorCaptureEnabled(false); } catch (...) {}
         try { session.IsBorderRequired(false); } catch (...) {}
 
@@ -211,7 +211,7 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
         session.StartCapture();
         ready.set_value({});
     } catch (const winrt::hresult_error& e) {
-        ready.set_value("falha ao iniciar a captura: " + hresult_text(e));
+        ready.set_value("failed to start capture: " + hresult_text(e));
         winrt::uninit_apartment();
         return;
     } catch (const std::exception& e) {
@@ -223,7 +223,7 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
     WaitForSingleObject(stop_event, INFINITE);
 
     {
-        std::lock_guard lock(mutex); // espera um quadro em processamento terminar
+        std::lock_guard lock(mutex); // waits for an in-flight frame to finish
         running = false;
     }
     frame_arrived.revoke();
@@ -236,21 +236,21 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
     winrt::uninit_apartment();
 }
 
-// Guarda o limite de FPS; nada de D3D é criado até start().
+// Stores the FPS cap; nothing D3D is created until start().
 WgcCapture::WgcCapture(uint32_t max_fps) : impl_(std::make_unique<Impl>()), max_fps_(max_fps ? max_fps : 30) {}
 
-// Garante que a thread de captura terminou antes de destruir o objeto.
+// Makes sure the capture thread has finished before destruction.
 WgcCapture::~WgcCapture() { stop(); }
 
-// Sobe a thread de captura e espera ela dizer se deu certo (síncrono para quem chama).
+// Starts the capture thread and waits for it to report success (synchronous for the caller).
 bool WgcCapture::start(uint64_t window_handle, Rect region, FrameCallback on_frame) {
     if (impl_->thread.joinable()) {
-        error_ = "captura já está rodando";
+        error_ = "capture is already running";
         return false;
     }
     HWND hwnd = reinterpret_cast<HWND>(static_cast<uintptr_t>(window_handle));
     if (!IsWindow(hwnd)) {
-        error_ = "a janela escolhida não existe mais";
+        error_ = "the selected window no longer exists";
         return false;
     }
 
@@ -276,7 +276,7 @@ bool WgcCapture::start(uint64_t window_handle, Rect region, FrameCallback on_fra
     return true;
 }
 
-// Sinaliza a thread e espera ela desmontar a sessão. Idempotente.
+// Signals the thread and waits for it to tear the session down. Idempotent.
 void WgcCapture::stop() {
     if (!impl_->thread.joinable()) return;
     SetEvent(impl_->stop_event);
@@ -285,7 +285,7 @@ void WgcCapture::stop() {
     impl_->stop_event = nullptr;
 }
 
-// Troca a região lida a cada quadro; vale a partir do próximo quadro.
+// Changes the region read on each frame; takes effect from the next frame.
 void WgcCapture::set_region(Rect region) {
     std::lock_guard lock(impl_->mutex);
     impl_->region = region;
@@ -293,28 +293,28 @@ void WgcCapture::set_region(Rect region) {
 
 } // namespace subquest
 
-#else // ---------- fora do Windows: só para compilar e testar o resto ----------
+#else // ---------- outside Windows: only so the rest builds and tests ----------
 
 namespace subquest {
 
 struct WgcCapture::Impl {};
 
-// Versão vazia: a captura só existe no Windows.
+// Empty version: capture only exists on Windows.
 WgcCapture::WgcCapture(uint32_t max_fps) : impl_(std::make_unique<Impl>()), max_fps_(max_fps) {}
 
-// Nada a liberar.
+// Nothing to release.
 WgcCapture::~WgcCapture() = default;
 
-// Sempre falha fora do Windows, com uma mensagem clara.
+// Always fails outside Windows, with a clear message.
 bool WgcCapture::start(uint64_t, Rect, FrameCallback) {
-    error_ = "captura disponível apenas no Windows";
+    error_ = "capture is only available on Windows";
     return false;
 }
 
-// Nada a parar.
+// Nothing to stop.
 void WgcCapture::stop() {}
 
-// Nada a ajustar.
+// Nothing to adjust.
 void WgcCapture::set_region(Rect) {}
 
 } // namespace subquest

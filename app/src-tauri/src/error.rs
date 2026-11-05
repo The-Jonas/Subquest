@@ -1,17 +1,17 @@
-//! Erro que vai para a interface: um `kind` estável (a interface traduz) e um
-//! `detail` técnico (vai para o console, útil para depurar).
+//! Error sent to the UI: a stable `kind` (the UI translates it) and a technical
+//! `detail` (goes to the console, useful for debugging).
 
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppError {
-    pub kind: &'static str, // chave em `errors.<kind>` nos arquivos de idioma
+    pub kind: &'static str, // key in `errors.<kind>` in the locale files
     pub detail: String,
 }
 
 impl AppError {
-    /// A DLL do núcleo não foi carregada.
+    /// The core DLL was not loaded.
     pub fn core_missing(detail: impl Into<String>) -> Self {
         Self {
             kind: "coreMissing",
@@ -19,7 +19,7 @@ impl AppError {
         }
     }
 
-    /// Converte um `SqStatus` do núcleo (ver core_api.h) no `kind` correspondente.
+    /// Maps a core `SqStatus` (see core_api.h) to the matching `kind`.
     pub fn from_status(status: i32, detail: impl Into<String>) -> Self {
         let kind = match status {
             1 => "invalidArg",
@@ -35,7 +35,7 @@ impl AppError {
         }
     }
 
-    /// Qualquer outra falha do lado Rust (arquivo, conversão de texto...).
+    /// Any other failure on the Rust side (file, text conversion...).
     pub fn other(detail: impl Into<String>) -> Self {
         Self {
             kind: "unknown",
@@ -49,7 +49,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn status_do_nucleo_vira_kind() {
+    fn core_status_maps_to_kind() {
         assert_eq!(AppError::from_status(5, "x").kind, "notImplemented");
         assert_eq!(AppError::from_status(4, "x").kind, "platform");
         assert_eq!(AppError::from_status(99, "x").kind, "unknown");

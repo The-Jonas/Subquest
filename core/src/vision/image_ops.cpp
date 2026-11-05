@@ -4,9 +4,8 @@
 
 namespace subquest {
 
-// Reduz por média de blocos (box filter): cada pixel de saída é a média do
-// bloco correspondente na entrada. Aproveita a passada para trocar B e R,
-// já que o canvas do navegador espera RGBA.
+// Box-filter downscale: each output pixel is the average of the matching input
+// block. The same pass swaps B and R, since the browser canvas expects RGBA.
 RgbaImage downscale_to_rgba(const Frame& src, int32_t max_width) {
     RgbaImage out;
     if (src.width <= 0 || src.height <= 0 || max_width <= 0) return out;
@@ -36,7 +35,7 @@ RgbaImage downscale_to_rgba(const Frame& src, int32_t max_width) {
             dst[0] = uint8_t(r / count);
             dst[1] = uint8_t(g / count);
             dst[2] = uint8_t(b / count);
-            dst[3] = 255; // a captura não tem transparência útil
+            dst[3] = 255; // the capture has no meaningful transparency
         }
     }
     return out;

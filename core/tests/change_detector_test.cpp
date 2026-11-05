@@ -1,4 +1,4 @@
-// Teste mínimo do ChangeDetector, sem framework: roda em qualquer SO.
+// Minimal ChangeDetector test, no framework: runs on any OS.
 #include <cstdio>
 #include <cstdlib>
 
@@ -6,7 +6,7 @@
 
 using namespace subquest;
 
-// Gera um quadro cinza uniforme com um retângulo claro simulando um texto.
+// Builds a uniform gray frame with a bright rectangle standing in for text.
 static Frame make_frame(int w, int h, int text_width, uint8_t bg = 30) {
     Frame f;
     f.width = w;
@@ -21,7 +21,7 @@ static Frame make_frame(int w, int h, int text_width, uint8_t bg = 30) {
 
 static int failures = 0;
 
-// Confere uma condição e registra a falha com uma descrição.
+// Checks a condition and records a failure with a description.
 static void check(bool ok, const char* what) {
     std::printf("[%s] %s\n", ok ? " ok " : "FAIL", what);
     if (!ok) ++failures;
@@ -31,24 +31,24 @@ int main() {
     ChangeDetector det; // settle_frames = 3
 
     Frame a = make_frame(640, 120, 200);
-    check(!det.feed(a), "1o quadro nao dispara (sem historico)");
-    check(!det.feed(a), "2o quadro igual ainda nao dispara");
-    check(det.feed(a), "3o quadro igual dispara (estabilizou)");
-    check(!det.feed(a), "4o quadro igual nao dispara de novo");
+    check(!det.feed(a), "1st frame does not fire (no history)");
+    check(!det.feed(a), "2nd identical frame still does not fire");
+    check(det.feed(a), "3rd identical frame fires (settled)");
+    check(!det.feed(a), "4th identical frame does not fire again");
 
-    // Efeito máquina de escrever: o texto cresce a cada quadro.
-    check(!det.feed(make_frame(640, 120, 260)), "texto crescendo nao dispara");
-    check(!det.feed(make_frame(640, 120, 320)), "texto crescendo nao dispara (2)");
+    // Typewriter effect: the text grows every frame.
+    check(!det.feed(make_frame(640, 120, 260)), "growing text does not fire");
+    check(!det.feed(make_frame(640, 120, 320)), "growing text does not fire (2)");
     Frame b = make_frame(640, 120, 400);
-    check(!det.feed(b), "texto parou: 1o quadro parado");
-    check(!det.feed(b), "texto parou: 2o quadro parado");
-    check(det.feed(b), "texto parou: 3o quadro dispara");
+    check(!det.feed(b), "text stopped: 1st still frame");
+    check(!det.feed(b), "text stopped: 2nd still frame");
+    check(det.feed(b), "text stopped: 3rd still frame fires");
 
-    // Mesmo texto voltando depois de um piscar (ex.: cursor) não dispara de novo.
+    // The same text coming back after a blink (e.g. a cursor) doesn't fire again.
     det.feed(make_frame(640, 120, 400, 60));
     det.feed(b); det.feed(b);
-    check(!det.feed(b), "mesmo texto apos um piscar nao repete o OCR");
+    check(!det.feed(b), "same text after a blink does not repeat OCR");
 
-    std::printf("%s\n", failures ? "FALHOU" : "TUDO OK");
+    std::printf("%s\n", failures ? "FAILED" : "ALL OK");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

@@ -1,4 +1,4 @@
-// types.h — tipos compartilhados entre os módulos do núcleo.
+// types.h — types shared across the core modules.
 #pragma once
 
 #include <cstdint>
@@ -13,29 +13,29 @@ struct Rect {
     int32_t width = 0;
     int32_t height = 0;
 
-    bool empty() const { return width <= 0 || height <= 0; } // true quando a área não foi definida
+    bool empty() const { return width <= 0 || height <= 0; } // true when no area was set
 };
 
-// Um quadro já recortado na região de interesse, em BGRA 8 bits por canal.
+// A frame already cropped to the region of interest, BGRA 8 bits per channel.
 struct Frame {
-    std::vector<uint8_t> bgra; // pixels, linha a linha
+    std::vector<uint8_t> bgra; // pixels, row by row
     int32_t width = 0;
     int32_t height = 0;
-    int32_t stride = 0;        // bytes por linha (pode ser > width * 4 por alinhamento)
-    uint64_t id = 0;           // contador crescente, útil para medir latência
-    uint64_t timestamp_us = 0; // instante da captura (relógio monotônico)
+    int32_t stride = 0;        // bytes per row (may be > width * 4 due to alignment)
+    uint64_t id = 0;           // increasing counter, useful to measure latency
+    uint64_t timestamp_us = 0; // capture time (monotonic clock)
 };
 
 struct OcrLine {
     std::string text; // UTF-8
-    Rect box;         // posição da linha dentro do quadro
+    Rect box;         // line position inside the frame
 };
 
 struct OcrResult {
     std::vector<OcrLine> lines;
-    std::string full_text;  // linhas unidas por '\n'
+    std::string full_text;  // lines joined by '\n'
     uint64_t frame_id = 0;
-    double elapsed_ms = 0;  // tempo gasto só no reconhecimento
+    double elapsed_ms = 0;  // time spent on recognition only
 };
 
 } // namespace subquest

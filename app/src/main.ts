@@ -1,4 +1,4 @@
-// Ponto de entrada da interface: fontes locais (funciona offline), estilos e montagem.
+// UI entry point: local fonts (works offline), styles and mounting.
 import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/atkinson-hyperlegible-next";
 import "./app.css";

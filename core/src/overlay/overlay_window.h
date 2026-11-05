@@ -1,4 +1,4 @@
-// overlay_window.h — janela transparente, sempre no topo e "clicável através".
+// overlay_window.h — transparent, always-on-top, click-through window.
 #pragma once
 
 #include <atomic>
@@ -15,17 +15,17 @@ public:
     OverlayWindow();
     ~OverlayWindow();
 
-    void set_text(std::string utf8_text); // agenda um redesenho com o novo texto
-    void set_bounds(Rect screen_rect);     // posição/tamanho em coordenadas de tela
-    void set_visible(bool visible);        // mostra ou esconde sem destruir a janela
+    void set_text(std::string utf8_text); // schedules a redraw with the new text
+    void set_bounds(Rect screen_rect);     // position/size in screen coordinates
+    void set_visible(bool visible);        // shows or hides without destroying the window
 
 private:
-    void ui_thread_main(); // dona da janela Win32 e do loop de mensagens
+    void ui_thread_main(); // owns the Win32 window and the message loop
 
     std::thread ui_thread_;
     std::mutex state_mutex_;
-    std::string text_;        // protegido por state_mutex_
-    Rect bounds_;             // protegido por state_mutex_
+    std::string text_;        // guarded by state_mutex_
+    Rect bounds_;             // guarded by state_mutex_
     std::atomic<bool> visible_{true};
     std::atomic<bool> running_{false};
 };

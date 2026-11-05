@@ -1,6 +1,6 @@
-/* ==== Subquest — tokens de design ====
-   Noite azulada no fundo, texto cor de pergaminho, dourado de "quest marker"
-   como único destaque. Verde-água só para o estado "traduzindo". */
+/* ==== Subquest — design tokens ====
+   Bluish night background, parchment-colored text, "quest marker" gold as the
+   only accent. Teal is reserved for the "translating" state. */
 :root {
   --night: #151a2e;
   --night-deep: #10142a;
@@ -18,14 +18,14 @@
   --font-display: "Bricolage Grotesque Variable", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
 
-  /* Escala tipográfica (razão ~1.25 a partir de 15px) */
+  /* Type scale (~1.25 ratio from 15px) */
   --text-sm: 13px;
   --text-base: 15px;
   --text-md: 18px;
   --text-lg: 22px;
   --text-xl: 28px;
 
-  /* Raios por hierarquia: quanto maior o elemento, maior o raio */
+  /* Radii by hierarchy: the bigger the element, the bigger the radius */
   --radius-box: 16px;
   --radius-control: 10px;
   --radius-small: 6px;
@@ -81,7 +81,7 @@ select {
   outline-offset: 2px;
 }
 
-/* ---- Botões ---- */
+/* ---- Buttons ---- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -120,7 +120,7 @@ select {
   border-color: transparent;
 }
 
-/* ---- Campos ---- */
+/* ---- Fields ---- */
 .field {
   display: grid;
   gap: 6px;
