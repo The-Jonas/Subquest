@@ -12,6 +12,7 @@
     { id: "profiles", icon: "M5 3.5h10v13l-5-3.5-5 3.5z" },
     { id: "fonts", icon: "M4 16L9 4h2l5 12M6.5 11h7" },
     { id: "settings", icon: "M3 6h9M15 6h2M3 14h2M8 14h9M12 4v4M5 12v4" },
+    { id: "shortcuts", icon: "M2.5 5.5h15v9h-15zM5.5 8.5h1M9.5 8.5h1M13.5 8.5h1M6.5 11.5h7" },
     { id: "tutorial", icon: "M3 5l5-2 4 2 5-2v12l-5 2-4-2-5 2zM8 3v12M12 5v12" },
   ];
 

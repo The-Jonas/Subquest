@@ -2,6 +2,7 @@
 //
 // Outside Tauri (running just `npm run dev` in the browser) the functions return
 // sample data, so the UI can be worked on without building Rust or C++.
+import { defaultShortcuts, type Shortcuts } from "./shortcuts";
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -56,6 +57,7 @@ export interface Settings {
   ocrEngine: string;
   translator: { kind: string; baseUrl: string; model: string; visionModel: string; apiKey: string };
   quick: { engine: QuickEngine; deeplKey: string }; // second translation layer
+  shortcuts: Shortcuts; // in-game keys, like "Ctrl+Shift+A" ("" = none)
   overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean };
   tutorialDone: boolean;
   profiles: Record<string, GameProfile>; // key: lowercase executable name
@@ -181,6 +183,12 @@ export async function toggleHidden(): Promise<boolean> {
   return invoke("toggle_hidden");
 }
 
+// Shows or hides the in-game toolbar; returns true when it is now shown.
+export async function toggleToolbar(): Promise<boolean> {
+  if (!inTauri) return false;
+  return invoke("toggle_toolbar");
+}
+
 // [paused, hidden] when the toolbar opens.
 export async function sessionFlags(): Promise<[boolean, boolean]> {
   if (!inTauri) return [false, false];
@@ -210,6 +218,7 @@ export const defaultSettings: Settings = {
   ocrEngine: "windows",
   translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", visionModel: "", apiKey: "" },
   quick: { engine: "google", deeplKey: "" },
+  shortcuts: { ...defaultShortcuts },
   overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
   tutorialDone: false,
   profiles: {},

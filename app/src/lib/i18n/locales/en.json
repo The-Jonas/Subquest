@@ -6,7 +6,8 @@
     "tutorial": "Tutorial",
     "fonts": "Fonts",
     "history": "History",
-    "styles": "Styles"
+    "styles": "Styles",
+    "shortcuts": "Shortcuts"
   },
   "core": {
     "ok": "Core ready",
@@ -58,7 +59,10 @@
       "translated": "Translated in {ms} ms",
       "cached": "Repeated line, from cache in {ms} ms",
       "adjust": "Adjust areas",
-      "quickDone": "Quick translation in {ms} ms (the main one didn't answer)"
+      "quickDone": "Quick translation in {ms} ms (the main one didn't answer)",
+      "toolbar": "In-game bar",
+      "toolbarHint": "In the game, {keys} shows or hides the bar for marking areas and taking style prints.",
+      "toolbarHintNoKey": "The in-game bar has no shortcut; use the button below or set one in Shortcuts."
     },
     "back": "Back",
     "next": "Continue",
@@ -239,9 +243,9 @@
   },
   "styles": {
     "title": "Game styles",
-    "intro": "Each game writes different things in different fonts. Take a print of a phrase, pick its font, and every line with the same letter color uses that font, at any size.",
+    "intro": "Each game writes different things in different fonts. Take a print of a phrase and pick its font: every line whose letters look the same (weight, contrast, slant) uses that font, at any size. Color only breaks ties.",
     "take": "Take a style print",
-    "takeHelp": "Drag over a phrase in the game. Shortcut: Ctrl+Shift+S.",
+    "takeHelp": "Drag over a phrase in the game. Shortcut: {keys}.",
     "takeNeedsGame": "Start translating this game to take prints of it.",
     "empty": "No styles yet.",
     "namePlaceholder": "Name (e.g. Menu, Dialogue, Names)",
@@ -254,18 +258,55 @@
   },
   "toolbar": {
     "move": "Drag to move",
-    "area": "Mark an area in the game (Ctrl+Shift+A)",
-    "style": "Take a style print (Ctrl+Shift+S)",
-    "pause": "Pause translating (Ctrl+Shift+T)",
-    "resume": "Resume translating (Ctrl+Shift+T)",
-    "hide": "Hide translations (Ctrl+Shift+H)",
-    "show": "Show translations (Ctrl+Shift+H)",
-    "open": "Open Subquest"
+    "area": "Mark an area in the game",
+    "style": "Take a style print",
+    "pause": "Pause translating",
+    "resume": "Resume translating",
+    "hide": "Hide the translations",
+    "show": "Show the translations",
+    "open": "Open Subquest",
+    "close": "Put the bar away"
   },
   "select": {
     "area": "Mark the new area",
     "style": "Mark a phrase in this style",
     "howTo": "Drag over the game. Right click cancels.",
     "cancel": "Cancel"
+  },
+  "shortcuts": {
+    "title": "Shortcuts",
+    "intro": "Keys that work inside the game while it is translated. Click the key and press the new combination.",
+    "press": "Press the keys… (Esc cancels)",
+    "none": "No shortcut",
+    "clear": "Remove",
+    "restore": "Restore the defaults",
+    "note": "Shortcuts only work while a game is being translated; the rest of the time these keys belong to other programs again. If another program already uses a combination, it won't work: change it here.",
+    "errors": {
+      "needsModifier": "Use it with Ctrl, Alt or Win (only F1–F12 may go alone).",
+      "unsupportedKey": "That key can't be a shortcut. Use letters, digits, F1–F12, arrows or Space.",
+      "taken": "That combination already belongs to \"{action}\"."
+    },
+    "actions": {
+      "toolbar": {
+        "name": "Show the bar",
+        "help": "Shows or hides the bar over the game."
+      },
+      "area": {
+        "name": "Mark area",
+        "help": "Drag a rectangle in the game; the new area is read right away."
+      },
+      "style": {
+        "name": "Style print",
+        "help": "Drag over a phrase to pick that style's font."
+      },
+      "pause": {
+        "name": "Pause",
+        "help": "Stops reading the game, and back."
+      },
+      "hide": {
+        "name": "Hide translations",
+        "help": "Takes the translations off the screen without stopping."
+      }
+    }
   }
 }

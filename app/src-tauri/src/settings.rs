@@ -15,6 +15,7 @@ pub struct Settings {
     pub ocr_engine: String,      // "windows" | "paddle"
     pub translator: TranslatorSettings,
     pub quick: QuickSettings, // second translation layer: fills the gap while the LLM answers
+    pub shortcuts: ShortcutSettings, // keys that work inside the game during a session
     pub overlay: OverlaySettings,
     pub tutorial_done: bool, // false => opens the tutorial on first run
     pub profiles: BTreeMap<String, GameProfile>, // key: lowercase executable name
@@ -101,6 +102,32 @@ pub struct OverlaySettings {
     pub show_original: bool,     // show the original text above the translation
 }
 
+/// Global shortcuts, written like "Ctrl+Shift+A" (empty = no shortcut).
+/// Registered only while a game is being translated, so they don't steal
+/// these keys from other programs the rest of the time.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct ShortcutSettings {
+    pub area: String,    // mark a new area
+    pub style: String,   // take a style print
+    pub pause: String,   // pause / resume translating
+    pub hide: String,    // hide / show the translations
+    pub toolbar: String, // show / hide the in-game toolbar
+}
+
+impl Default for ShortcutSettings {
+    /// Ctrl+Shift plus the action's initial (B for the bar).
+    fn default() -> Self {
+        Self {
+            area: "Ctrl+Shift+A".into(),
+            style: "Ctrl+Shift+S".into(),
+            pause: "Ctrl+Shift+T".into(),
+            hide: "Ctrl+Shift+H".into(),
+            toolbar: "Ctrl+Shift+B".into(),
+        }
+    }
+}
+
 /// The quick translation layer: a plain machine translator that answers in a
 /// few hundred milliseconds and is shown until the main (LLM) translation arrives.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -130,6 +157,7 @@ impl Default for Settings {
             ocr_engine: "windows".into(),
             translator: TranslatorSettings::default(),
             quick: QuickSettings::default(),
+            shortcuts: ShortcutSettings::default(),
             overlay: OverlaySettings::default(),
             tutorial_done: false,
             profiles: BTreeMap::new(),

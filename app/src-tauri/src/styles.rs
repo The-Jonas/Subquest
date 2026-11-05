@@ -4,9 +4,10 @@
 //! then on every line written in that color uses that font, whatever its size
 //! (menus grow the selected item, titles are bigger than the text below).
 //!
-//! Lines are matched by their letter color only: it is what tells a game's
-//! styles apart, and the size is not (an automatic version that also used the
-//! size kept splitting one font into many styles).
+//! Lines are matched mainly by the look of their letters (see shape.rs:
+//! stroke weight, contrast, density, slant, all independent of size and
+//! wording), and secondly by their color. Lines too small to measure fall back
+//! to the color alone.
 //!
 //! Files: `<app data>/styles/<game>.json` and `<app data>/styles/<game>/<id>.png`.
 
@@ -16,9 +17,12 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
+use crate::shape::Shape;
 
 pub const MAX_STYLES: usize = 24;
-const SAME_COLOR: f64 = 60.0; // RGB distance under which a line belongs to a style
+const SAME_COLOR: f64 = 60.0; // color-only matching: RGB distance under which a line belongs to a style
+const SAME_SHAPE: f32 = 1.6; // shape distance beyond which a line is in another font
+const COLOR_WEIGHT: f32 = 0.35; // how much a color difference of SAME_COLOR adds to the shape distance
 
 /// One way the game writes text, defined by a print the user took.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -27,6 +31,7 @@ pub struct TextStyle {
     pub id: String,
     pub name: String,   // given by the user ("" = unnamed)
     pub text_rgb: u32,  // letter color, measured on the print (0xRRGGBB)
+    pub shape: Option<Shape>, // look of the letters, measured on the print
     pub font: String,   // chosen font ("" = not chosen yet)
     pub caps: String,   // letter case chosen with the font
     pub manual: bool,   // taken by the user (styles from the old automatic version are dropped)
@@ -48,21 +53,32 @@ fn color_distance(a: u32, b: u32) -> f64 {
 }
 
 impl StyleBook {
-    /// The style a line in this color belongs to: the closest color, if close enough.
-    /// Styles without a font yet are skipped (they would change nothing).
-    pub fn style_for(&self, text_rgb: u32) -> Option<&TextStyle> {
+    /// The style a line belongs to. When both the line and a style have a
+    /// measured shape, the letters decide (the color only nudges, so the same
+    /// font in two colors is one style and two fonts of one color are two);
+    /// otherwise the closest color within SAME_COLOR. Styles without a font yet
+    /// are skipped (they would change nothing).
+    pub fn style_for(&self, text_rgb: u32, shape: Option<&Shape>) -> Option<&TextStyle> {
         self.styles
             .iter()
             .filter(|s| !s.font.is_empty())
-            .map(|s| (s, color_distance(s.text_rgb, text_rgb)))
-            .filter(|(_, d)| *d <= SAME_COLOR)
+            .filter_map(|s| {
+                let color = color_distance(s.text_rgb, text_rgb);
+                match (shape, s.shape.as_ref()) {
+                    (Some(line), Some(style)) => {
+                        let d = line.distance(style);
+                        (d <= SAME_SHAPE).then(|| (s, d + COLOR_WEIGHT * (color / SAME_COLOR) as f32))
+                    }
+                    _ => (color <= SAME_COLOR).then(|| (s, (color / SAME_COLOR) as f32)),
+                }
+            })
             .min_by(|a, b| a.1.total_cmp(&b.1))
             .map(|(s, _)| s)
     }
 
     /// Adds a style for a print the user took; returns its id. A full book
     /// drops its oldest style without a font first.
-    pub fn add(&mut self, text_rgb: u32) -> (String, Option<String>) {
+    pub fn add(&mut self, text_rgb: u32, shape: Option<Shape>) -> (String, Option<String>) {
         let evicted = if self.styles.len() >= MAX_STYLES {
             let i = self.styles.iter().position(|s| s.font.is_empty()).unwrap_or(0);
             Some(self.styles.remove(i).id)
@@ -74,6 +90,7 @@ impl StyleBook {
         self.styles.push(TextStyle {
             id: id.clone(),
             text_rgb,
+            shape,
             manual: true,
             ..Default::default()
         });
@@ -119,13 +136,46 @@ impl Rgba {
         Some(out)
     }
 
-    /// Color of the letters: the background is the median of the border, and
-    /// the letters are the pixels farthest from it (the top 12%), averaged.
+    /// Color of a pixel as 0xRRGGBB.
+    fn rgb(&self, x: i32, y: i32) -> u32 {
+        let i = ((y * self.width + x) * 4) as usize;
+        u32::from(self.pixels[i]) << 16 | u32::from(self.pixels[i + 1]) << 8 | u32::from(self.pixels[i + 2])
+    }
+
+    /// Reads a PNG file (a saved print).
+    pub fn from_png(bytes: &[u8]) -> Option<Rgba> {
+        let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+        decoder.set_transformations(png::Transformations::EXPAND);
+        let mut reader = decoder.read_info().ok()?;
+        let mut buf = vec![0; reader.output_buffer_size()?];
+        let info = reader.next_frame(&mut buf).ok()?;
+        let (w, h) = (info.width as usize, info.height as usize);
+        let channels = buf.len() / (w * h).max(1);
+        if channels < 3 {
+            return None;
+        }
+        let mut pixels = Vec::with_capacity(w * h * 4);
+        for p in buf.chunks(channels).take(w * h) {
+            pixels.extend_from_slice(&[p[0], p[1], p[2], 255]);
+        }
+        Some(Rgba { pixels, width: w as i32, height: h as i32 })
+    }
+
+    /// Look of the letters on the print (see shape.rs).
+    pub fn shape(&self) -> Option<Shape> {
+        let (ink, background) = self.colors();
+        Shape::measure(self.width as usize, self.height as usize, |x, y| self.rgb(x as i32, y as i32), ink, background)
+    }
+
+    /// Color of the letters on the print.
     pub fn ink_color(&self) -> u32 {
-        let px = |x: i32, y: i32| {
-            let i = ((y * self.width + x) * 4) as usize;
-            u32::from(self.pixels[i]) << 16 | u32::from(self.pixels[i + 1]) << 8 | u32::from(self.pixels[i + 2])
-        };
+        self.colors().0
+    }
+
+    /// Letter and background colors: the background is the median of the
+    /// border, and the letters are the pixels farthest from it (the top 12%), averaged.
+    fn colors(&self) -> (u32, u32) {
+        let px = |x: i32, y: i32| self.rgb(x, y);
         let mut border = Vec::new();
         for x in 0..self.width {
             border.push(px(x, 0));
@@ -152,7 +202,7 @@ impl Rgba {
         all.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
         let top = &all[..(all.len() * 12 / 100).max(1)];
         let avg = |shift: u32| top.iter().map(|(_, c)| (c >> shift) & 0xFF).sum::<u32>() / top.len() as u32;
-        avg(16) << 16 | avg(8) << 8 | avg(0)
+        (avg(16) << 16 | avg(8) << 8 | avg(0), background)
     }
 }
 
@@ -226,16 +276,28 @@ impl StyleStore {
         }
     }
 
-    /// Keeps a game's book in memory while it is translated.
+    /// Keeps a game's book in memory while it is translated. Styles taken
+    /// before shapes were measured get theirs from their print now.
     pub fn open(&self, key: &str) {
-        *self.open.lock().unwrap() = Some((key.to_string(), self.load(key)));
+        let mut book = self.load(key);
+        let mut measured = false;
+        for style in book.styles.iter_mut().filter(|s| s.shape.is_none()) {
+            let print = std::fs::read(self.print_path(key, &style.id)).ok();
+            style.shape = print.as_deref().and_then(Rgba::from_png).and_then(|p| p.shape());
+            measured |= style.shape.is_some();
+        }
+        if measured {
+            let _ = self.save(key, &book);
+        }
+        *self.open.lock().unwrap() = Some((key.to_string(), book));
     }
 
     /// Adds a style from a print (already cropped); saves the print and the book.
     pub fn add_from_print(&self, key: &str, print: &Rgba) -> Result<String, AppError> {
         let png = print.png().ok_or_else(|| AppError::other("could not encode the print"))?;
         let color = print.ink_color();
-        let (id, evicted) = self.update(key, |book| book.add(color))?;
+        let shape = print.shape();
+        let (id, evicted) = self.update(key, |book| book.add(color, shape))?;
         let path = self.print_path(key, &id);
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| AppError::other(e.to_string()))?;
@@ -247,13 +309,17 @@ impl StyleStore {
         Ok(id)
     }
 
-    /// Style id of each line color, for the game being translated.
-    pub fn match_lines(&self, colors: &[u32]) -> Vec<Option<String>> {
+    /// Style id of each line (letter color and, when measurable, letter shape),
+    /// for the game being translated.
+    pub fn match_lines(&self, lines: &[(u32, Option<Shape>)]) -> Vec<Option<String>> {
         let open = self.open.lock().unwrap();
         let Some((_, book)) = open.as_ref() else {
-            return vec![None; colors.len()];
+            return vec![None; lines.len()];
         };
-        colors.iter().map(|c| book.style_for(*c).map(|s| s.id.clone())).collect()
+        lines
+            .iter()
+            .map(|(color, shape)| book.style_for(*color, shape.as_ref()).map(|s| s.id.clone()))
+            .collect()
     }
 }
 
@@ -266,7 +332,7 @@ mod tests {
     /// A book with one green style that has a font.
     fn book() -> StyleBook {
         let mut book = StyleBook::default();
-        let (id, _) = book.add(GREEN);
+        let (id, _) = book.add(GREEN, None);
         book.styles.iter_mut().find(|s| s.id == id).unwrap().font = "imported:Cinzel-700.ttf".into();
         book
     }
@@ -274,15 +340,42 @@ mod tests {
     #[test]
     fn lines_of_close_colors_use_the_style_whatever_their_size() {
         let book = book();
-        assert!(book.style_for(0x40E0A8).is_some()); // anti-aliasing / glow shifts the color a bit
-        assert!(book.style_for(0xE9E4D6).is_none()); // cream dialogue is another style
+        assert!(book.style_for(0x40E0A8, None).is_some()); // anti-aliasing / glow shifts the color a bit
+        assert!(book.style_for(0xE9E4D6, None).is_none()); // cream dialogue is another style
     }
 
     #[test]
     fn a_style_without_a_font_changes_nothing() {
         let mut book = StyleBook::default();
-        book.add(GREEN);
-        assert!(book.style_for(GREEN).is_none());
+        book.add(GREEN, None);
+        assert!(book.style_for(GREEN, None).is_none());
+    }
+
+    /// A style with a font and a measured shape.
+    fn styled(book: &mut StyleBook, color: u32, shape: Shape, font: &str) -> String {
+        let (id, _) = book.add(color, Some(shape));
+        book.styles.iter_mut().find(|s| s.id == id).unwrap().font = font.into();
+        id
+    }
+
+    #[test]
+    fn the_letters_decide_before_the_color() {
+        let regular = Shape { stroke: 0.17, contrast: 1.0, density: 0.30, slant: 0.0 };
+        let bold = Shape { stroke: 0.40, contrast: 1.6, density: 0.50, slant: 0.0 };
+        let mut book = StyleBook::default();
+        let body = styled(&mut book, 0xE9E4D6, regular, "body");
+        let title = styled(&mut book, 0xE9E4D6, bold, "title");
+        // Same font as the body, in green (a highlighted line): still the body style.
+        assert_eq!(book.style_for(0x3DE8A0, Some(&regular)).map(|s| s.id.clone()), Some(body));
+        // Same color as both: the bold letters pick the title style.
+        assert_eq!(book.style_for(0xE9E4D6, Some(&bold)).map(|s| s.id.clone()), Some(title));
+        // With an italic style taken too, slanted lines go to it.
+        let italic = Shape { slant: 0.2, ..regular };
+        let quote = styled(&mut book, 0xE9E4D6, italic, "quote");
+        assert_eq!(book.style_for(0xE9E4D6, Some(&italic)).map(|s| s.id.clone()), Some(quote));
+        // Something in no way like any style (huge strokes, no slant) gets none.
+        let poster = Shape { stroke: 0.9, contrast: 4.0, density: 0.9, slant: -0.3 };
+        assert!(book.style_for(0xE9E4D6, Some(&poster)).is_none());
     }
 
     #[test]
@@ -297,7 +390,10 @@ mod tests {
         }
         let print = Rgba { pixels, width: 40, height: 20 };
         assert!(color_distance(print.ink_color(), GREEN) < 20.0);
-        assert_eq!(&print.png().unwrap()[1..4], b"PNG");
+        let png = print.png().unwrap();
+        assert_eq!(&png[1..4], b"PNG");
+        let back = Rgba::from_png(&png).unwrap();
+        assert_eq!((back.width, back.height, back.pixels.len()), (40, 20, 40 * 20 * 4));
         assert!(print.crop([100, 100, 5, 5]).is_none());
         assert_eq!(print.crop([30, 15, 20, 20]).map(|c| (c.width, c.height)), Some((10, 5)));
     }

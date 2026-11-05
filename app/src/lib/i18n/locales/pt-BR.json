@@ -6,7 +6,8 @@
     "tutorial": "Tutorial",
     "fonts": "Fontes",
     "history": "Histórico",
-    "styles": "Estilos"
+    "styles": "Estilos",
+    "shortcuts": "Atalhos"
   },
   "core": {
     "ok": "Núcleo pronto",
@@ -58,7 +59,10 @@
       "translated": "Traduzido em {ms} ms",
       "cached": "Repetida, veio do cache em {ms} ms",
       "adjust": "Ajustar áreas",
-      "quickDone": "Tradução rápida em {ms} ms (o principal não respondeu)"
+      "quickDone": "Tradução rápida em {ms} ms (o principal não respondeu)",
+      "toolbar": "Barrinha no jogo",
+      "toolbarHint": "No jogo, {keys} mostra ou esconde a barrinha para marcar áreas e tirar prints de estilo.",
+      "toolbarHintNoKey": "A barrinha do jogo não tem atalho; use o botão abaixo ou defina um em Atalhos."
     },
     "back": "Voltar",
     "next": "Continuar",
@@ -239,9 +243,9 @@
   },
   "styles": {
     "title": "Estilos do jogo",
-    "intro": "Cada jogo escreve coisas diferentes com fontes diferentes. Tire um print de uma frase, escolha a fonte dela, e toda linha com a mesma cor de letra passa a usar essa fonte, em qualquer tamanho.",
+    "intro": "Cada jogo escreve coisas diferentes com fontes diferentes. Tire um print de uma frase e escolha a fonte dela: toda linha com letras desse mesmo jeito (grossura, contraste, inclinação) passa a usar essa fonte, em qualquer tamanho. A cor só ajuda a desempatar.",
     "take": "Tirar print de um estilo",
-    "takeHelp": "Arraste sobre uma frase no jogo. Atalho: Ctrl+Shift+S.",
+    "takeHelp": "Arraste sobre uma frase no jogo. Atalho: {keys}.",
     "takeNeedsGame": "Comece a traduzir este jogo para tirar prints dele.",
     "empty": "Nenhum estilo ainda.",
     "namePlaceholder": "Nome (ex.: Menu, Falas, Nomes)",
@@ -254,18 +258,55 @@
   },
   "toolbar": {
     "move": "Arraste para mover",
-    "area": "Marcar uma área no jogo (Ctrl+Shift+A)",
-    "style": "Tirar print de um estilo (Ctrl+Shift+S)",
-    "pause": "Pausar a tradução (Ctrl+Shift+T)",
-    "resume": "Voltar a traduzir (Ctrl+Shift+T)",
-    "hide": "Esconder as traduções (Ctrl+Shift+H)",
-    "show": "Mostrar as traduções (Ctrl+Shift+H)",
-    "open": "Abrir o Subquest"
+    "area": "Marcar uma área no jogo",
+    "style": "Tirar print de um estilo",
+    "pause": "Pausar a tradução",
+    "resume": "Voltar a traduzir",
+    "hide": "Esconder as traduções",
+    "show": "Mostrar as traduções",
+    "open": "Abrir o Subquest",
+    "close": "Guardar a barrinha"
   },
   "select": {
     "area": "Marque a nova área",
     "style": "Marque uma frase deste estilo",
     "howTo": "Arraste sobre o jogo. Botão direito cancela.",
     "cancel": "Cancelar"
+  },
+  "shortcuts": {
+    "title": "Atalhos",
+    "intro": "Teclas que funcionam dentro do jogo enquanto ele é traduzido. Clique na tecla e aperte a nova combinação.",
+    "press": "Aperte as teclas… (Esc cancela)",
+    "none": "Sem atalho",
+    "clear": "Tirar",
+    "restore": "Restaurar os padrões",
+    "note": "Os atalhos só valem enquanto um jogo é traduzido; no resto do tempo essas teclas voltam para os outros programas. Se outro programa já usa uma combinação, ela não funciona: troque aqui.",
+    "errors": {
+      "needsModifier": "Use junto com Ctrl, Alt ou Win (só as teclas F1–F12 podem ir sozinhas).",
+      "unsupportedKey": "Essa tecla não serve para atalho. Use letras, números, F1–F12, setas ou Espaço.",
+      "taken": "Essa combinação já é de \"{action}\"."
+    },
+    "actions": {
+      "toolbar": {
+        "name": "Mostrar a barrinha",
+        "help": "Mostra ou esconde a barrinha por cima do jogo."
+      },
+      "area": {
+        "name": "Marcar área",
+        "help": "Arraste um retângulo no jogo; a área nova começa a ser lida na hora."
+      },
+      "style": {
+        "name": "Print de estilo",
+        "help": "Arraste sobre uma frase para escolher a fonte desse estilo."
+      },
+      "pause": {
+        "name": "Pausar",
+        "help": "Para de ler o jogo e volta."
+      },
+      "hide": {
+        "name": "Esconder traduções",
+        "help": "Some com as traduções da tela, sem parar de ler."
+      }
+    }
   }
 }

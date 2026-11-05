@@ -4,6 +4,7 @@
   import Play from "./lib/screens/Play.svelte";
   import History from "./lib/screens/History.svelte";
   import Styles from "./lib/screens/Styles.svelte";
+  import Shortcuts from "./lib/screens/Shortcuts.svelte";
   import Profiles from "./lib/screens/Profiles.svelte";
   import Fonts from "./lib/screens/Fonts.svelte";
   import Settings from "./lib/screens/Settings.svelte";
@@ -25,6 +26,8 @@
         <History />
       {:else if app.screen === "styles"}
         <Styles />
+      {:else if app.screen === "shortcuts"}
+        <Shortcuts />
       {:else if app.screen === "profiles"}
         <Profiles />
       {:else if app.screen === "fonts"}

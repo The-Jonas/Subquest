@@ -4,7 +4,7 @@ import { getSettings, saveSettings, defaultSettings, coreStatus, inTauri, type S
 import { setLocale, type Locale } from "../i18n/index.svelte";
 import { watchStyles } from "./styles.svelte";
 
-export type Screen = "play" | "history" | "styles" | "profiles" | "fonts" | "settings" | "tutorial";
+export type Screen = "play" | "history" | "styles" | "profiles" | "fonts" | "settings" | "shortcuts" | "tutorial";
 
 export const app = $state({
   screen: "play" as Screen,

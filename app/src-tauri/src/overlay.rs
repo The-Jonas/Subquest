@@ -97,6 +97,22 @@ fn raise(overlay: &WebviewWindow) {
     }
 }
 
+/// Shows (above the overlay) or hides the in-game toolbar, if it exists.
+fn set_toolbar(app: &AppHandle, show: bool) {
+    let Some(toolbar) = app.get_webview_window(crate::ingame::TOOLBAR) else {
+        return;
+    };
+    let shown = toolbar.is_visible().unwrap_or(false);
+    if show {
+        if !shown {
+            let _ = toolbar.show();
+        }
+        raise(&toolbar); // above the overlay, which also sits on top
+    } else if shown {
+        let _ = toolbar.hide();
+    }
+}
+
 #[cfg(not(windows))]
 fn raise(_overlay: &WebviewWindow) {}
 
@@ -215,11 +231,10 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                             raise(&overlay);
                         }
                     }
-                    if let Some(toolbar) = app.get_webview_window(crate::ingame::TOOLBAR) {
-                        if toolbar.is_visible().unwrap_or(false) {
-                            raise(&toolbar); // above the overlay, which also sits on top
-                        }
-                    }
+                    // The toolbar, when asked for, follows the same rule: only
+                    // while the game or Subquest is in front.
+                    let toolbar_wanted = state.toolbar_wanted.load(Ordering::SeqCst) && front != Front::Other;
+                    set_toolbar(&app, toolbar_wanted);
                 }
                 Ok((_, true)) => {
                     // Minimized: get out of the way until it comes back.
@@ -227,6 +242,7 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                         let _ = overlay.hide();
                         visible = false;
                     }
+                    set_toolbar(&app, false);
                 }
                 Err(_) => {
                     // The game's window is gone (a single failed read could be a

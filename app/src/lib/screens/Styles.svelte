@@ -111,7 +111,7 @@
     <button class="btn btn-primary" onclick={() => beginSelection("style")} disabled={!translatingThis}>
       {t("styles.take")}
     </button>
-    <p>{translatingThis ? t("styles.takeHelp") : t("styles.takeNeedsGame")}</p>
+    <p>{translatingThis ? t("styles.takeHelp", { keys: app.settings.shortcuts.style || "—" }) : t("styles.takeNeedsGame")}</p>
   </div>
 
   {#if styles.list.length === 0}

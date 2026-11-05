@@ -1,10 +1,13 @@
 //! Controls used from inside the game, without going back to Subquest's window:
 //! a small floating toolbar (like MORT's) and global shortcuts.
 //!
+//! Default keys (all can be changed in the Shortcuts screen):
 //!   Ctrl+Shift+A  mark a new area: drag a rectangle right over the game
 //!   Ctrl+Shift+S  take a style print: drag over a phrase, then pick its font
 //!   Ctrl+Shift+T  pause / resume translating
 //!   Ctrl+Shift+H  hide / show the translations
+//!   Ctrl+Shift+B  show / hide the toolbar (hidden until asked for, so it
+//!                 doesn't sit on the game the whole time)
 //!
 //! Marking happens on the overlay: it starts taking the mouse, shows a dimmed
 //! layer and reports the rectangle in window pixels.
@@ -14,7 +17,7 @@ use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 use crate::error::AppError;
 use crate::settings::GameArea;
@@ -32,15 +35,37 @@ pub enum Purpose {
     Style, // a print of a phrase, to pick its font
 }
 
-/// Shortcuts in the order of the list above.
-fn shortcuts() -> [Shortcut; 4] {
-    let mods = Some(Modifiers::CONTROL | Modifiers::SHIFT);
+/// Something a shortcut does.
+#[derive(Clone, Copy)]
+enum Action {
+    Area,
+    Style,
+    Pause,
+    Hide,
+    Toolbar,
+}
+
+/// The configured shortcuts that parse, with their action. A key written in
+/// a way the plugin doesn't understand is skipped (and logged).
+fn shortcuts(app: &AppHandle) -> Vec<(Shortcut, Action)> {
+    let keys = app.state::<AppState>().settings.lock().unwrap().shortcuts.clone();
     [
-        Shortcut::new(mods, Code::KeyA),
-        Shortcut::new(mods, Code::KeyS),
-        Shortcut::new(mods, Code::KeyT),
-        Shortcut::new(mods, Code::KeyH),
+        (keys.area, Action::Area),
+        (keys.style, Action::Style),
+        (keys.pause, Action::Pause),
+        (keys.hide, Action::Hide),
+        (keys.toolbar, Action::Toolbar),
     ]
+    .into_iter()
+    .filter(|(text, _)| !text.trim().is_empty())
+    .filter_map(|(text, action)| match text.parse::<Shortcut>() {
+        Ok(shortcut) => Some((shortcut, action)),
+        Err(e) => {
+            eprintln!("[subquest] shortcut \"{text}\" not understood: {e}");
+            None
+        }
+    })
+    .collect()
 }
 
 /// Runs a shortcut (only during a session; it is only registered then anyway).
@@ -48,78 +73,103 @@ pub fn on_shortcut(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
     if state != ShortcutState::Pressed {
         return;
     }
-    let [area, style, pause, hide] = shortcuts();
-    let result = if shortcut == &area {
-        begin_selection(app, Purpose::Area)
-    } else if shortcut == &style {
-        begin_selection(app, Purpose::Style)
-    } else if shortcut == &pause {
-        toggle_pause(app).map(|_| ())
-    } else if shortcut == &hide {
-        toggle_hidden(app);
-        Ok(())
-    } else {
-        Ok(())
+    let Some(action) = shortcuts(app).into_iter().find(|(s, _)| s == shortcut).map(|(_, a)| a) else {
+        return;
+    };
+    let result = match action {
+        Action::Area => begin_selection(app, Purpose::Area),
+        Action::Style => begin_selection(app, Purpose::Style),
+        Action::Pause => toggle_pause(app).map(|_| ()),
+        Action::Hide => {
+            toggle_hidden(app);
+            Ok(())
+        }
+        Action::Toolbar => toggle_toolbar(app).map(|_| ()),
     };
     if let Err(e) = result {
         eprintln!("[subquest] shortcut: {}", e.detail);
     }
 }
 
-/// Session started: registers the shortcuts and shows the toolbar near the
-/// game's top-right corner.
-pub fn on_session_start(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) {
+/// (Re)registers the configured shortcuts: at the start of a session, and when
+/// they are changed during one. Keys taken by another program are skipped (the
+/// toolbar still does everything).
+pub fn register_shortcuts(app: &AppHandle) {
+    let keys = app.global_shortcut();
+    let _ = keys.unregister_all();
+    for (shortcut, _) in shortcuts(app) {
+        if let Err(e) = keys.register(shortcut) {
+            eprintln!("[subquest] shortcut taken by another app: {e}");
+        }
+    }
+}
+
+/// Session started: registers the shortcuts. The toolbar stays hidden until
+/// Ctrl+Shift+B (or the button in Subquest) asks for it.
+pub fn on_session_start(app: &AppHandle) {
     let state = app.state::<AppState>();
     state.paused.store(false, Ordering::SeqCst);
     state.overlay_hidden.store(false, Ordering::SeqCst);
-    let keys = app.global_shortcut();
-    let _ = keys.unregister_all();
-    for shortcut in shortcuts() {
-        if let Err(e) = keys.register(shortcut) {
-            eprintln!("[subquest] shortcut taken by another app: {e}"); // the toolbar still works
-        }
+    state.toolbar_wanted.store(false, Ordering::SeqCst);
+    register_shortcuts(app);
+}
+
+/// Shows or hides the toolbar; returns true when it is now asked for. The
+/// overlay's follow loop does the actual showing, and only while the game (or
+/// Subquest) is in front. The first time, it is placed at the game's top-right.
+pub fn toggle_toolbar(app: &AppHandle) -> Result<bool, AppError> {
+    let state = app.state::<AppState>();
+    let Some(game) = *state.session_window.lock().unwrap() else {
+        return Ok(false); // no game, no toolbar
+    };
+    let wanted = !state.toolbar_wanted.load(Ordering::SeqCst);
+    if wanted && app.get_webview_window(TOOLBAR).is_none() {
+        let bounds = crate::core(&state)?.window_bounds(game).ok().map(|(r, _)| (r.x, r.y, r.width));
+        create_toolbar(app, bounds)?;
     }
-    if let Err(e) = show_toolbar(app, game_bounds) {
-        eprintln!("[subquest] toolbar: {}", e.detail);
+    state.toolbar_wanted.store(wanted, Ordering::SeqCst);
+    if let Some(toolbar) = app.get_webview_window(TOOLBAR) {
+        let _ = if wanted { toolbar.show() } else { toolbar.hide() };
     }
+    let _ = app.emit("toolbar-shown", wanted);
+    Ok(wanted)
 }
 
 /// Session ended: frees the shortcuts and hides the toolbar.
 pub fn on_session_end(app: &AppHandle) {
     let _ = app.global_shortcut().unregister_all();
+    app.state::<AppState>().toolbar_wanted.store(false, Ordering::SeqCst);
     if let Some(toolbar) = app.get_webview_window(TOOLBAR) {
         let _ = toolbar.hide();
     }
+    let _ = app.emit("toolbar-shown", false);
     if let Some(overlay) = app.get_webview_window(overlay::LABEL) {
         let _ = overlay.set_ignore_cursor_events(true);
     }
 }
 
-/// Creates (once) and shows the toolbar. `game_bounds` = (x, y, width) of the
-/// game window in screen pixels, to place it at its top-right corner.
-fn show_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
-    let toolbar = match app.get_webview_window(TOOLBAR) {
-        Some(existing) => existing,
-        None => WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
-            .title("Subquest")
-            .inner_size(268.0, 48.0)
-            .transparent(true)
-            .decorations(false)
-            .shadow(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .focusable(false) // clicking it never takes the focus from the game
-            .resizable(false)
-            .visible(false)
-            .additional_browser_args(overlay::BROWSER_ARGS)
-            .build()
-            .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?,
-    };
+/// Creates the toolbar (hidden) at the game's top-right corner. `game_bounds`
+/// = (x, y, width) of the game window in screen pixels.
+fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
+    let toolbar = WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
+        .title("Subquest")
+        .inner_size(296.0, 48.0)
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focusable(false) // clicking it never takes the focus from the game
+        .resizable(false)
+        .visible(false)
+        .additional_browser_args(overlay::BROWSER_ARGS)
+        .build()
+        .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?;
     if let Some((x, y, width)) = game_bounds {
-        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(268);
+        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(296);
         let _ = toolbar.set_position(tauri::PhysicalPosition::new(x + width - size - 24, y + 24));
     }
-    toolbar.show().map_err(|e| AppError::other(e.to_string()))
+    Ok(())
 }
 
 /// Starts marking a rectangle over the game: the overlay takes the mouse.
@@ -269,4 +319,21 @@ pub fn grab_window(app: &AppHandle, window_handle: u64) -> Result<Rgba, AppError
     let _ = core.preview_stop(); // after this the callback is never called again, so `slot` may go
     drop(slot);
     frame.ok_or_else(|| AppError::other("no picture of the game came in time"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::ShortcutSettings;
+
+    #[test]
+    fn the_keys_the_shortcuts_screen_writes_are_understood() {
+        let defaults = ShortcutSettings::default();
+        for text in [defaults.area, defaults.style, defaults.pause, defaults.hide, defaults.toolbar] {
+            assert!(text.parse::<Shortcut>().is_ok(), "{text}");
+        }
+        for text in ["Ctrl+Alt+F5", "Ctrl+Shift+1", "F9", "Alt+Space", "Super+Shift+PageDown", "Ctrl+Shift+ArrowUp"] {
+            assert!(text.parse::<Shortcut>().is_ok(), "{text}");
+        }
+    }
 }

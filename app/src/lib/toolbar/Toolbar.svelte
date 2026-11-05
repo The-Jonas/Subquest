@@ -7,9 +7,11 @@
   import { onDestroy } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
-  import { beginSelection, getSettings, inTauri, sessionFlags, showMain, toggleHidden, togglePause } from "../api";
+  import { keyHint, defaultShortcuts, type Shortcuts } from "../shortcuts";
+  import { beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
 
   let paused = $state(false);
+  let keys = $state<Shortcuts>({ ...defaultShortcuts }); // shown in the tooltips
   let hidden = $state(false);
   const unlisteners: (() => void)[] = [];
 
@@ -22,6 +24,7 @@
     hide: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4zM3.5 16.5l13-13",
     show: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4z",
     open: "M11 3.5h5.5V9M16.5 3.5L9 11M14 12.5v4H3.5V6h4",
+    close: "M5.5 5.5l9 9M14.5 5.5l-9 9",
   };
 
   // Pause or resume reading the game.
@@ -39,6 +42,8 @@
     if (!inTauri) return;
     const settings = await getSettings();
     setLocale(settings.uiLanguage as Locale);
+    keys = settings.shortcuts;
+    unlisteners.push(await listen<Settings>("settings-changed", (e) => (keys = e.payload.shortcuts)));
     [paused, hidden] = await sessionFlags();
     unlisteners.push(await listen<boolean>("session-paused", (e) => (paused = e.payload)));
     unlisteners.push(await listen<boolean>("overlay-hidden", (e) => (hidden = e.payload)));
@@ -57,21 +62,25 @@
     </svg>
   </div>
 
-  <button onclick={() => beginSelection("area")} title={t("toolbar.area")}>
+  <button onclick={() => beginSelection("area")} title={t("toolbar.area") + keyHint(keys.area)}>
     <svg viewBox="0 0 20 20"><path d={ICONS.area} /></svg>
   </button>
-  <button onclick={() => beginSelection("style")} title={t("toolbar.style")}>
+  <button onclick={() => beginSelection("style")} title={t("toolbar.style") + keyHint(keys.style)}>
     <svg viewBox="0 0 20 20"><path d={ICONS.style} /></svg>
   </button>
-  <button class:on={paused} onclick={pause} title={paused ? t("toolbar.resume") : t("toolbar.pause")}>
+  <button class:on={paused} onclick={pause} title={(paused ? t("toolbar.resume") : t("toolbar.pause")) + keyHint(keys.pause)}>
     <svg viewBox="0 0 20 20"><path d={paused ? ICONS.play : ICONS.pause} /></svg>
   </button>
-  <button class:on={hidden} onclick={hide} title={hidden ? t("toolbar.show") : t("toolbar.hide")}>
+  <button class:on={hidden} onclick={hide} title={(hidden ? t("toolbar.show") : t("toolbar.hide")) + keyHint(keys.hide)}>
     <svg viewBox="0 0 20 20"><path d={hidden ? ICONS.hide : ICONS.show} /></svg>
   </button>
   <span class="sep"></span>
   <button onclick={() => showMain()} title={t("toolbar.open")}>
     <svg viewBox="0 0 20 20"><path d={ICONS.open} /></svg>
+  </button>
+  <!-- Puts the bar away; Ctrl+Shift+B brings it back -->
+  <button onclick={() => toggleToolbar()} title={t("toolbar.close") + keyHint(keys.toolbar)}>
+    <svg viewBox="0 0 20 20"><path d={ICONS.close} /></svg>
   </button>
 </div>
 

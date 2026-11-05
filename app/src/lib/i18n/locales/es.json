@@ -6,7 +6,8 @@
     "tutorial": "Tutorial",
     "fonts": "Fuentes",
     "history": "Historial",
-    "styles": "Estilos"
+    "styles": "Estilos",
+    "shortcuts": "Atajos"
   },
   "core": {
     "ok": "Núcleo listo",
@@ -58,7 +59,10 @@
       "translated": "Traducido en {ms} ms",
       "cached": "Línea repetida, desde la caché en {ms} ms",
       "adjust": "Ajustar áreas",
-      "quickDone": "Traducción rápida en {ms} ms (el principal no respondió)"
+      "quickDone": "Traducción rápida en {ms} ms (el principal no respondió)",
+      "toolbar": "Barra en el juego",
+      "toolbarHint": "En el juego, {keys} muestra u oculta la barra para marcar áreas y tomar capturas de estilo.",
+      "toolbarHintNoKey": "La barra del juego no tiene atajo; usa el botón de abajo o define uno en Atajos."
     },
     "back": "Volver",
     "next": "Continuar",
@@ -239,9 +243,9 @@
   },
   "styles": {
     "title": "Estilos del juego",
-    "intro": "Cada juego escribe cosas distintas con fuentes distintas. Haz una captura de una frase, elige su fuente, y toda línea con el mismo color de letra usará esa fuente, en cualquier tamaño.",
+    "intro": "Cada juego escribe cosas distintas con fuentes distintas. Toma una captura de una frase y elige su fuente: toda línea con letras del mismo tipo (grosor, contraste, inclinación) usará esa fuente, en cualquier tamaño. El color solo desempata.",
     "take": "Capturar un estilo",
-    "takeHelp": "Arrastra sobre una frase en el juego. Atajo: Ctrl+Shift+S.",
+    "takeHelp": "Arrastra sobre una frase del juego. Atajo: {keys}.",
     "takeNeedsGame": "Empieza a traducir este juego para capturarlo.",
     "empty": "Todavía no hay estilos.",
     "namePlaceholder": "Nombre (ej.: Menú, Diálogos, Nombres)",
@@ -254,18 +258,55 @@
   },
   "toolbar": {
     "move": "Arrastra para mover",
-    "area": "Marcar un área en el juego (Ctrl+Shift+A)",
-    "style": "Capturar un estilo (Ctrl+Shift+S)",
-    "pause": "Pausar la traducción (Ctrl+Shift+T)",
-    "resume": "Volver a traducir (Ctrl+Shift+T)",
-    "hide": "Ocultar las traducciones (Ctrl+Shift+H)",
-    "show": "Mostrar las traducciones (Ctrl+Shift+H)",
-    "open": "Abrir Subquest"
+    "area": "Marcar un área en el juego",
+    "style": "Tomar captura de un estilo",
+    "pause": "Pausar la traducción",
+    "resume": "Volver a traducir",
+    "hide": "Ocultar las traducciones",
+    "show": "Mostrar las traducciones",
+    "open": "Abrir Subquest",
+    "close": "Guardar la barra"
   },
   "select": {
     "area": "Marca la nueva área",
     "style": "Marca una frase de este estilo",
     "howTo": "Arrastra sobre el juego. Clic derecho cancela.",
     "cancel": "Cancelar"
+  },
+  "shortcuts": {
+    "title": "Atajos",
+    "intro": "Teclas que funcionan dentro del juego mientras se traduce. Haz clic en la tecla y pulsa la nueva combinación.",
+    "press": "Pulsa las teclas… (Esc cancela)",
+    "none": "Sin atajo",
+    "clear": "Quitar",
+    "restore": "Restaurar los predeterminados",
+    "note": "Los atajos solo funcionan mientras se traduce un juego; el resto del tiempo esas teclas vuelven a los otros programas. Si otro programa ya usa una combinación, no funcionará: cámbiala aquí.",
+    "errors": {
+      "needsModifier": "Úsala con Ctrl, Alt o Win (solo F1–F12 pueden ir solas).",
+      "unsupportedKey": "Esa tecla no sirve como atajo. Usa letras, números, F1–F12, flechas o Espacio.",
+      "taken": "Esa combinación ya es de \"{action}\"."
+    },
+    "actions": {
+      "toolbar": {
+        "name": "Mostrar la barra",
+        "help": "Muestra u oculta la barra sobre el juego."
+      },
+      "area": {
+        "name": "Marcar área",
+        "help": "Arrastra un rectángulo en el juego; el área nueva se lee al instante."
+      },
+      "style": {
+        "name": "Captura de estilo",
+        "help": "Arrastra sobre una frase para elegir la fuente de ese estilo."
+      },
+      "pause": {
+        "name": "Pausar",
+        "help": "Deja de leer el juego, y vuelve."
+      },
+      "hide": {
+        "name": "Ocultar traducciones",
+        "help": "Quita las traducciones de la pantalla sin dejar de leer."
+      }
+    }
   }
 }

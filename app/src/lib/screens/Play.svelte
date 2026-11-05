@@ -14,6 +14,7 @@
   import {
     inTauri,
     listWindows,
+    toggleToolbar,
     errorKind,
     profileKey,
     newArea,
@@ -200,7 +201,12 @@
           <li class="muted live">{t("play.start.waiting")}</li>
         {/each}
       </ol>
+      <!-- The in-game bar is hidden until asked for: it shouldn't sit on the game -->
+      <p class="toolbar-hint">{app.settings.shortcuts.toolbar
+          ? t("play.start.toolbarHint", { keys: app.settings.shortcuts.toolbar })
+          : t("play.start.toolbarHintNoKey")}</p>
       <div class="actions">
+        <button class="btn btn-ghost" onclick={() => toggleToolbar()}>{t("play.start.toolbar")}</button>
         <button class="btn btn-ghost" onclick={adjust}>{t("play.start.adjust")}</button>
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
       </div>
@@ -500,6 +506,12 @@
     flex: 1;
     display: grid;
     gap: 4px;
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+  }
+
+  .toolbar-hint {
+    margin: 14px 0 0;
     color: var(--ink-dim);
     font-size: var(--text-sm);
   }

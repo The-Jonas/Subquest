@@ -8,6 +8,7 @@ mod fonts;
 mod ingame;
 mod overlay;
 mod settings;
+mod shape;
 mod styles;
 mod translate;
 mod translation;
@@ -47,6 +48,7 @@ struct AppState {
     styles: styles::StyleStore,             // text styles taken by the user, with their prints
     paused: AtomicBool,                     // session paused from the toolbar (core stopped)
     overlay_hidden: AtomicBool,             // translations hidden from the toolbar
+    toolbar_wanted: AtomicBool,             // toolbar asked for (Ctrl+Shift+B); shown only over the game
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -89,6 +91,30 @@ struct OcrLineEvent {
     box_color: String,
     text_color: String,
     style: Option<String>, // id of the game's text style this line belongs to
+}
+
+/// Shape of a line's letters, measured on the event's area pixels (BGRA) with
+/// the line's own letter and background colors. None when the core sent no
+/// picture or the line is too small to measure.
+unsafe fn line_shape(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Option<shape::Shape> {
+    if e.image_bgra.is_null() || e.image_stride <= 0 {
+        return None;
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    // Line box relative to the area, clipped to it.
+    let x0 = (line.rect.x - e.image_x).clamp(0, e.image_width) as usize;
+    let y0 = (line.rect.y - e.image_y).clamp(0, e.image_height) as usize;
+    let x1 = (line.rect.x - e.image_x + line.rect.width).clamp(0, e.image_width) as usize;
+    let y1 = (line.rect.y - e.image_y + line.rect.height).clamp(0, e.image_height) as usize;
+    if x1 <= x0 || y1 <= y0 {
+        return None;
+    }
+    let stride = e.image_stride as usize;
+    let pixel = |x: usize, y: usize| {
+        let i = (y0 + y) * stride + (x0 + x) * 4;
+        u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
+    };
+    shape::Shape::measure(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
 }
 
 /// Formats 0xRRGGBB as a CSS color.
@@ -146,13 +172,17 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
     let mut text = owned(e.utf8_text);
     let meaningful = similar::meaningful(&text);
 
-    // Text styles: each line takes the user's style of its letter color, if any.
+    // Text styles: each line takes the user's style its letters look like
+    // (shape measured on the area's pixels, only valid during this callback).
     let found: Vec<(u32, [i32; 4], String)> = raw_lines
         .iter()
         .map(|l| (l.text_rgb, [l.rect.x, l.rect.y, l.rect.width, l.rect.height], owned(l.utf8_text)))
         .collect();
-    let colors: Vec<u32> = found.iter().map(|(c, _, _)| *c).collect();
-    let style_ids = app.state::<AppState>().styles.match_lines(&colors);
+    let samples: Vec<(u32, Option<shape::Shape>)> = raw_lines
+        .iter()
+        .map(|l| (l.text_rgb, if meaningful { line_shape(e, l) } else { None }))
+        .collect();
+    let style_ids = app.state::<AppState>().styles.match_lines(&samples);
     let mut lines: Vec<OcrLineEvent> = found
         .into_iter()
         .zip(raw_lines)
@@ -277,8 +307,7 @@ async fn start_session(
     if let Err(e) = overlay::open(&app, window_handle) {
         eprintln!("[subquest] overlay: {}", e.detail);
     }
-    let bounds = core(&state)?.window_bounds(window_handle).ok().map(|(r, _)| (r.x, r.y, r.width));
-    ingame::on_session_start(&app, bounds);
+    ingame::on_session_start(&app);
     Ok(())
 }
 
@@ -331,6 +360,12 @@ async fn toggle_pause(app: AppHandle) -> Result<bool, AppError> {
 #[tauri::command]
 fn toggle_hidden(app: AppHandle) -> bool {
     ingame::toggle_hidden(&app)
+}
+
+/// Shows or hides the in-game toolbar; returns true when it is now shown.
+#[tauri::command]
+fn toggle_toolbar(app: AppHandle) -> Result<bool, AppError> {
+    ingame::toggle_toolbar(&app)
 }
 
 /// Brings Subquest's main window to the front (the toolbar's "open" button),
@@ -670,8 +705,12 @@ fn save_settings(
     settings: Settings,
 ) -> Result<(), AppError> {
     settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
+    let keys_changed = state.settings.lock().unwrap().shortcuts != settings.shortcuts;
     *state.settings.lock().unwrap() = settings.clone();
-    let _ = app.emit("settings-changed", settings); // the overlay restyles itself live
+    if keys_changed && state.session_window.lock().unwrap().is_some() {
+        ingame::register_shortcuts(&app); // new keys work right away, mid-game
+    }
+    let _ = app.emit("settings-changed", settings); // the overlay and toolbar update live
     Ok(())
 }
 
@@ -716,6 +755,7 @@ pub fn run() {
                 styles: styles::StyleStore::new(&data_dir),
                 paused: AtomicBool::new(false),
                 overlay_hidden: AtomicBool::new(false),
+                toolbar_wanted: AtomicBool::new(false),
                 active_profile: Mutex::new(None),
             });
             Ok(())
@@ -730,6 +770,7 @@ pub fn run() {
             finish_selection,
             toggle_pause,
             toggle_hidden,
+            toggle_toolbar,
             session_flags,
             show_main,
             start_preview,
