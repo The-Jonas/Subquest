@@ -3,11 +3,13 @@
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
   import { session } from "../stores/session.svelte";
+  import { styles } from "../stores/styles.svelte";
 
   // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
     { id: "play", icon: "M6 4.5v11l9-5.5z" },
     { id: "history", icon: "M10 3.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 0 0 0-13zM10 6.5V10l2.5 1.6" },
+    { id: "styles", icon: "M3 15.5l3.5-11h1l3.5 11M4.6 11.5h4.8M15 10a2.5 2.5 0 1 0 0 5a2.5 2.5 0 0 0 0-5zM17.5 9.5v6" },
     { id: "profiles", icon: "M5 3.5h10v13l-5-3.5-5 3.5z" },
     { id: "fonts", icon: "M4 16L9 4h2l5 12M6.5 11h7" },
     { id: "settings", icon: "M3 6h9M15 6h2M3 14h2M8 14h9M12 4v4M5 12v4" },
@@ -42,6 +44,10 @@
           {#if item.id === "play" && session.running}
             <!-- The session keeps running on other screens: this dot says so -->
             <span class="live-dot" title={t("play.start.running", { game: session.game?.title ?? "" })}></span>
+          {/if}
+          {#if item.id === "styles" && styles.unseen > 0}
+            <!-- New ways of writing found in the game, waiting for a look -->
+            <span class="badge" title={t("styles.newBadge")}>{styles.unseen}</span>
           {/if}
           {#if item.id === "history" && session.unseenMissed > 0}
             <!-- Lines that passed before their translation was ready -->

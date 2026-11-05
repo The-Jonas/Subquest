@@ -7,7 +7,10 @@
 // game moved on (new line, or the text left) before any translation arrived:
 // those are the ones the History screen is for.
 import { app } from "./app.svelte";
+import { showStyles } from "./styles.svelte";
+import { listen } from "@tauri-apps/api/event";
 import {
+  inTauri,
   applyAreas as applyAreasNow,
   onOcrText,
   onTranslation,
@@ -112,6 +115,7 @@ export async function startTranslating(game: GameWindow) {
     unlisteners.push(await onOcrText(onLine));
     unlisteners.push(await onTranslation(onProgress));
     await startSession(game.handle, profileKey(game));
+    void showStyles(profileKey(game)); // the Styles screen follows the game being translated
     session.running = true;
   } catch (e) {
     unlistenAll();
@@ -132,4 +136,13 @@ export async function stopTranslating() {
 // Makes the running session read the areas just saved in the game's profile.
 export async function applyAreas() {
   if (session.running) await applyAreasNow();
+}
+
+// The game closed during a session: Rust already stopped everything; the UI follows.
+export async function watchSession() {
+  if (!inTauri) return;
+  await listen("session-ended", () => {
+    unlistenAll();
+    session.running = false;
+  });
 }

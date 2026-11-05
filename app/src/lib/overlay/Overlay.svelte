@@ -1,7 +1,9 @@
 <!--
   Overlay — draws the translations over the whole game window, one set per
-  area of the game's profile (dialogue, song lyrics, names...). Each area has
-  its own look:
+  area of the game's profile (dialogue, song lyrics, names...). Each line's
+  font comes from its text style (chosen by the user, or the closest installed
+  one found by the app), falling back to its area's font. Each area has its own
+  style of drawing:
 
   "inPlace" (default): every translated line is drawn exactly over its original
   line, on a patch of the color around that line, in that line's text color,
@@ -21,6 +23,10 @@
   import {
     activeProfile,
     getSettings,
+    listStyles,
+    type OcrLine,
+    type TextStyle,
+    type LetterCase,
     inTauri,
     defaultSettings,
     newArea,
@@ -58,6 +64,7 @@
   let viewHeight = $state(0);
   let fontReady = $state(0); // bumps when a font finishes loading, so text is measured again
   const metas = new Map<number, AreaMeta>();
+  let gameStyles = $state<Record<string, TextStyle>>({}); // the game's text styles, by id
   const lines: Record<number, OcrTextEvent> = {}; // OCR events by frame id
   const unlisteners: (() => void)[] = [];
 
@@ -87,12 +94,21 @@
   // Canvas used only to measure texts for the in-place layout.
   const measureCtx = document.createElement("canvas").getContext("2d")!;
 
-  // Measures texts in an area's font and letter case.
-  function measurer(a: GameArea) {
-    const family = cssFamily(a.font);
+  // Font and letter case of a line: its style's chosen font, else the area's
+  // font when one was set, else the style's automatic match, else the default.
+  function lookFor(a: GameArea, styleId: string | null | undefined): { font: string; caps: LetterCase } {
+    const style = styleId ? gameStyles[styleId] : undefined;
+    if (style?.font) return { font: style.font, caps: style.caps };
+    if (a.font) return { font: a.font, caps: a.caps };
+    return { font: style?.autoFont ?? "", caps: a.caps };
+  }
+
+  // Measures texts in a font and letter case.
+  function measurer(look: { font: string; caps: LetterCase }) {
+    const family = cssFamily(look.font);
     return (text: string, px: number): Metrics => {
-      measureCtx.font = `${a.caps === "smallCaps" ? "small-caps " : ""}${px}px ${family}`;
-      const m = measureCtx.measureText(a.caps === "upper" ? text.toUpperCase() : text);
+      measureCtx.font = `${look.caps === "smallCaps" ? "small-caps " : ""}${px}px ${family}`;
+      const m = measureCtx.measureText(look.caps === "upper" ? text.toUpperCase() : text);
       return {
         width: m.width,
         inkAscent: m.actualBoundingBoxAscent,
@@ -108,7 +124,7 @@
   // whole screen (menus, signs) stay centered on the original.
   const patches = $derived.by(() => {
     if (viewHeight <= 0 || !fontReady) return [];
-    const out: { area: GameArea; patch: Patch }[] = [];
+    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
       if (a.style === "classic" || !v.current || !v.translation) continue;
@@ -116,13 +132,31 @@
         pairLines(v.current.lines, v.translation),
         { width: v.current.frameWidth, height: v.current.frameHeight },
         { width: viewWidth, height: viewHeight },
-        measurer(a),
+        (line: OcrLine) => measurer(lookFor(a, line.style)),
         a.mode === "screen" ? "center" : "left",
       );
-      for (const patch of placed) out.push({ area: a, patch });
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId });
     }
-    return out;
+    return withoutOverlaps(out);
   });
+
+  // Two areas can read the same text (a marked box inside a whole-screen area),
+  // and then two translations would be drawn on top of each other. Where
+  // patches overlap, only the newest reading stays.
+  function withoutOverlaps<T extends { patch: Patch; frame: number }>(items: T[]): T[] {
+    const kept: T[] = [];
+    for (const item of [...items].sort((a, b) => b.frame - a.frame)) {
+      const c = item.patch.cover;
+      const clash = kept.some(({ patch: { cover: k } }) => {
+        const w = Math.min(c.left + c.width, k.left + k.width) - Math.max(c.left, k.left);
+        const h = Math.min(c.top + c.height, k.top + k.height) - Math.max(c.top, k.top);
+        const smaller = Math.min(c.width * c.height, k.width * k.height);
+        return w > 0 && h > 0 && smaller > 0 && (w * h) / smaller > 0.3;
+      });
+      if (!clash) kept.push(item);
+    }
+    return kept;
+  }
 
   // Classic boxes: over their area, or a band near the bottom for the whole window.
   const boxes = $derived.by(() => {
@@ -215,10 +249,22 @@
     v.classicOriginal = line.text;
   }
 
-  // Loads every area's font, then lets the layout measure with them.
+  // Loads every font the game's areas and styles use, then lets the layout measure with them.
   async function loadFonts() {
-    await Promise.all(areas.map((a) => ensureFont(a.font).catch(() => {})));
+    const fonts = [
+      ...areas.map((a) => a.font),
+      ...Object.values(gameStyles).flatMap((s) => [s.font, s.autoFont]),
+    ];
+    await Promise.all(fonts.map((f) => ensureFont(f).catch(() => {})));
     fontReady += 1;
+  }
+
+  // Reloads the game's text styles (a new one was found, or a font changed).
+  async function loadStyles() {
+    if (!profileKey) return;
+    const list = await listStyles(profileKey).catch(() => [] as TextStyle[]);
+    gameStyles = Object.fromEntries(list.map((s) => [s.id, s]));
+    await loadFonts();
   }
 
   // Switches to another game's look (a new session started).
@@ -226,7 +272,7 @@
     profileKey = key;
     views = {};
     metas.clear();
-    await loadFonts();
+    await loadStyles();
   }
 
   // Loads settings and subscribes to lines, translations, sessions and settings changes.
@@ -237,6 +283,7 @@
     unlisteners.push(await listen<string>("session-started", (e) => useProfile(e.payload)));
     unlisteners.push(await listen<OcrTextEvent>("ocr-text", (e) => onOcr(e.payload)));
     unlisteners.push(await listen<TranslationEvent>("translation", (e) => onTranslation(e.payload)));
+    unlisteners.push(await listen("styles-changed", () => loadStyles()));
     unlisteners.push(
       await listen<Settings>("settings-changed", (e) => {
         settings = e.payload;
@@ -276,7 +323,7 @@
 </script>
 
 <div class="stage" bind:clientWidth={viewWidth} bind:clientHeight={viewHeight}>
-  {#each patches as { area, patch: p }, i (i)}
+  {#each patches as { look, patch: p }, i (i)}
     <!-- The cover hides the original line with the color around it... -->
     <div
       class="cover"
@@ -290,14 +337,14 @@
     <!-- ...and the translation takes its place: same size, baseline and alignment -->
     <div
       class="line"
-      class:upper={area.caps === "upper"}
-      class:small-caps={area.caps === "smallCaps"}
+      class:upper={look.caps === "upper"}
+      class:small-caps={look.caps === "smallCaps"}
       style:left="{p.textLeft}px"
       style:top="{p.textTop}px"
       style:height="{p.lineHeight}px"
       style:line-height="{p.lineHeight}px"
       style:font-size="{p.fontPx}px"
-      style:font-family={cssFamily(area.font)}
+      style:font-family={cssFamily(look.font)}
       style:color={p.textColor}
     >
       {p.text}

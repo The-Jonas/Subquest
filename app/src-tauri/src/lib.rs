@@ -7,6 +7,7 @@ mod font_detect;
 mod fonts;
 mod overlay;
 mod settings;
+mod styles;
 mod translate;
 mod translation;
 
@@ -42,6 +43,7 @@ struct AppState {
     overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
     active_profile: Mutex<Option<String>>, // profile key of the game being translated (the overlay styles itself from it)
     font_finder: font_detect::FontFinder,   // fonts suggested for a game, waiting for the user's choice
+    styles: styles::StyleStore,             // text styles seen in each game, with their prints
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -80,9 +82,18 @@ struct OcrTextEvent {
 #[serde(rename_all = "camelCase")]
 struct OcrLineEvent {
     text: String,
-    rect: [i32; 4], // [x, y, width, height] inside the captured area
+    rect: [i32; 4], // [x, y, width, height] in window pixels
     box_color: String,
     text_color: String,
+    style: Option<String>, // id of the game's text style this line belongs to
+}
+
+/// Milliseconds since the Unix epoch (for "last seen" times).
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 /// Formats 0xRRGGBB as a CSS color.
@@ -137,18 +148,45 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
     } else {
         std::slice::from_raw_parts(e.lines, e.line_count as usize)
     };
-    let lines = raw_lines
+    let mut text = owned(e.utf8_text);
+    let meaningful = similar::meaningful(&text);
+
+    // Text styles: each line is matched against the game's styles; a new one
+    // gets its print taken from the area's pixels (only valid right now).
+    let found: Vec<(u32, [i32; 4], String)> = raw_lines
         .iter()
-        .map(|l| OcrLineEvent {
-            text: owned(l.utf8_text),
-            rect: [l.rect.x, l.rect.y, l.rect.width, l.rect.height],
+        .map(|l| (l.text_rgb, [l.rect.x, l.rect.y, l.rect.width, l.rect.height], owned(l.utf8_text)))
+        .collect();
+    let style_ids = if meaningful {
+        let image = (!e.image_bgra.is_null() && e.image_stride > 0).then(|| styles::AreaImage {
+            bgra: std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize),
+            x: e.image_x,
+            y: e.image_y,
+            width: e.image_width,
+            height: e.image_height,
+            stride: e.image_stride,
+        });
+        let state = app.state::<AppState>();
+        let (ids, changed) = state.styles.observe_lines(&found, e.area_index, image.as_ref(), now_ms());
+        if changed {
+            let _ = app.emit("styles-changed", ());
+        }
+        ids
+    } else {
+        Vec::new()
+    };
+    let mut lines: Vec<OcrLineEvent> = found
+        .into_iter()
+        .zip(raw_lines)
+        .enumerate()
+        .map(|(i, ((_, rect, text), l))| OcrLineEvent {
+            text,
+            rect,
             box_color: css_color(l.background_rgb),
             text_color: css_color(l.text_rgb),
+            style: style_ids.get(i).cloned().flatten(),
         })
         .collect();
-    let mut text = owned(e.utf8_text);
-    let mut lines = lines;
-    let meaningful = similar::meaningful(&text);
     if !meaningful {
         // The text left the screen (or only stray marks are left): tell the UI, translate nothing.
         text.clear();
@@ -252,6 +290,7 @@ async fn start_session(
     *state.active_profile.lock().unwrap() = Some(profile_key.clone());
     let _ = app.emit("session-started", profile_key.clone()); // the overlay loads this game's look
     state.translation.reset_context();
+    state.styles.open(&profile_key);
     start_core(&app, &state, window_handle, &profile_key)?;
     *state.session_window.lock().unwrap() = Some(window_handle);
     tauri::async_runtime::spawn(translation::keep_warm(app.clone(), window_handle));
@@ -280,13 +319,21 @@ async fn apply_areas(app: AppHandle, state: State<'_, AppState>) -> Result<(), A
     start_core(&app, &state, window_handle, &profile_key)
 }
 
-/// Stops the session and hides the overlay.
-#[tauri::command]
-async fn stop_session(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
-    overlay::close(&app);
+/// Ends the session: hides the overlay, saves what was learned (cache, styles)
+/// and stops the core. Used by the Stop button and when the game closes.
+pub(crate) fn end_session(app: &AppHandle) -> Result<(), AppError> {
+    let state = app.state::<AppState>();
+    overlay::close(app);
     *state.session_window.lock().unwrap() = None;
     state.translation.save_cache();
+    state.styles.flush();
     stop_core(&state)
+}
+
+/// Stops the session and hides the overlay.
+#[tauri::command]
+async fn stop_session(app: AppHandle) -> Result<(), AppError> {
+    end_session(&app)
 }
 
 /// Preview callback (capture thread): packs [width, height, source width,
@@ -472,6 +519,71 @@ fn keep_candidate_font(state: State<'_, AppState>, file: String) -> Result<fonts
     fonts::import(&state.data_dir, &file, &bytes)
 }
 
+/// Text styles seen in a game, with their chosen and automatic fonts.
+#[tauri::command]
+fn list_styles(state: State<'_, AppState>, profile_key: String) -> Vec<styles::TextStyle> {
+    state.styles.list(&profile_key)
+}
+
+/// PNG of a style's print (the line as the game drew it).
+#[tauri::command]
+fn style_print(
+    state: State<'_, AppState>,
+    profile_key: String,
+    id: String,
+) -> Result<tauri::ipc::Response, AppError> {
+    std::fs::read(state.styles.print_path(&profile_key, &id))
+        .map(tauri::ipc::Response::new)
+        .map_err(|e| AppError::other(e.to_string()))
+}
+
+/// Changes a style: the font the user chose (`font`, `caps`), the closest
+/// installed font found by the app (`auto_font`), or marks it as seen.
+/// Fields left out stay as they are. The overlay restyles itself right away.
+#[tauri::command]
+fn update_style(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile_key: String,
+    id: String,
+    font: Option<String>,
+    caps: Option<String>,
+    auto_font: Option<String>,
+) -> Result<(), AppError> {
+    state.styles.update(&profile_key, |book| {
+        if let Some(style) = book.styles.iter_mut().find(|s| s.id == id) {
+            if let Some(font) = font {
+                style.font = font;
+            }
+            if let Some(caps) = caps {
+                style.caps = caps;
+            }
+            if let Some(auto_font) = auto_font {
+                style.auto_font = auto_font;
+            }
+        }
+    })?;
+    let _ = app.emit("styles-changed", ());
+    Ok(())
+}
+
+/// Marks every style of a game as seen (the Styles screen was opened).
+#[tauri::command]
+fn mark_styles_seen(app: AppHandle, state: State<'_, AppState>, profile_key: String) -> Result<(), AppError> {
+    state.styles.update(&profile_key, |book| book.styles.iter_mut().for_each(|s| s.new = false))?;
+    let _ = app.emit("styles-changed", ());
+    Ok(())
+}
+
+/// Forgets a style and its print (it comes back if the game shows it again).
+#[tauri::command]
+fn remove_style(app: AppHandle, state: State<'_, AppState>, profile_key: String, id: String) -> Result<(), AppError> {
+    state.styles.update(&profile_key, |book| book.styles.retain(|s| s.id != id))?;
+    let _ = std::fs::remove_file(state.styles.print_path(&profile_key, &id));
+    let _ = app.emit("styles-changed", ());
+    Ok(())
+}
+
 /// Decodes "%20"-style escapes (enough for file names sent by encodeURIComponent).
 fn percent_decode(text: &str) -> String {
     let bytes = text.as_bytes();
@@ -567,6 +679,7 @@ pub fn run() {
                 translation: TranslationState::new(&data_dir),
                 overlay_running: Mutex::new(None),
                 font_finder: font_detect::FontFinder::default(),
+                styles: styles::StyleStore::new(&data_dir),
                 active_profile: Mutex::new(None),
             });
             Ok(())
@@ -589,6 +702,11 @@ pub fn run() {
             detect_font,
             candidate_font,
             keep_candidate_font,
+            list_styles,
+            style_print,
+            update_style,
+            mark_styles_seen,
+            remove_style,
             get_settings,
             save_settings
         ])
@@ -598,6 +716,7 @@ pub fn run() {
             // Closing the app also saves what was translated this time.
             if let tauri::RunEvent::Exit = event {
                 app.state::<AppState>().translation.save_cache();
+                app.state::<AppState>().styles.flush();
             }
         });
 }

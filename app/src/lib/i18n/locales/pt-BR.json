@@ -5,7 +5,8 @@
     "settings": "Ajustes",
     "tutorial": "Tutorial",
     "fonts": "Fontes",
-    "history": "Histórico"
+    "history": "Histórico",
+    "styles": "Estilos"
   },
   "core": {
     "ok": "Núcleo pronto",
@@ -235,5 +236,21 @@
     "nothingMatches": "Nenhuma fala com esse filtro.",
     "empty": "Nenhuma fala ainda. Comece a traduzir um jogo e tudo o que aparecer fica guardado aqui.",
     "missedBadge": "Falas que passaram antes da tradução ficar pronta"
+  },
+  "styles": {
+    "title": "Estilos do jogo",
+    "intro": "Cada jeito que o jogo escreve (menus, falas, nomes, músicas) aparece aqui com um print da linha original. O Subquest já escolhe a fonte instalada mais parecida; troque quando quiser.",
+    "empty": "Nenhum estilo ainda. Eles aparecem sozinhos enquanto um jogo é traduzido.",
+    "size": "{px} px de altura",
+    "seen": "visto {count}×",
+    "new": "Novo",
+    "chosen": "Fonte escolhida: {font}",
+    "auto": "Fonte instalada mais parecida: {font} (automática)",
+    "matching": "Procurando a fonte instalada mais parecida…",
+    "search": "Procurar no Google Fonts",
+    "searchTitle": "Fontes parecidas no Google Fonts",
+    "searchHelp": "O modelo olha o print deste estilo e sugere fontes; a escolhida vale só para este estilo.",
+    "forget": "Esquecer",
+    "newBadge": "Estilos novos encontrados no jogo"
   }
 }

@@ -3,13 +3,16 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Play from "./lib/screens/Play.svelte";
   import History from "./lib/screens/History.svelte";
+  import Styles from "./lib/screens/Styles.svelte";
   import Profiles from "./lib/screens/Profiles.svelte";
   import Fonts from "./lib/screens/Fonts.svelte";
   import Settings from "./lib/screens/Settings.svelte";
   import Tutorial from "./lib/screens/Tutorial.svelte";
   import { app, boot } from "./lib/stores/app.svelte";
+  import { watchSession } from "./lib/stores/session.svelte";
 
   boot();
+  watchSession(); // a game that closes ends its session on its own
 </script>
 
 <div class="shell">
@@ -20,6 +23,8 @@
         <Play />
       {:else if app.screen === "history"}
         <History />
+      {:else if app.screen === "styles"}
+        <Styles />
       {:else if app.screen === "profiles"}
         <Profiles />
       {:else if app.screen === "fonts"}

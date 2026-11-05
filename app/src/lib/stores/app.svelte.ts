@@ -1,8 +1,9 @@
 // Global UI state: settings and which screen is open.
 import { getSettings, saveSettings, defaultSettings, coreStatus, type Settings, type CoreStatus } from "../api";
 import { setLocale, type Locale } from "../i18n/index.svelte";
+import { watchStyles } from "./styles.svelte";
 
-export type Screen = "play" | "history" | "profiles" | "fonts" | "settings" | "tutorial";
+export type Screen = "play" | "history" | "styles" | "profiles" | "fonts" | "settings" | "tutorial";
 
 export const app = $state({
   screen: "play" as Screen,
@@ -19,6 +20,7 @@ export async function boot() {
   setLocale(settings.uiLanguage as Locale);
   if (!settings.tutorialDone) app.screen = "tutorial";
   app.ready = true;
+  void watchStyles();
 }
 
 // Saves the current settings and applies the UI language.

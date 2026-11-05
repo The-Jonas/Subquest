@@ -117,6 +117,7 @@ void Pipeline::ocr_loop() {
         result.area_index = uint32_t(area);
         result.frame_width = frame.source_width > 0 ? frame.source_width : frame.width;
         result.frame_height = frame.source_height > 0 ? frame.source_height : frame.height;
+        result.image = &frame; // lets the app cut a picture of a line (new text styles)
         if (on_text_) on_text_(result);
     }
 }

@@ -92,7 +92,11 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
         }
         const SqOcrEvent event{r.full_text.c_str(), lines.data(), uint32_t(lines.size()), r.frame_id,
                                r.area_index, r.elapsed_ms, r.total_ms, r.frame_width, r.frame_height,
-                               r.background_rgb, r.text_rgb};
+                               r.background_rgb, r.text_rgb,
+                               r.image ? r.image->bgra.data() : nullptr,
+                               r.image ? r.image->origin_x : 0, r.image ? r.image->origin_y : 0,
+                               r.image ? r.image->width : 0, r.image ? r.image->height : 0,
+                               r.image ? r.image->stride : 0};
         callback(&event, user_data);
     });
     switch (result) {

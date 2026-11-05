@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 8;
+pub const EXPECTED_API_VERSION: u32 = 9;
 pub const MAX_AREAS: usize = 16; // SQ_MAX_AREAS
 
 #[repr(C)]
@@ -57,6 +57,12 @@ pub struct SqOcrEvent {
     pub frame_height: i32,
     pub background_rgb: u32,
     pub text_rgb: u32,
+    pub image_bgra: *const u8, // area pixels, valid only during the callback
+    pub image_x: i32,          // area's top-left in window pixels
+    pub image_y: i32,
+    pub image_width: i32,
+    pub image_height: i32,
+    pub image_stride: i32,
 }
 
 pub type SqTextCallback = unsafe extern "C" fn(*const SqOcrEvent, *mut c_void);

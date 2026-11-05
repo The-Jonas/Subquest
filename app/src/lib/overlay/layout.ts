@@ -27,6 +27,7 @@ export type Measure = (text: string, px: number) => Metrics;
 // One translated line: a cover that hides the original and the text on top.
 export interface Patch {
   text: string;
+  style: string | null; // the original line's text style (decides the font)
   cover: { left: number; top: number; width: number; height: number }; // px
   textLeft: number; // px
   textTop: number; // px: top of the line box (baseline = textTop + fontAscent)
@@ -70,6 +71,30 @@ function sameBlock(a: Region, b: Region): boolean {
   return overlap > 0 && gap < 2 * Math.max(a[3], b[3]);
 }
 
+// Key names games draw as button icons at the start of a line.
+const KEY_NAMES = /^(LB|RB|LT|RT|L1|R1|L2|R2|ESC|TAB|SPACE|SHIFT|CTRL|ALT|ENTER)$/i;
+
+// A button icon at the start of a line ("E CLEAN?", "[F] Open", "LB Back"),
+// which must stay visible. A lone letter only counts when the next word is in
+// capitals, so the "A" of "A storm is coming" (or "A NEW DAY") is left alone. Returns the key
+// as read and the rest of the line, or null.
+export function splitKeycap(text: string): { key: string; rest: string } | null {
+  const match = /^(\S+)\s+(\S.*)$/s.exec(text.trim());
+  if (!match) return null;
+  const [, first, rest] = match;
+  const bare = first.replace(/^[[(<]|[\])>]$/g, "");
+  const bracketed = bare !== first && /^[A-Z0-9]{1,5}$/i.test(bare);
+  // "A" and "I" are also words: as keys they come before a single word ("A CONFIRM").
+  const word = /^[AI]$/.test(bare) && rest.trim().split(/\s+/).length > 1;
+  const letter = /^[A-Z0-9]$/.test(bare) && /^[A-ZÀ-Ý]{2,}/.test(rest) && !word;
+  return bracketed || letter || KEY_NAMES.test(bare) ? { key: first, rest } : null;
+}
+
+// The translation without the key the model may have copied at its start.
+function dropKey(translation: string, key: string): string {
+  return translation.startsWith(key + " ") ? translation.slice(key.length + 1).trimStart() : translation;
+}
+
 // Groups lines into blocks (a menu, a paragraph): indices of each group.
 export function blocks(rects: Region[]): number[][] {
   const parent = rects.map((_, i) => i);
@@ -94,14 +119,14 @@ export function detectAlign(rects: Region[], single: Align): Align {
   return center <= right ? "center" : "right";
 }
 
-// Builds the patches. `measure(text, px)` gives the metrics of a text in the
-// area's font (with its letter case applied); `single` is the alignment of a
-// line that has no neighbours.
+// Builds the patches. `measureFor(line)` gives the measuring function of the
+// font that line will be drawn in (each text style can have its own);
+// `single` is the alignment of a line that has no neighbours.
 export function layout(
   pairs: { line: OcrLine; text: string }[],
   frame: { width: number; height: number },
   view: { width: number; height: number },
-  measure: Measure,
+  measureFor: (line: OcrLine) => Measure,
   single: Align = "left",
 ): Patch[] {
   const scale = view.height / frame.height; // CSS px per capture px
@@ -115,7 +140,19 @@ export function layout(
   const patches: Patch[] = [];
   pairs.forEach(({ line, text }, i) => {
     if (!text) return;
-    const [x, y, w, h] = line.rect.map((v) => v * scale);
+    const measure = measureFor(line);
+    let [x, y, w, h] = line.rect.map((v) => v * scale);
+
+    // A button icon at the start stays visible: the patch starts after it.
+    const keycap = splitKeycap(line.text);
+    if (keycap) {
+      const whole = measure(line.text, 100).width;
+      const skip = whole > 0 ? (measure(keycap.key + " ", 100).width / whole) * w : 0;
+      x += skip;
+      w -= skip;
+      text = dropKey(text, keycap.key);
+      line = { ...line, text: keycap.rest };
+    }
 
     // Size: the original line, in this font, must be as tall as its OCR box.
     const probe = measure(line.text || text, 100);
@@ -148,6 +185,7 @@ export function layout(
 
     patches.push({
       text,
+      style: line.style ?? null,
       cover: { left: coverLeft, top: coverTop, width: coverRight - coverLeft, height: coverBottom - coverTop },
       textLeft: left,
       textTop: baseline - m.fontAscent,

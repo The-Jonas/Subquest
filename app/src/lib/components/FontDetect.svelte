@@ -14,7 +14,19 @@
     snapshot,
     value = $bindable(""),
     caps = $bindable<LetterCase>(""),
-  }: { snapshot: () => Promise<Blob>; value?: string; caps?: LetterCase } = $props();
+    title = "",
+    help = "",
+    showCrop = true,
+    onchoose,
+  }: {
+    snapshot: () => Promise<Blob>;
+    value?: string;
+    caps?: LetterCase;
+    title?: string; // replaces the default heading
+    help?: string; // replaces the default explanation
+    showCrop?: boolean; // false when the picture is already shown next to it
+    onchoose?: (value: string, caps: LetterCase) => void; // a suggestion was kept
+  } = $props();
 
   const cases: LetterCase[] = ["", "upper", "smallCaps"];
 
@@ -62,6 +74,7 @@
       const font = await keepCandidateFont(file);
       await loadImportedFont(font.file).catch(() => {});
       value = importedOption(font).value;
+      onchoose?.(value, caps);
     } catch (e) {
       error = t(`errors.${errorKind(e)}`);
     } finally {
@@ -77,8 +90,8 @@
 <section class="detect">
   <header>
     <div>
-      <h3>{t("fonts.detect.title")}</h3>
-      <p class="help">{t("fonts.detect.help")}</p>
+      <h3>{title || t("fonts.detect.title")}</h3>
+      <p class="help">{help || t("fonts.detect.help")}</p>
     </div>
     <button class="btn btn-ghost" onclick={detect} disabled={busy}>
       {result ? t("fonts.detect.again") : t("fonts.detect.button")}
@@ -92,8 +105,10 @@
   {#if result}
     <!-- The game's own pixels first, then each candidate writing the same line -->
     <div class="reference">
-      {#if crop}
+      {#if crop && showCrop}
         <img class="crop" src={crop} alt="" />
+      {:else}
+        <span></span>
       {/if}
       <label class="case">
         <span>{t("fonts.detect.case")}</span>

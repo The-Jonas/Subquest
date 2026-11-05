@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 8u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 9u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -76,6 +76,15 @@ typedef struct SqOcrEvent {
     int32_t frame_height;
     uint32_t background_rgb; /* whole area: box color (0xRRGGBB) */
     uint32_t text_rgb;       /* whole area: text color (0xRRGGBB) */
+    /* The area's pixels (BGRA, rows `image_stride` bytes apart), so the app can
+     * keep a picture of a line. (image_x, image_y) is the area's top-left in
+     * window pixels, like the line boxes. Valid only during the callback. */
+    const uint8_t* image_bgra;
+    int32_t image_x;
+    int32_t image_y;
+    int32_t image_width;
+    int32_t image_height;
+    int32_t image_stride;
 } SqOcrEvent;
 
 /* Called on the OCR thread when an area shows NEW text, and once with empty

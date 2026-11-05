@@ -48,6 +48,7 @@ struct OcrResult {
     int32_t frame_height = 0;
     uint32_t background_rgb = 0x000000; // dialogue box color (0xRRGGBB), sampled from the frame
     uint32_t text_rgb = 0xFFFFFF;       // text color (0xRRGGBB), sampled from the letters
+    const Frame* image = nullptr;       // the area's pixels; valid only during the text callback
 };
 
 } // namespace subquest

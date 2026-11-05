@@ -94,9 +94,85 @@ export interface OcrTextEvent {
 // One recognized line, with its place and its own colors.
 export interface OcrLine {
   text: string;
-  rect: Region; // [x, y, width, height] inside the captured area
+  rect: Region; // [x, y, width, height] in window pixels
   boxColor: string; // color right around the line
   textColor: string; // color of the line's letters
+  style?: string | null; // id of the game's text style this line belongs to
+}
+
+// One way a game writes text (mirrors TextStyle in styles.rs).
+export interface TextStyle {
+  id: string;
+  textRgb: number; // 0xRRGGBB
+  height: number; // line height in window pixels
+  sample: string; // the printed line
+  area: number;
+  seen: number;
+  lastSeen: number;
+  font: string; // chosen by the user ("" = not chosen)
+  caps: LetterCase;
+  autoFont: string; // closest installed font found by the app
+  new: boolean; // not yet seen in the Styles screen
+}
+
+// Browser mode: two made-up styles, with prints drawn on the fly.
+const browserStyles: TextStyle[] = [
+  { id: "s1", textRgb: 0xe9e4d6, height: 34, sample: "You came back. Of course you did.", area: 0, seen: 12, lastSeen: 0, font: "", caps: "", autoFont: "", new: true },
+  { id: "s2", textRgb: 0xf2c14e, height: 26, sample: "MELINOË", area: 0, seen: 4, lastSeen: 0, font: "", caps: "", autoFont: "", new: true },
+];
+
+// A game's text styles.
+export async function listStyles(profileKey: string): Promise<TextStyle[]> {
+  if (!inTauri) return structuredClone(browserStyles);
+  return invoke("list_styles", { profileKey });
+}
+
+// PNG of a style's print (the line as the game drew it).
+export async function stylePrint(profileKey: string, id: string): Promise<Blob> {
+  if (!inTauri) {
+    const s = browserStyles.find((x) => x.id === id)!;
+    const canvas = document.createElement("canvas");
+    canvas.width = 560;
+    canvas.height = Math.round(s.height * 1.8);
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#14181f";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#" + s.textRgb.toString(16).padStart(6, "0");
+    ctx.font = `${s.height}px Georgia`;
+    ctx.fillText(s.sample, 12, s.height * 1.25);
+    return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
+  }
+  const bytes: ArrayBuffer = await invoke("style_print", { profileKey, id });
+  return new Blob([bytes], { type: "image/png" });
+}
+
+// Changes a style: chosen font and case, or the automatic font. Left-out fields stay.
+export async function updateStyle(
+  profileKey: string,
+  id: string,
+  change: { font?: string; caps?: LetterCase; autoFont?: string },
+) {
+  if (!inTauri) {
+    const s = browserStyles.find((x) => x.id === id);
+    if (s) Object.assign(s, change);
+    return;
+  }
+  await invoke("update_style", { profileKey, id, ...change });
+}
+
+// Marks a game's styles as seen (clears the "new" badge).
+export async function markStylesSeen(profileKey: string) {
+  if (!inTauri) {
+    browserStyles.forEach((s) => (s.new = false));
+    return;
+  }
+  await invoke("mark_styles_seen", { profileKey });
+}
+
+// Forgets a style and its print.
+export async function removeStyle(profileKey: string, id: string) {
+  if (!inTauri) return;
+  await invoke("remove_style", { profileKey, id });
 }
 
 // True when the page runs inside the Tauri app.

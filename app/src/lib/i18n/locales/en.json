@@ -5,7 +5,8 @@
     "settings": "Settings",
     "tutorial": "Tutorial",
     "fonts": "Fonts",
-    "history": "History"
+    "history": "History",
+    "styles": "Styles"
   },
   "core": {
     "ok": "Core ready",
@@ -235,5 +236,21 @@
     "nothingMatches": "No lines match this filter.",
     "empty": "No lines yet. Start translating a game and everything that shows up is kept here.",
     "missedBadge": "Lines that passed before their translation was ready"
+  },
+  "styles": {
+    "title": "Game styles",
+    "intro": "Every way the game writes (menus, dialogue, names, songs) shows up here with a print of the original line. Subquest already picks the closest installed font; change it whenever you like.",
+    "empty": "No styles yet. They show up on their own while a game is being translated.",
+    "size": "{px} px tall",
+    "seen": "seen {count}×",
+    "new": "New",
+    "chosen": "Chosen font: {font}",
+    "auto": "Closest installed font: {font} (automatic)",
+    "matching": "Looking for the closest installed font…",
+    "search": "Search Google Fonts",
+    "searchTitle": "Similar fonts on Google Fonts",
+    "searchHelp": "The model looks at this style's print and suggests fonts; the one you keep applies to this style only.",
+    "forget": "Forget",
+    "newBadge": "New styles found in the game"
   }
 }

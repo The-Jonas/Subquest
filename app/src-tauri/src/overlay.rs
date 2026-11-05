@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tauri::{
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
 
@@ -22,7 +22,7 @@ use crate::AppState;
 
 pub const LABEL: &str = "overlay";
 const FOLLOW_INTERVAL: Duration = Duration::from_millis(250); // how often the game's position is checked
-const MISSES_BEFORE_HIDING: u32 = 3; // failed position reads in a row before the overlay hides
+const MISSES_BEFORE_ENDING: u32 = 2; // failed position reads in a row = the game closed (~0.5 s)
 
 /// WebView2 flags, the same for BOTH windows (WebView2 refuses two windows of
 /// one app with different flags). The first three disabled features are wry's
@@ -100,6 +100,31 @@ fn raise(overlay: &WebviewWindow) {
 #[cfg(not(windows))]
 fn raise(_overlay: &WebviewWindow) {}
 
+/// True when the window in front belongs to the game or to Subquest itself.
+/// Compared by process, so the game's own popups and Subquest's windows
+/// (main, overlay) count too.
+#[cfg(windows)]
+fn game_or_us_in_front(game: u64) -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+    // SAFETY: plain queries on window handles; a stale handle just gives process 0.
+    unsafe {
+        let front = GetForegroundWindow();
+        if front.is_null() {
+            return true; // nothing in front (e.g. switching desktops): don't blink
+        }
+        let mut front_pid = 0u32;
+        let mut game_pid = 0u32;
+        GetWindowThreadProcessId(front, &mut front_pid);
+        GetWindowThreadProcessId(game as usize as _, &mut game_pid);
+        front_pid == std::process::id() || (game_pid != 0 && front_pid == game_pid)
+    }
+}
+
+#[cfg(not(windows))]
+fn game_or_us_in_front(_game: u64) -> bool {
+    true
+}
+
 /// Shows the overlay over the game and starts following the game window.
 /// Any previous follow loop is stopped first.
 pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
@@ -128,11 +153,19 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                         let _ = overlay.set_size(PhysicalSize::new(place.2, place.3));
                         last = Some(place);
                     }
-                    if !visible {
+                    // Only over the game: Alt+Tab to a browser hides the
+                    // translation; the game or Subquest in front shows it.
+                    let wanted = game_or_us_in_front(game);
+                    if wanted && !visible {
                         let _ = overlay.show();
                         visible = true;
+                    } else if !wanted && visible {
+                        let _ = overlay.hide();
+                        visible = false;
                     }
-                    raise(&overlay);
+                    if visible {
+                        raise(&overlay);
+                    }
                 }
                 Ok((_, true)) => {
                     // Minimized: get out of the way until it comes back.
@@ -142,12 +175,14 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                     }
                 }
                 Err(_) => {
-                    // Closed, or a read that failed once: only a few misses in a row
-                    // hide it, so a hiccup doesn't make the overlay blink.
+                    // The game's window is gone (a single failed read could be a
+                    // hiccup, so it takes two in a row): end the whole session,
+                    // so nothing keeps capturing or translating, and tell the UI.
                     misses += 1;
-                    if visible && misses >= MISSES_BEFORE_HIDING {
-                        let _ = overlay.hide();
-                        visible = false;
+                    if misses >= MISSES_BEFORE_ENDING {
+                        let _ = crate::end_session(&app);
+                        let _ = app.emit("session-ended", ());
+                        break;
                     }
                 }
             }
