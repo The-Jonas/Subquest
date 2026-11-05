@@ -1,5 +1,5 @@
-//! The overlay: a second, transparent app window that sits on top of the game
-//! and shows the latest translation.
+//! The overlay: a second, transparent app window that sits on top of the whole
+//! game window and shows the latest translation of every area.
 //!
 //! It is created with `focusable(false)` (WS_EX_NOACTIVATE: clicking or showing
 //! it never takes focus from the game) and ignores the mouse, so clicks go
@@ -26,33 +26,16 @@ const FOLLOW_INTERVAL: Duration = Duration::from_millis(250); // how often the g
 /// Where the overlay goes, in screen pixels: [x, y, width, height].
 pub type Placement = (i32, i32, u32, u32);
 
-/// Overlay placement for a game window. With a dialogue area, the overlay
-/// covers exactly that area. Without one, it covers the whole window when
-/// translations are drawn in place (`in_place`), or is a subtitle band near
-/// the bottom otherwise. The overlay always matches the captured area exactly,
-/// so line positions from the OCR map 1:1 onto it.
-pub fn placement(window: SqRect, region: Option<SqRect>, in_place: bool) -> Placement {
-    if let Some(r) = region.filter(|r| r.width > 0 && r.height > 0) {
-        return (
-            window.x + r.x,
-            window.y + r.y,
-            r.width as u32,
-            r.height as u32,
-        );
-    }
-    if in_place {
-        return (
-            window.x,
-            window.y,
-            window.width.max(1) as u32,
-            window.height.max(1) as u32,
-        );
-    }
-    let width = window.width * 7 / 10;
-    let height = (window.height * 22 / 100).max(80);
-    let x = window.x + (window.width - width) / 2;
-    let y = window.y + window.height - height - window.height * 4 / 100;
-    (x, y, width.max(1) as u32, height as u32)
+/// Overlay placement for a game window: always the whole window, in screen
+/// pixels. Every area's lines come in window pixels, so they map 1:1 onto it;
+/// classic subtitle boxes are drawn inside it, at their own area.
+pub fn placement(window: SqRect) -> Placement {
+    (
+        window.x,
+        window.y,
+        window.width.max(1) as u32,
+        window.height.max(1) as u32,
+    )
 }
 
 /// Returns the overlay window, creating it (hidden) the first time.
@@ -81,12 +64,7 @@ fn window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
 
 /// Shows the overlay over the game and starts following the game window.
 /// Any previous follow loop is stopped first.
-pub fn open(
-    app: &AppHandle,
-    game: u64,
-    region: Option<SqRect>,
-    in_place: bool,
-) -> Result<(), AppError> {
+pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
     close(app);
     let overlay = window(app)?;
     let running = Arc::new(AtomicBool::new(true));
@@ -104,7 +82,7 @@ pub fn open(
             };
             match bounds {
                 Ok((rect, false)) => {
-                    let place = placement(rect, region, in_place);
+                    let place = placement(rect);
                     if last != Some(place) {
                         let _ = overlay.set_position(PhysicalPosition::new(place.0, place.1));
                         let _ = overlay.set_size(PhysicalSize::new(place.2, place.3));
@@ -150,40 +128,14 @@ pub fn close(app: &AppHandle) {
 mod tests {
     use super::*;
 
-    fn game() -> SqRect {
-        SqRect {
+    #[test]
+    fn covers_the_whole_game_window() {
+        let game = SqRect {
             x: 100,
             y: 50,
             width: 1920,
             height: 1080,
-        }
-    }
-
-    #[test]
-    fn covers_the_dialogue_area_in_screen_coordinates() {
-        let area = SqRect {
-            x: 300,
-            y: 820,
-            width: 1200,
-            height: 200,
         };
-        assert_eq!(placement(game(), Some(area), true), (400, 870, 1200, 200));
-        assert_eq!(placement(game(), Some(area), false), (400, 870, 1200, 200));
-    }
-
-    #[test]
-    fn without_an_area_in_place_covers_the_whole_window() {
-        assert_eq!(placement(game(), None, true), (100, 50, 1920, 1080));
-    }
-
-    #[test]
-    fn without_an_area_classic_is_a_band_at_the_bottom() {
-        let (x, y, w, h) = placement(game(), None, false);
-        assert_eq!((w, h), (1344, 237));
-        assert_eq!(x, 100 + (1920 - 1344) / 2);
-        assert!(
-            y + h as i32 <= 50 + 1080,
-            "band must stay inside the window"
-        );
+        assert_eq!(placement(game), (100, 50, 1920, 1080));
     }
 }

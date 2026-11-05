@@ -70,6 +70,7 @@ struct OcrTextEvent {
     frame_width: i32,   // captured area size: line boxes are in these pixels
     frame_height: i32,
     lines: Vec<OcrLineEvent>,
+    area: u32,            // index of the profile area this text came from
     same_as: Option<u64>, // this is that earlier line read again: keep its translation
 }
 
@@ -152,7 +153,7 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
         text.clear();
         lines = Vec::new();
     }
-    let plan = meaningful.then(|| app.state::<AppState>().translation.plan(&text, e.frame_id));
+    let plan = meaningful.then(|| app.state::<AppState>().translation.plan(&text, e.frame_id, e.area_index));
     let same_as = match &plan {
         Some(translation::Plan::Reuse { of, .. }) => Some(*of),
         _ => None,
@@ -169,6 +170,7 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
             frame_width: e.frame_width,
             frame_height: e.frame_height,
             lines,
+            area: e.area_index,
             same_as,
         },
     );
@@ -178,34 +180,53 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
     }
 }
 
-/// Starts translating the chosen window, in the chosen region.
+/// Screen areas of a profile as the core wants them: a marked rectangle, or an
+/// empty one for "whole window". No profile (or no areas) = the whole window.
+fn session_areas(profile: Option<&settings::GameProfile>) -> Vec<SqRect> {
+    let mut areas: Vec<SqRect> = profile
+        .map(|p| p.areas.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .map(|a| match a.region {
+            Some([x, y, width, height]) if a.mode != "screen" => SqRect {
+                x,
+                y,
+                width,
+                height,
+            },
+            _ => SqRect::default(),
+        })
+        .take(core_ffi::MAX_AREAS)
+        .collect();
+    if areas.is_empty() {
+        areas.push(SqRect::default());
+    }
+    areas
+}
+
+/// Starts translating the chosen window, reading every area of its profile.
 #[tauri::command]
 async fn start_session(
     app: AppHandle,
     state: State<'_, AppState>,
     window_handle: u64,
-    region: Option<(i32, i32, i32, i32)>,
     profile_key: String,
 ) -> Result<(), AppError> {
     let core = core(&state)?;
+    let (language, areas) = {
+        let settings = state.settings.lock().unwrap();
+        let areas = session_areas(settings.profiles.get(&profile_key));
+        (settings.source_language.clone(), areas)
+    };
     *state.active_profile.lock().unwrap() = Some(profile_key.clone());
     let _ = app.emit("session-started", profile_key); // the overlay loads this game's look
-    let language = state.settings.lock().unwrap().source_language.clone();
     state.translation.reset_context();
-    let (x, y, width, height) = region.unwrap_or_default();
-
-    let area = SqRect {
-        x,
-        y,
-        width,
-        height,
-    };
 
     let mut slot = state.session_user_data.lock().unwrap();
     let user = Box::into_raw(Box::new(app.clone()));
     let result = core.start(
         window_handle,
-        area,
+        &areas,
         &language,
         on_ocr_text,
         user as *mut c_void,
@@ -218,19 +239,8 @@ async fn start_session(
     result?;
     drop(slot);
 
-    // In-place translations need the overlay over the whole captured area: the
-    // marked area, or the whole window when reading the whole screen.
-    let in_place = state
-        .active_profile
-        .lock()
-        .unwrap()
-        .as_ref()
-        .and_then(|key| state.settings.lock().unwrap().profiles.get(key).cloned())
-        .and_then(|p| p.areas.first().map(|a| a.style != "classic"))
-        .unwrap_or(true);
-
     // The session works even if the overlay fails; the translations still show in the app.
-    if let Err(e) = overlay::open(&app, window_handle, region.map(|_| area), in_place) {
+    if let Err(e) = overlay::open(&app, window_handle) {
         eprintln!("[subquest] overlay: {}", e.detail);
     }
     Ok(())
@@ -551,4 +561,32 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Subquest");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_areas_become_core_areas() {
+        let mut profile = settings::GameProfile::default();
+        let mut dialogue = settings::GameArea::default();
+        dialogue.region = Some([10, 20, 300, 80]);
+        let mut menu = settings::GameArea::default();
+        menu.mode = "screen".into();
+        menu.region = Some([1, 2, 3, 4]); // ignored: screen mode reads the whole window
+        profile.areas = vec![dialogue, menu];
+
+        let areas = session_areas(Some(&profile));
+        assert_eq!(areas.len(), 2);
+        assert_eq!((areas[0].x, areas[0].width), (10, 300));
+        assert_eq!(areas[1].width, 0);
+    }
+
+    #[test]
+    fn no_profile_reads_the_whole_window() {
+        let areas = session_areas(None);
+        assert_eq!(areas.len(), 1);
+        assert_eq!(areas[0].width, 0);
+    }
 }

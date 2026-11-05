@@ -12,7 +12,15 @@
     windowHandle,
     selectable = false,
     region = $bindable(null),
-  }: { windowHandle: number; selectable?: boolean; region?: Region | null } = $props();
+    label = "",
+    others = [],
+  }: {
+    windowHandle: number;
+    selectable?: boolean;
+    region?: Region | null;
+    label?: string; // number shown on the area being marked
+    others?: { region: Region | null; label: string }[]; // the game's other areas, shown dimmed
+  } = $props();
 
   const MAX_WIDTH = 1024; // preview width: big enough to mark the area precisely, light enough for 8 fps
   const FULL_WIDTH = 8192; // asks for frames at the window's real size (never upscaled)
@@ -184,7 +192,15 @@
     <canvas bind:this={canvas} aria-label={t("play.area.previewLabel")}></canvas>
     {#if selectable && shown && sourceWidth > 0}
       <div class="shade" style={shadeStyle(shown)}></div>
-      <div class="area" style={boxStyle(shown)}></div>
+      <div class="area" style={boxStyle(shown)}>{#if label}<span>{label}</span>{/if}</div>
+    {/if}
+    <!-- Drawn over the shade: the other areas stay readable while this one is marked -->
+    {#if sourceWidth > 0}
+      {#each others as o (o.label)}
+        {#if o.region}
+          <div class="area other" style={boxStyle(o.region)}><span>{o.label}</span></div>
+        {/if}
+      {/each}
     {/if}
   </div>
   {#if error}
@@ -250,6 +266,27 @@
     border: 2px solid var(--gold);
     border-radius: 3px;
     pointer-events: none;
+  }
+  /* Number tag in the corner, matching the area tabs above the preview */
+  .area span {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    min-width: 18px;
+    padding: 1px 5px;
+    border-radius: 3px 0 3px 0;
+    background: var(--gold);
+    color: var(--gold-ink);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+  }
+  /* The game's other areas: visible for reference, but quiet */
+  .area.other {
+    border: 1px dashed rgb(234 228 211 / 0.55);
+  }
+  .area.other span {
+    background: rgb(234 228 211 / 0.55);
   }
 
   figcaption {

@@ -66,4 +66,8 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(palette_test tests/palette_test.cpp)
     target_link_libraries(palette_test PRIVATE subquest_portable)
     add_test(NAME palette COMMAND palette_test)
+
+    add_executable(latest_slots_test tests/latest_slots_test.cpp)
+    target_link_libraries(latest_slots_test PRIVATE subquest_portable)
+    add_test(NAME latest_slots COMMAND latest_slots_test)
 endif()

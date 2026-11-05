@@ -27,7 +27,7 @@
       "choose": "Elegir"
     },
     "area": {
-      "question": "¿Dónde aparecen los diálogos?",
+      "question": "¿Dónde aparecen los textos?",
       "dialogue": "En un cuadro de diálogo",
       "dialogueHelp": "Más rápido y preciso. Marcas el área una vez y queda guardada en el perfil del juego.",
       "screen": "En cualquier parte de la pantalla",
@@ -37,7 +37,12 @@
       "previewWaiting": "Conectando con la ventana del juego…",
       "drag": "Arrastra sobre la imagen para marcar dónde aparecen los diálogos.",
       "clear": "Marcar de nuevo",
-      "wholeWindow": "Se leerá toda la ventana."
+      "wholeWindow": "Se leerá toda la ventana.",
+      "add": "Nueva área",
+      "defaultName": "Área {n}",
+      "name": "Nombre del área",
+      "namePlaceholder": "Ej.: Diálogo, Letra de la canción, Nombres",
+      "remove": "Quitar área"
     },
     "start": {
       "question": "Todo listo.",
@@ -69,7 +74,8 @@
       "classic": "Clásico",
       "classicHelp": "Cuadro oscuro con texto blanco, como un subtítulo de película."
     },
-    "sample": "Los mares reflejan su belleza radiante"
+    "sample": "Los mares reflejan su belleza radiante",
+    "areaCount": "{count} áreas"
   },
   "settings": {
     "title": "Ajustes",

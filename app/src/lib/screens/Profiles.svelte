@@ -62,14 +62,17 @@
   {:else}
     <ul>
       {#each entries as [key, profile] (key)}
-        {@const area = profile.areas[0]}
         <li class:open={open === key}>
           <div class="row">
             <div class="name">
               <strong>{profile.title}</strong>
               <span class="exe">{key}</span>
             </div>
-            <p class="where">{describe(area)}</p>
+            <p class="where">
+              {profile.areas.length > 1
+                ? t("profiles.areaCount", { count: String(profile.areas.length) })
+                : describe(profile.areas[0])}
+            </p>
             <div class="actions">
               <button class="btn btn-ghost" onclick={() => (open = open === key ? null : key)} aria-expanded={open === key}>
                 {t("profiles.look")}
@@ -78,9 +81,17 @@
             </div>
           </div>
 
-          {#if open === key && area}
+          {#if open === key}
+            {#each profile.areas as area, ai (ai)}
             <!-- Look of the translation in this area: font + style, with a live sample -->
             <div class="editor">
+              {#if profile.areas.length > 1}
+                <h3 class="area-title">
+                  <span class="num">{ai + 1}</span>
+                  {area.name.trim() || t("play.area.defaultName", { n: String(ai + 1) })}
+                  <small>{describe(area)}</small>
+                </h3>
+              {/if}
               <label class="field">
                 <span>{t("profiles.font")}</span>
                 <FontPicker
@@ -118,8 +129,9 @@
               >
                 {t("profiles.sample")}
               </figure>
-              {#if saved === key}<p class="ok" role="status">{t("settings.saved")}</p>{/if}
             </div>
+            {/each}
+            {#if saved === key}<p class="ok" role="status">{t("settings.saved")}</p>{/if}
           {/if}
         </li>
       {/each}
@@ -196,6 +208,29 @@
     display: grid;
     gap: 16px;
     padding: 4px 8px 20px;
+  }
+  /* One heading per area when a game has several, numbered like in Play */
+  .area-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    font-size: var(--text-md, 1rem);
+  }
+  .area-title .num {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--gold-ink);
+    font-size: 12px;
+  }
+  .area-title small {
+    color: var(--ink-faint);
+    font-weight: 400;
+    font-size: var(--text-sm);
   }
   .styles {
     display: grid;

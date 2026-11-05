@@ -67,9 +67,15 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     std::lock_guard lock(s.mutex);
     if (s.pipeline && s.pipeline->running()) return fail(SQ_ERR_ALREADY_RUNNING, "session already running");
 
+    if (config->area_count > SQ_MAX_AREAS || (config->area_count > 0 && !config->areas))
+        return fail(SQ_ERR_INVALID_ARG, "invalid areas");
+
     PipelineConfig pc;
     pc.window_handle = config->window_handle;
-    pc.region = {config->region.x, config->region.y, config->region.width, config->region.height};
+    for (uint32_t i = 0; i < config->area_count; ++i) {
+        const SqRect& a = config->areas[i];
+        pc.areas.push_back({a.x, a.y, a.width, a.height});
+    }
     pc.ocr_language = config->ocr_language;
     if (config->settle_frames > 0) pc.detector.settle_frames = config->settle_frames;
     if (config->change_threshold > 0.0f) pc.detector.change_threshold = config->change_threshold;
@@ -85,7 +91,7 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
                              l.text_rgb});
         }
         const SqOcrEvent event{r.full_text.c_str(), lines.data(), uint32_t(lines.size()), r.frame_id,
-                               r.elapsed_ms, r.total_ms, r.frame_width, r.frame_height,
+                               r.area_index, r.elapsed_ms, r.total_ms, r.frame_width, r.frame_height,
                                r.background_rgb, r.text_rgb};
         callback(&event, user_data);
     });

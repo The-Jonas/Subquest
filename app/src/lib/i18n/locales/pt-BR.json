@@ -27,7 +27,7 @@
       "choose": "Escolher"
     },
     "area": {
-      "question": "Onde aparecem as falas?",
+      "question": "Onde aparecem os textos?",
       "dialogue": "Numa caixa de diálogo",
       "dialogueHelp": "Mais rápido e mais preciso. Você marca a área uma vez e ela fica salva no perfil do jogo.",
       "screen": "Em qualquer lugar da tela",
@@ -37,7 +37,12 @@
       "previewWaiting": "Conectando à janela do jogo…",
       "drag": "Arraste sobre a imagem para marcar onde as falas aparecem.",
       "clear": "Marcar de novo",
-      "wholeWindow": "A janela inteira será lida."
+      "wholeWindow": "A janela inteira será lida.",
+      "add": "Nova área",
+      "defaultName": "Área {n}",
+      "name": "Nome da área",
+      "namePlaceholder": "Ex.: Diálogo, Letra da música, Nomes",
+      "remove": "Remover área"
     },
     "start": {
       "question": "Tudo pronto.",
@@ -69,7 +74,8 @@
       "classic": "Clássico",
       "classicHelp": "Caixa escura com texto branco, como uma legenda de filme."
     },
-    "sample": "Mares refletem sua beleza radiante"
+    "sample": "Mares refletem sua beleza radiante",
+    "areaCount": "{count} áreas"
   },
   "settings": {
     "title": "Ajustes",

@@ -27,7 +27,7 @@
       "choose": "Choose"
     },
     "area": {
-      "question": "Where does the dialogue appear?",
+      "question": "Where does the text show up?",
       "dialogue": "In a dialogue box",
       "dialogueHelp": "Faster and more accurate. Mark the area once and it is saved in the game's profile.",
       "screen": "Anywhere on screen",
@@ -37,7 +37,12 @@
       "previewWaiting": "Connecting to the game window…",
       "drag": "Drag over the image to mark where the dialogue appears.",
       "clear": "Mark again",
-      "wholeWindow": "The whole window will be read."
+      "wholeWindow": "The whole window will be read.",
+      "add": "New area",
+      "defaultName": "Area {n}",
+      "name": "Area name",
+      "namePlaceholder": "E.g. Dialogue, Song lyrics, Names",
+      "remove": "Remove area"
     },
     "start": {
       "question": "All set.",
@@ -69,7 +74,8 @@
       "classic": "Classic",
       "classicHelp": "Dark box with white text, like a movie subtitle."
     },
-    "sample": "Seas reflect her gleaming beauty"
+    "sample": "Seas reflect her gleaming beauty",
+    "areaCount": "{count} areas"
   },
   "settings": {
     "title": "Settings",

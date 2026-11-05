@@ -24,6 +24,10 @@ struct Frame {
     int32_t stride = 0;        // bytes per row (may be > width * 4 due to alignment)
     uint64_t id = 0;           // increasing counter, useful to measure latency
     uint64_t timestamp_us = 0; // capture time (monotonic clock)
+    int32_t origin_x = 0;      // where this crop starts in the window, in window pixels
+    int32_t origin_y = 0;
+    int32_t source_width = 0;  // whole window size (0 = same as width/height)
+    int32_t source_height = 0;
 };
 
 struct OcrLine {
@@ -37,6 +41,7 @@ struct OcrResult {
     std::vector<OcrLine> lines;
     std::string full_text;  // lines joined by '\n'
     uint64_t frame_id = 0;
+    uint32_t area_index = 0; // which of the session's areas this text came from
     double elapsed_ms = 0;  // time spent on recognition only
     double total_ms = 0;    // from frame capture until the text was ready
     int32_t frame_width = 0;  // size of the captured area, so line boxes can be scaled

@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 7u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 8u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -43,9 +43,12 @@ typedef struct SqRect {
     int32_t height;
 } SqRect;
 
+#define SQ_MAX_AREAS 16u /* most areas one session reads */
+
 typedef struct SqSessionConfig {
     uint64_t window_handle;      /* game HWND, cast to an integer */
-    SqRect region;               /* dialogue area; width/height = 0 => whole window */
+    const SqRect* areas;         /* screen areas to read; width/height = 0 => whole window */
+    uint32_t area_count;         /* 0 => one area, the whole window */
     const char* ocr_language;    /* tag BCP-47: "en", "ja", "zh-Hans", "ko" */
     uint32_t settle_frames;      /* identical frames in a row before running OCR (default 3) */
     float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
@@ -55,7 +58,7 @@ typedef struct SqSessionConfig {
  * draw its translation in the same place, size and colors. */
 typedef struct SqLine {
     const char* utf8_text;
-    SqRect box;              /* inside the captured area, in capture pixels */
+    SqRect box;              /* in window capture pixels (the whole window, not the area) */
     uint32_t background_rgb; /* color right around the line (0xRRGGBB) */
     uint32_t text_rgb;       /* color of the line's letters (0xRRGGBB) */
 } SqLine;
@@ -65,17 +68,18 @@ typedef struct SqOcrEvent {
     const char* utf8_text;   /* all lines joined by '\n' */
     const SqLine* lines;
     uint32_t line_count;
-    uint64_t frame_id;
+    uint64_t frame_id;       /* unique and increasing for every event */
+    uint32_t area_index;     /* index in SqSessionConfig.areas */
     double ocr_ms;           /* recognition only */
     double total_ms;         /* from frame capture until the text was ready */
-    int32_t frame_width;     /* size of the captured area, to scale line boxes */
+    int32_t frame_width;     /* size of the whole window in capture pixels, to scale line boxes */
     int32_t frame_height;
     uint32_t background_rgb; /* whole area: box color (0xRRGGBB) */
     uint32_t text_rgb;       /* whole area: text color (0xRRGGBB) */
 } SqOcrEvent;
 
-/* Called on the OCR thread when NEW text is recognized, and once with empty
-   text (utf8_text "" and line_count 0) when the text disappears. */
+/* Called on the OCR thread when an area shows NEW text, and once with empty
+   text (utf8_text "" and line_count 0) when that area's text disappears. */
 typedef void (*SqTextCallback)(const SqOcrEvent* event, void* user_data);
 
 /* Called for every preview frame: contiguous RGBA, width * height * 4 bytes.

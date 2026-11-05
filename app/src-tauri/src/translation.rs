@@ -5,7 +5,7 @@
 //! the newest line read slightly differently reuses that line's translation
 //! instead of starting another request.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -47,7 +47,7 @@ pub struct TranslationState {
     pub http: reqwest::Client, // one client, so connections get reused (lower latency)
     pub cache: Mutex<TranslationCache>,
     pub context: Mutex<VecDeque<ContextLine>>, // reset when a session starts
-    recent: Mutex<Option<Recent>>,             // newest line with its own translation
+    recent: Mutex<HashMap<u32, Recent>>,       // per area: newest line with its own translation
 }
 
 impl TranslationState {
@@ -57,22 +57,23 @@ impl TranslationState {
             http: reqwest::Client::new(),
             cache: Mutex::new(TranslationCache::new(CACHE_CAPACITY)),
             context: Mutex::new(VecDeque::new()),
-            recent: Mutex::new(None),
+            recent: Mutex::new(HashMap::new()),
         }
     }
 
     /// Forgets the previous game's lines; the cache stays (same lines, same answer).
     pub fn reset_context(&self) {
         self.context.lock().unwrap().clear();
-        *self.recent.lock().unwrap() = None;
+        self.recent.lock().unwrap().clear();
     }
 
     /// Decides whether a line needs its own translation or is the newest line
-    /// read again with small OCR differences. Runs on the OCR thread, so it's quick.
-    pub fn plan(&self, text: &str, frame_id: u64) -> Plan {
+    /// of the same area read again with small OCR differences. Runs on the OCR
+    /// thread, so it's quick.
+    pub fn plan(&self, text: &str, frame_id: u64, area: u32) -> Plan {
         let normalized = similar::normalize(text);
         let mut recent = self.recent.lock().unwrap();
-        if let Some(r) = recent.as_ref() {
+        if let Some(r) = recent.get(&area) {
             if similar::same_line(&r.normalized, &normalized) {
                 return Plan::Reuse {
                     of: r.frame_id,
@@ -81,11 +82,14 @@ impl TranslationState {
             }
         }
         let (sender, result) = watch::channel(None);
-        *recent = Some(Recent {
-            normalized,
-            frame_id,
-            result,
-        });
+        recent.insert(
+            area,
+            Recent {
+                normalized,
+                frame_id,
+                result,
+            },
+        );
         Plan::New(sender)
     }
 }

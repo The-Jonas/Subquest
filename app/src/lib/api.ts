@@ -80,9 +80,10 @@ export interface OcrTextEvent {
   totalMs: number; // from frame capture until the text was ready
   boxColor: string; // dialogue box color sampled from the game ("#rrggbb")
   textColor: string; // text color sampled from the game ("#rrggbb")
-  frameWidth: number; // captured area size: line rects are in these pixels
+  frameWidth: number; // whole game window size: line rects are in these pixels
   frameHeight: number;
-  lines: OcrLine[]; // empty (with empty text) when the text left the screen
+  lines: OcrLine[]; // empty (with empty text) when the text left the screen; rects in window pixels
+  area: number; // index of the profile area this text came from
   sameAs?: number | null; // this is that earlier line read again: keep its translation
 }
 
@@ -149,10 +150,10 @@ export async function listWindows(): Promise<GameWindow[]> {
   return invoke("list_windows");
 }
 
-// Starts translating; `region` = [x, y, width, height] or null for the whole window.
-export async function startSession(windowHandle: number, region: Region | null, profileKey: string) {
+// Starts translating every area saved in the game's profile.
+export async function startSession(windowHandle: number, profileKey: string) {
   if (!inTauri) return;
-  await invoke("start_session", { windowHandle, region, profileKey });
+  await invoke("start_session", { windowHandle, profileKey });
 }
 
 // Profile key of the game being translated (the overlay styles itself from it).
@@ -417,6 +418,7 @@ function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
       frameWidth: 1460,
       frameHeight: 281,
       lines: [{ text, rect: [120, 110, 760, 44], boxColor: "#14181f", textColor: "#e9e4d6" }],
+      area: 0,
     });
     fakeTranslate(frameId, text);
   }, 1800);

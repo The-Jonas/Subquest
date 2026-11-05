@@ -46,6 +46,18 @@ int main() {
     const uint8_t* fl = fitted.bgra.data() + (25 * 100 + 10) * 4;
     check(fl[0] == 255 && fl[2] == 0, "fit_within keeps BGRA order");
 
+    // crop: a piece of the red half, offset inside a frame that itself starts at (10, 20).
+    f.origin_x = 10;
+    f.origin_y = 20;
+    Frame piece;
+    check(crop(f, Rect{300, 50, 50, 40}, piece) && piece.width == 50 && piece.height == 40,
+          "crop takes the requested size");
+    check(piece.bgra[2] == 255 && piece.bgra[0] == 0, "crop copies the right pixels (red half)");
+    check(piece.origin_x == 310 && piece.origin_y == 70, "crop records its place in the window");
+    check(crop(f, Rect{380, 190, 100, 100}, piece) && piece.width == 20 && piece.height == 10,
+          "crop is clipped to the frame");
+    check(!crop(f, Rect{500, 0, 10, 10}, piece), "crop outside the frame gives nothing");
+
     std::printf("%s\n", failures ? "FAILED" : "ALL OK");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

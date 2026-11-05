@@ -20,10 +20,9 @@
     profileKey,
     newArea,
     type AreaMode,
-    type LetterCase,
+    type GameArea,
     type GameWindow,
     type OcrTextEvent,
-    type Region,
     type TranslationEvent,
   } from "../api";
 
@@ -33,10 +32,8 @@
   let windows = $state<GameWindow[]>([]);
   let loading = $state(false);
   let game = $state<GameWindow | null>(null);
-  let areaMode = $state<AreaMode>("dialogue");
-  let region = $state<Region | null>(null);
-  let font = $state(""); // the area's font ("" = app default)
-  let caps = $state<LetterCase>(""); // the area's letter case
+  let areas = $state<GameArea[]>([newArea()]); // the game's screen areas, edited in the area step
+  let selected = $state(0); // area being edited
   let preview = $state<GamePreview>();
   let running = $state(false);
   let error = $state<string | null>(null);
@@ -46,6 +43,9 @@
 
   const stepKeys = ["game", "area", "start"] as const;
   const areaModes: AreaMode[] = ["dialogue", "screen"];
+  const MAX_AREAS = 16; // same limit as the core (SQ_MAX_AREAS)
+
+  const area = $derived(areas[selected] ?? areas[0]);
 
   // In the real app, without the core DLL there is nothing to list or translate.
   const coreMissing = $derived(inTauri && !app.core.loaded);
@@ -68,29 +68,43 @@
     }
   }
 
-  // Dialogue mode needs a marked area; screen mode doesn't.
-  const canContinue = $derived(areaMode === "screen" || region !== null);
+  // Every dialogue-mode area needs a marked rectangle; screen mode doesn't.
+  const canContinue = $derived(areas.every((a) => a.mode === "screen" || a.region !== null));
 
-  // Picks the game, restores its saved profile (if any) and moves on to the area step.
+  // Name shown for an area: the user's, or "Area N".
+  function areaLabel(a: GameArea, i: number): string {
+    return a.name.trim() || t("play.area.defaultName", { n: String(i + 1) });
+  }
+
+  // Picks the game, restores its saved areas (if any) and moves on to the area step.
   function pick(w: GameWindow) {
     game = w;
     error = null;
-    const saved = app.settings.profiles[profileKey(w)]?.areas[0];
-    areaMode = saved?.mode ?? "dialogue";
-    region = saved?.region ?? null;
-    font = saved?.font ?? "";
-    caps = saved?.caps ?? "";
+    const saved = app.settings.profiles[profileKey(w)]?.areas;
+    areas = saved?.length ? $state.snapshot(saved) : [newArea()];
+    selected = 0;
     step = 1;
   }
 
-  // Saves the area choice in the game's profile and moves on to the summary.
+  // Adds an area and selects it, so the next drag marks it.
+  function addArea() {
+    if (areas.length >= MAX_AREAS) return;
+    areas.push(newArea());
+    selected = areas.length - 1;
+  }
+
+  // Removes the selected area (a game always keeps at least one).
+  function removeArea() {
+    if (areas.length <= 1) return;
+    areas.splice(selected, 1);
+    selected = Math.min(selected, areas.length - 1);
+  }
+
+  // Saves the areas in the game's profile and moves on to the summary.
   async function confirmArea() {
     if (!game || !canContinue) return;
-    // Keep the area's style; position and font come from this step.
     const key = profileKey(game);
-    const existing = app.settings.profiles[key];
-    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region, font, caps };
-    app.settings.profiles[key] = { title: game.title, areas: [area, ...(existing?.areas.slice(1) ?? [])] };
+    app.settings.profiles[key] = { title: game.title, areas: $state.snapshot(areas) };
     try {
       await persistSettings();
     } catch (e) {
@@ -114,7 +128,7 @@
     try {
       unlisteners.push(await onOcrText((e) => e.text && (lines = [e, ...lines].slice(0, 6))));
       unlisteners.push(await onTranslation((e) => (translations[e.frameId] = e)));
-      await startSession(game.handle, areaMode === "dialogue" ? region : null, profileKey(game));
+      await startSession(game.handle, profileKey(game));
       running = true;
     } catch (e) {
       unlistenAll();
@@ -197,29 +211,77 @@
         <button class="btn btn-ghost" onclick={refresh} disabled={loading}>{t("play.game.refresh")}</button>
       </div>
     {:else if step === 1}
+      <!-- One tab per area of the game: dialogue, song lyrics, names... -->
+      <div class="area-tabs" role="tablist">
+        {#each areas as a, i (i)}
+          <button
+            class="area-tab"
+            class:selected={i === selected}
+            class:missing={a.mode === "dialogue" && !a.region}
+            role="tab"
+            aria-selected={i === selected}
+            onclick={() => (selected = i)}
+          >
+            <span class="num">{i + 1}</span>{areaLabel(a, i)}
+          </button>
+        {/each}
+        <button class="area-tab add" onclick={addArea} disabled={areas.length >= MAX_AREAS}>
+          + {t("play.area.add")}
+        </button>
+      </div>
       {#if game}
-        <GamePreview bind:this={preview} windowHandle={game.handle} selectable={areaMode === "dialogue"} bind:region />
+        <GamePreview
+          bind:this={preview}
+          windowHandle={game.handle}
+          selectable={area.mode === "dialogue"}
+          bind:region={areas[selected].region}
+          label={String(selected + 1)}
+          others={areas
+            .map((a, i) => ({ region: a.mode === "dialogue" ? a.region : null, label: String(i + 1) }))
+            .filter((_, i) => i !== selected)}
+        />
       {/if}
       <div class="area-hint">
-        {#if areaMode === "dialogue" && region}
-          <p>{t("play.area.marked", { width: String(region[2]), height: String(region[3]) })}</p>
-          <button class="btn btn-ghost" onclick={() => (region = null)}>{t("play.area.clear")}</button>
-        {:else if areaMode === "dialogue"}
+        {#if area.mode === "dialogue" && area.region}
+          <p>{t("play.area.marked", { width: String(area.region[2]), height: String(area.region[3]) })}</p>
+          <button class="btn btn-ghost" onclick={() => (areas[selected].region = null)}>{t("play.area.clear")}</button>
+        {:else if area.mode === "dialogue"}
           <p>{t("play.area.drag")}</p>
         {:else}
           <p>{t("play.area.wholeWindow")}</p>
         {/if}
       </div>
+      <div class="area-name">
+        <label class="field">
+          <span>{t("play.area.name")}</span>
+          <input
+            class="input"
+            bind:value={areas[selected].name}
+            placeholder={t("play.area.namePlaceholder")}
+            maxlength="40"
+          />
+        </label>
+        {#if areas.length > 1}
+          <button class="btn btn-ghost" onclick={removeArea}>{t("play.area.remove")}</button>
+        {/if}
+      </div>
       <div class="choices" role="radiogroup">
         {#each areaModes as mode (mode)}
-          <label class="choice" class:selected={areaMode === mode}>
-            <input type="radio" name="area" value={mode} bind:group={areaMode} />
+          <label class="choice" class:selected={area.mode === mode}>
+            <input type="radio" name="area" value={mode} bind:group={areas[selected].mode} />
             <strong>{t(`play.area.${mode}`)}</strong>
             <span>{t(`play.area.${mode}Help`)}</span>
           </label>
         {/each}
       </div>
-      <FontDetect snapshot={() => preview!.snapshot(areaMode === "dialogue" ? region : null)} bind:value={font} bind:caps />
+      <!-- Each area has its own font: keyed so a new area starts without the old results -->
+      {#key selected}
+        <FontDetect
+          snapshot={() => preview!.snapshot(area.mode === "dialogue" ? area.region : null)}
+          bind:value={areas[selected].font}
+          bind:caps={areas[selected].caps}
+        />
+      {/key}
       <div class="actions">
         <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
         <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>
@@ -359,6 +421,61 @@
   }
   .area-hint .btn {
     padding: 6px 10px;
+    font-size: var(--text-sm);
+  }
+
+  /* Area tabs: numbered like the outlines on the preview */
+  .area-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .area-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--night-deep);
+    color: var(--ink-dim);
+    cursor: pointer;
+    font-size: var(--text-sm);
+  }
+  .area-tab.selected {
+    border-color: var(--gold);
+    color: var(--ink);
+  }
+  .area-tab.selected .num {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--gold-ink);
+  }
+  /* A dialogue area that still has no rectangle: it blocks "Continue" */
+  .area-tab.missing:not(.selected) {
+    border-style: dashed;
+  }
+  .area-tab.add {
+    padding-left: 12px;
+    border-style: dashed;
+  }
+  .area-tab:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .area-name {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .area-name .field {
+    flex: 1;
+    display: grid;
+    gap: 4px;
+    color: var(--ink-dim);
     font-size: var(--text-sm);
   }
 

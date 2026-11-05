@@ -161,6 +161,10 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
         Frame out;
         out.width = r.width;
         out.height = r.height;
+        out.origin_x = r.x;
+        out.origin_y = r.y;
+        out.source_width = full_w;
+        out.source_height = full_h;
         out.stride = r.width * 4;
         out.bgra.resize(size_t(out.stride) * out.height);
         for (int32_t y = 0; y < out.height; ++y) {

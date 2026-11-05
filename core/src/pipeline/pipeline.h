@@ -1,10 +1,12 @@
 // pipeline.h — wires capture -> change detector -> OCR -> callback.
 //
-//   [capture thread]                   [OCR thread]
-//   frame -> ChangeDetector --put-->  LatestSlot --take--> OCR -> callback(text)
+//   [capture thread]                                   [OCR thread]
+//   frame -> crop area i -> ChangeDetector i --put i--> LatestSlots --take--> OCR -> callback(text, i)
 //
-// Translation does NOT happen here: the text goes to Rust through the callback,
-// and Rust sends the translation back via sq_overlay_set_text.
+// One capture covers all the areas (the smallest rectangle around them); each
+// area is cropped on the CPU and has its own change detector, so a busy area
+// never makes a quiet one run OCR. Translation does NOT happen here: the text
+// goes to Rust through the callback.
 #pragma once
 
 #include <atomic>
@@ -12,6 +14,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "capture/capture_source.h"
 #include "ocr/ocr_engine.h"
@@ -22,7 +25,7 @@ namespace subquest {
 
 struct PipelineConfig {
     uint64_t window_handle = 0;
-    Rect region;
+    std::vector<Rect> areas;           // in window pixels; an empty Rect = the whole window
     std::string ocr_language = "en";
     ChangeDetectorConfig detector;
 };
@@ -48,12 +51,16 @@ private:
 
     std::unique_ptr<ICaptureSource> capture_;
     std::unique_ptr<IOcrEngine> ocr_;
-    ChangeDetector detector_;
-    LatestSlot<Frame> ocr_slot_;
+    std::vector<Rect> areas_;              // relative to the captured rectangle (empty = all of it)
+    std::vector<ChangeDetector> detectors_; // one per area, only touched on the capture thread
+    LatestSlots<Frame> ocr_slots_;          // one per area
     TextCallback on_text_;
     std::thread ocr_thread_;
     std::atomic<bool> running_{false};
-    std::string last_text_; // only touched on the OCR thread
+    std::vector<std::string> last_texts_; // one per area, only touched on the OCR thread
+    uint64_t next_event_id_ = 1;          // OCR thread: unique, increasing id for each result
 };
+
+Rect bounding_rect(const std::vector<Rect>& areas); // rectangle the capture must cover (empty = whole window)
 
 } // namespace subquest
