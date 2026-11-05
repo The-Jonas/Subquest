@@ -8,7 +8,7 @@ Play any game in your language. Subquest reads the dialogue on your screen, tran
 
 > 🇧🇷 [Leia em português](README.pt-BR.md)
 
-**Status:** early development. The interface and the architecture are in place; screen capture, OCR and translation are being built (see [Roadmap](#roadmap)).
+**Status:** early development. Capture, OCR (English), translation and the in-game overlay work end to end; see the [Roadmap](#roadmap) for what's next.
 
 ## Why another translator?
 
@@ -21,26 +21,26 @@ Existing tools work, but tend to be slow, translate each line in isolation and b
 ## Architecture
 
 ```
-┌──────────────── core/ (C++ · subquest_core.dll) ────────────────┐
-│ capture (WGC) ─▶ change detector ─▶ [latest slot] ─▶ OCR thread │
-│                                                    │           │
-│ overlay window (Direct2D) ◀── sq_overlay_set_text  │ callback  │
-└────────────────────────────────▲───────────────────┼───────────┘
-                                 │      C API (core_api.h)
-┌───────────── app/src-tauri/ (Rust) ────────────────▼───────────┐
-│ FFI bridge · translators (cache, context, glossary) · settings │
-└────────────────────────────────▲───────────────────────────────┘
+┌──────────────── core/ (C++ · subquest_core.dll) ─────────────────┐
+│ capture (WGC) ─▶ change detector ─▶ [latest slot] ─▶ OCR thread  │
+│ window list · window position                         │ callback │
+└───────────────────────────────────────────────────────┼──────────┘
+                                   C API (core_api.h)   │
+┌───────────── app/src-tauri/ (Rust) ───────────────────▼──────────┐
+│ FFI bridge · streaming translator (context, cache) · settings    │
+│ overlay window that follows the game                             │
+└────────────────────────────────▲─────────────────────────────────┘
                                  │ Tauri commands / events
-┌──────────────── app/src/ (Svelte 5 + TypeScript) ──────────────┐
-│ Play · Profiles · Settings · Tutorial · i18n (pt-BR, en, es)   │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────── app/src/ (Svelte 5 + TypeScript) ────────────────┐
+│ Play · Profiles · Settings · Tutorial · Overlay · i18n           │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Language | Responsibility |
 |---|---|---|
-| `core/` | C++20 | Window capture, change detection, OCR, overlay window. Exposes a small C API. |
-| `app/src-tauri/` | Rust | Loads the core DLL at runtime, translation backends, cache, settings. |
-| `app/src/` | Svelte 5 + TS | User interface and translations of the interface. |
+| `core/` | C++20 | Window capture, change detection, OCR, window position. Exposes a small C API. |
+| `app/src-tauri/` | Rust | Loads the core DLL at runtime, translation, cache, settings, the overlay window. |
+| `app/src/` | Svelte 5 + TS | User interface, the overlay page and translations of the interface. |
 
 ### Key ideas
 
@@ -69,7 +69,7 @@ To work only on the interface, `npm run dev` runs it in the browser with sample 
 
 ## Roadmap
 
-1. **MVP:** WGC capture, Windows OCR (English), area marking, LLM translation, overlay, per-stage latency.
+1. ~~**MVP:** WGC capture, Windows OCR (English), area marking, LLM translation, overlay, per-stage latency.~~ Done.
 2. **Asian languages:** PaddleOCR via ONNX Runtime + DirectML (Japanese, Chinese, Korean).
 3. **Quality:** context, glossary, persistent cache (SQLite), streaming, game profiles.
 4. **Full-screen mode:** text detection over the whole window, translation drawn in place.

@@ -22,7 +22,6 @@ add_library(subquest_core SHARED
     src/capture/wgc_capture.cpp
     src/capture/window_list.cpp
     src/ocr/win_ocr_engine.cpp
-    src/overlay/overlay_window.cpp
 )
 target_include_directories(subquest_core
     PUBLIC  include

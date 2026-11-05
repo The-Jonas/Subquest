@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 4;
+pub const EXPECTED_API_VERSION: u32 = 5;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -45,8 +45,6 @@ type FnStart = unsafe extern "C" fn(*const SqSessionConfig, SqTextCallback, *mut
 type FnStop = unsafe extern "C" fn() -> i32;
 type FnPreviewStart = unsafe extern "C" fn(u64, i32, SqPreviewCallback, *mut c_void) -> i32;
 type FnPreviewStop = unsafe extern "C" fn() -> i32;
-type FnSetText = unsafe extern "C" fn(*const c_char) -> i32;
-type FnSetVisible = unsafe extern "C" fn(i32) -> i32;
 type FnLastError = unsafe extern "C" fn() -> *const c_char;
 
 /// A capturable window, as reported by the core.
@@ -68,8 +66,6 @@ pub struct Core {
     stop: FnStop,
     preview_start: FnPreviewStart,
     preview_stop: FnPreviewStop,
-    overlay_set_text: FnSetText,
-    overlay_set_visible: FnSetVisible,
     last_error: FnLastError,
 }
 
@@ -104,8 +100,6 @@ impl Core {
                 stop: symbol(&lib, "sq_stop")?,
                 preview_start: symbol(&lib, "sq_preview_start")?,
                 preview_stop: symbol(&lib, "sq_preview_stop")?,
-                overlay_set_text: symbol(&lib, "sq_overlay_set_text")?,
-                overlay_set_visible: symbol(&lib, "sq_overlay_set_visible")?,
                 last_error: symbol(&lib, "sq_last_error")?,
                 _lib: lib,
             })
@@ -191,19 +185,6 @@ impl Core {
     /// Stops the preview; once this returns, the callback is no longer called.
     pub fn preview_stop(&self) -> Result<(), AppError> {
         let status = unsafe { (self.preview_stop)() };
-        self.check(status)
-    }
-
-    /// Shows the translation in the overlay.
-    pub fn overlay_set_text(&self, text: &str) -> Result<(), AppError> {
-        let text = CString::new(text).map_err(|e| AppError::other(e.to_string()))?;
-        let status = unsafe { (self.overlay_set_text)(text.as_ptr()) };
-        self.check(status)
-    }
-
-    /// Shows or hides the overlay.
-    pub fn overlay_set_visible(&self, visible: bool) -> Result<(), AppError> {
-        let status = unsafe { (self.overlay_set_visible)(visible as i32) };
         self.check(status)
     }
 

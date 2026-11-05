@@ -8,7 +8,7 @@ Jogue qualquer jogo no seu idioma. O Subquest lê os diálogos da tela, traduz c
 
 > 🇺🇸 [Read in English](README.md)
 
-**Situação:** início do desenvolvimento. A interface e a arquitetura estão prontas; captura, OCR e tradução estão sendo construídos (veja o [roteiro](#roteiro)).
+**Situação:** início do desenvolvimento. Captura, OCR (inglês), tradução e a legenda por cima do jogo já funcionam de ponta a ponta; veja o [roteiro](#roteiro) para os próximos passos.
 
 ## Por que mais um tradutor?
 
@@ -41,7 +41,7 @@ Para mexer só na interface, `npm run dev` roda no navegador com dados de exempl
 
 ## Roteiro
 
-1. **MVP:** captura WGC, OCR do Windows (inglês), marcação da área, tradução com LLM, overlay e latência por etapa.
+1. ~~**MVP:** captura WGC, OCR do Windows (inglês), marcação da área, tradução com LLM, overlay e latência por etapa.~~ Pronto.
 2. **Idiomas asiáticos:** PaddleOCR via ONNX Runtime + DirectML (japonês, chinês e coreano).
 3. **Qualidade:** contexto, glossário, cache persistente (SQLite), streaming e perfis por jogo.
 4. **Modo tela inteira:** detecção de texto na janela toda, com a tradução desenhada no lugar.

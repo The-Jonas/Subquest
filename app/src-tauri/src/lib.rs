@@ -1,8 +1,6 @@
 //! Subquest — Rust side of the app: state, commands called by the UI and the
 //! bridge to the C++ core.
 
-// TODO(phase 1): remove the allow(dead_code) once overlay and translation are wired up.
-#[allow(dead_code)]
 mod core_ffi;
 mod error;
 mod overlay;
@@ -96,7 +94,7 @@ fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, AppError
 
 /// Callback called by the core (OCR thread): forwards the text to the UI and
 /// hands it to the translator on the async runtime, so the OCR thread never waits
-/// on the network. TODO(phase 1): also send the translation to the overlay.
+/// on the network. The overlay window listens to the same events.
 unsafe extern "C" fn on_ocr_text(
     text: *const c_char,
     frame_id: u64,

@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 4u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 5u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -73,8 +73,6 @@ SQ_API SqStatus sq_stop(void);                                            /* sto
 SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_width,
                                  SqPreviewCallback callback, void* user_data); /* live preview (~8 fps) */
 SQ_API SqStatus sq_preview_stop(void);                                    /* stops the preview and waits for capture to end */
-SQ_API SqStatus sq_overlay_set_text(const char* utf8_text);               /* replaces the text shown in the overlay */
-SQ_API SqStatus sq_overlay_set_visible(int32_t visible);                  /* shows (1) or hides (0) the overlay */
 SQ_API const char* sq_last_error(void);                                   /* last error message (valid until the next call) */
 
 #ifdef __cplusplus

@@ -8,7 +8,6 @@
 #include "capture/wgc_capture.h"
 #include "capture/window_list.h"
 #include "ocr/win_ocr_engine.h"
-#include "overlay/overlay_window.h"
 #include "pipeline/pipeline.h"
 #include "pipeline/preview_stream.h"
 
@@ -21,7 +20,6 @@ struct CoreState {
     std::mutex mutex;
     std::unique_ptr<Pipeline> pipeline;
     std::unique_ptr<PreviewStream> preview;
-    std::unique_ptr<OverlayWindow> overlay;
     std::string last_error;
 };
 
@@ -76,7 +74,6 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     if (config->change_threshold > 0.0f) pc.detector.change_threshold = config->change_threshold;
 
     s.pipeline = std::make_unique<Pipeline>(std::make_unique<WgcCapture>(), std::make_unique<WinOcrEngine>());
-    if (!s.overlay) s.overlay = std::make_unique<OverlayWindow>();
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
         callback(r.full_text.c_str(), r.frame_id, r.elapsed_ms, r.total_ms, user_data);
@@ -124,25 +121,6 @@ extern "C" SQ_API SqStatus sq_preview_stop(void) {
     std::lock_guard lock(s.mutex);
     if (!s.preview || !s.preview->running()) return fail(SQ_ERR_NOT_RUNNING, "preview is not running");
     s.preview->stop();
-    return SQ_OK;
-}
-
-// Hands the finished translation to the overlay.
-extern "C" SQ_API SqStatus sq_overlay_set_text(const char* utf8_text) {
-    if (!utf8_text) return fail(SQ_ERR_INVALID_ARG, "null text");
-    CoreState& s = state();
-    std::lock_guard lock(s.mutex);
-    if (!s.overlay) s.overlay = std::make_unique<OverlayWindow>();
-    s.overlay->set_text(utf8_text);
-    return SQ_OK;
-}
-
-// Shows or hides the overlay (user's global hotkey).
-extern "C" SQ_API SqStatus sq_overlay_set_visible(int32_t visible) {
-    CoreState& s = state();
-    std::lock_guard lock(s.mutex);
-    if (!s.overlay) return fail(SQ_ERR_NOT_RUNNING, "overlay not created yet");
-    s.overlay->set_visible(visible != 0);
     return SQ_OK;
 }
 
