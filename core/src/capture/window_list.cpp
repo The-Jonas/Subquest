@@ -75,10 +75,27 @@ std::vector<WindowInfo> list_capturable_windows() {
     return windows;
 }
 
+// Where the window is on screen. Uses DWM's "extended frame bounds" (the
+// visible window, without the invisible resize border and shadow), which is
+// what Windows.Graphics.Capture captures, so capture pixels map 1:1 to screen.
+bool window_bounds(uint64_t handle, WindowBounds& out) {
+    HWND hwnd = reinterpret_cast<HWND>(static_cast<uintptr_t>(handle));
+    if (!IsWindow(hwnd)) return false;
+    RECT r{};
+    if (FAILED(DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, &r, sizeof(r)))) {
+        GetWindowRect(hwnd, &r);
+    }
+    out = {r.left, r.top, r.right - r.left, r.bottom - r.top, IsIconic(hwnd) != FALSE};
+    return true;
+}
+
 #else
 
 // Nothing to list outside Windows (the core only really builds on Windows).
 std::vector<WindowInfo> list_capturable_windows() { return {}; }
+
+// No windows outside Windows.
+bool window_bounds(uint64_t, WindowBounds&) { return false; }
 
 #endif
 

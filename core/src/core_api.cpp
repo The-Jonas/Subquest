@@ -50,6 +50,16 @@ extern "C" SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user
     return SQ_OK;
 }
 
+// Reports where the game window is, so the app can place the overlay over it.
+extern "C" SQ_API SqStatus sq_window_bounds(uint64_t window_handle, SqRect* out_bounds, int32_t* out_minimized) {
+    if (!out_bounds || !out_minimized) return fail(SQ_ERR_INVALID_ARG, "null output pointer");
+    WindowBounds b;
+    if (!window_bounds(window_handle, b)) return fail(SQ_ERR_INVALID_ARG, "the window no longer exists");
+    *out_bounds = {b.x, b.y, b.width, b.height};
+    *out_minimized = b.minimized ? 1 : 0;
+    return SQ_OK;
+}
+
 // Builds the pipeline with the Windows implementations and starts the session.
 extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data) {
     if (!config || !callback || !config->ocr_language) return fail(SQ_ERR_INVALID_ARG, "null config or callback");

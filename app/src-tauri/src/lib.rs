@@ -5,13 +5,15 @@
 #[allow(dead_code)]
 mod core_ffi;
 mod error;
+mod overlay;
 mod settings;
 mod translate;
 mod translation;
 
 use std::ffi::{c_char, c_void, CStr};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use serde::Serialize;
@@ -34,6 +36,7 @@ struct AppState {
     session_user_data: Mutex<Option<*mut AppHandle>>, // AppHandle lent to the core during a session
     preview_user_data: Mutex<Option<*mut PreviewChannel>>, // channel lent to the core during the preview
     translation: TranslationState,
+    overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -129,16 +132,18 @@ async fn start_session(
     state.translation.reset_context();
     let (x, y, width, height) = region.unwrap_or_default();
 
+    let area = SqRect {
+        x,
+        y,
+        width,
+        height,
+    };
+
     let mut slot = state.session_user_data.lock().unwrap();
-    let user = Box::into_raw(Box::new(app));
+    let user = Box::into_raw(Box::new(app.clone()));
     let result = core.start(
         window_handle,
-        SqRect {
-            x,
-            y,
-            width,
-            height,
-        },
+        area,
         &language,
         on_ocr_text,
         user as *mut c_void,
@@ -148,12 +153,20 @@ async fn start_session(
         // SAFETY: the core refused the session, so it didn't keep the pointer.
         Err(_) => drop(unsafe { Box::from_raw(user) }),
     }
-    result
+    result?;
+    drop(slot);
+
+    // The session works even if the overlay fails; the translations still show in the app.
+    if let Err(e) = overlay::open(&app, window_handle, region.map(|_| area)) {
+        eprintln!("[subquest] overlay: {}", e.detail);
+    }
+    Ok(())
 }
 
 /// Stops the session and takes back the AppHandle lent to the core.
 #[tauri::command]
-async fn stop_session(state: State<'_, AppState>) -> Result<(), AppError> {
+async fn stop_session(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
+    overlay::close(&app);
     let result = core(&state)?.stop();
     if let Some(user) = state.session_user_data.lock().unwrap().take() {
         // SAFETY: sq_stop already waited for the OCR thread; nobody uses the pointer anymore.
@@ -290,9 +303,14 @@ fn get_settings(state: State<'_, AppState>) -> Settings {
 
 /// Replaces and saves the settings.
 #[tauri::command]
-fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<(), AppError> {
+fn save_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: Settings,
+) -> Result<(), AppError> {
     settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
-    *state.settings.lock().unwrap() = settings;
+    *state.settings.lock().unwrap() = settings.clone();
+    let _ = app.emit("settings-changed", settings); // the overlay restyles itself live
     Ok(())
 }
 
@@ -324,6 +342,7 @@ pub fn run() {
                 session_user_data: Mutex::new(None),
                 preview_user_data: Mutex::new(None),
                 translation: TranslationState::new(),
+                overlay_running: Mutex::new(None),
             });
             Ok(())
         })

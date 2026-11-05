@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 3;
+pub const EXPECTED_API_VERSION: u32 = 4;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -40,6 +40,7 @@ pub type SqPreviewCallback = unsafe extern "C" fn(*const u8, i32, i32, i32, i32,
 
 type FnApiVersion = unsafe extern "C" fn() -> u32;
 type FnListWindows = unsafe extern "C" fn(SqWindowCallback, *mut c_void) -> i32;
+type FnWindowBounds = unsafe extern "C" fn(u64, *mut SqRect, *mut i32) -> i32;
 type FnStart = unsafe extern "C" fn(*const SqSessionConfig, SqTextCallback, *mut c_void) -> i32;
 type FnStop = unsafe extern "C" fn() -> i32;
 type FnPreviewStart = unsafe extern "C" fn(u64, i32, SqPreviewCallback, *mut c_void) -> i32;
@@ -62,6 +63,7 @@ pub struct Core {
     _lib: Library,
     api_version: FnApiVersion,
     list_windows: FnListWindows,
+    window_bounds: FnWindowBounds,
     start: FnStart,
     stop: FnStop,
     preview_start: FnPreviewStart,
@@ -97,6 +99,7 @@ impl Core {
             Ok(Core {
                 api_version,
                 list_windows: symbol(&lib, "sq_list_windows")?,
+                window_bounds: symbol(&lib, "sq_window_bounds")?,
                 start: symbol(&lib, "sq_start")?,
                 stop: symbol(&lib, "sq_stop")?,
                 preview_start: symbol(&lib, "sq_preview_start")?,
@@ -134,6 +137,16 @@ impl Core {
         let status = unsafe { (self.list_windows)(collect, &mut windows as *mut _ as *mut c_void) };
         self.check(status)?;
         Ok(windows)
+    }
+
+    /// Where the window is on screen (physical pixels) and whether it's minimized.
+    /// Fails when the window no longer exists (the game was closed).
+    pub fn window_bounds(&self, window_handle: u64) -> Result<(SqRect, bool), AppError> {
+        let mut rect = SqRect::default();
+        let mut minimized = 0i32;
+        let status = unsafe { (self.window_bounds)(window_handle, &mut rect, &mut minimized) };
+        self.check(status)?;
+        Ok((rect, minimized != 0))
     }
 
     /// Starts the session. `user_data` reaches the callback on the OCR thread untouched.

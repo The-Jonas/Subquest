@@ -12,5 +12,12 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    // Two pages: the main window and the overlay window drawn over the game
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        overlay: "overlay.html",
+      },
+    },
   },
 });

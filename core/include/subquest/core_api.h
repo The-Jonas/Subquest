@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 3u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 4u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -66,6 +66,8 @@ typedef void (*SqWindowCallback)(uint64_t window_handle, const char* utf8_title,
 
 SQ_API uint32_t sq_api_version(void);                                    /* ABI version, so Rust can check compatibility */
 SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user_data); /* enumerates visible top-level windows */
+SQ_API SqStatus sq_window_bounds(uint64_t window_handle, SqRect* out_bounds,
+                                 int32_t* out_minimized);         /* window on screen (physical px), for the overlay */
 SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data); /* starts capture + OCR */
 SQ_API SqStatus sq_stop(void);                                            /* stops the session and waits for its threads */
 SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_width,
