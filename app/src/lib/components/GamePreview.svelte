@@ -18,6 +18,8 @@
   const FULL_WIDTH = 8192; // asks for frames at the window's real size (never upscaled)
   const SNAPSHOT_WAIT_MS = 2000; // after this, a snapshot settles for the preview frame
   const MAX_CROP = 1600; // a crop wider than this is scaled down before it is sent
+  const MIN_CROP_HEIGHT = 480; // a shorter crop is enlarged up to this...
+  const MAX_GROW = 3; // ...but never more than 3x
   const MIN_SIZE = 12; // smallest area accepted, in capture pixels (filters out accidental clicks)
 
   let canvas = $state<HTMLCanvasElement>();
@@ -70,11 +72,14 @@
     source.height = frame.image.height;
     source.getContext("2d")!.putImageData(frame.image, 0, 0);
 
-    const shrink = Math.min(1, MAX_CROP / w);
+    // Small crops are enlarged (models read tiny letters badly), big ones reduced.
+    const resize = Math.min(MAX_CROP / w, Math.max(1, Math.min(MAX_GROW, MIN_CROP_HEIGHT / h)));
     const crop = document.createElement("canvas");
-    crop.width = Math.max(1, Math.round(w * shrink));
-    crop.height = Math.max(1, Math.round(h * shrink));
-    crop.getContext("2d")!.drawImage(source, x, y, w, h, 0, 0, crop.width, crop.height);
+    crop.width = Math.max(1, Math.round(w * resize));
+    crop.height = Math.max(1, Math.round(h * resize));
+    const ctx = crop.getContext("2d")!;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source, x, y, w, h, 0, 0, crop.width, crop.height);
     return new Promise((resolve, reject) =>
       crop.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("PNG encoding failed"))), "image/png"),
     );

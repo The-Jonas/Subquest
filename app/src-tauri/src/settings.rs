@@ -45,6 +45,7 @@ pub struct GameArea {
     pub region: Option<[i32; 4]>, // [x, y, width, height] in capture pixels
     pub font: String, // overlay font: a family name or "imported:<file>"; empty = default
     pub style: String, // "inPlace" (each line redrawn where it is, in the game's colors) | "classic" (subtitle box)
+    pub caps: String,  // letter case the game uses: "" (as translated) | "upper" | "smallCaps"
 }
 
 impl Default for GameArea {
@@ -56,6 +57,7 @@ impl Default for GameArea {
             region: None,
             font: String::new(),
             style: "inPlace".into(),
+            caps: String::new(),
         }
     }
 }
@@ -85,6 +87,7 @@ pub struct TranslatorSettings {
     pub kind: String, // "openai-compatible" | "deepl"
     pub base_url: String,
     pub model: String,
+    pub vision_model: String, // model that looks at images (font detection); empty = `model`
     // TODO(phase 3): move the key to Windows Credential Manager.
     pub api_key: String,
 }
@@ -121,6 +124,7 @@ impl Default for TranslatorSettings {
             kind: "openai-compatible".into(),
             base_url: "https://generativelanguage.googleapis.com/v1beta/openai/".into(),
             model: String::new(),
+            vision_model: String::new(),
             api_key: String::new(),
         }
     }

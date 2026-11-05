@@ -42,6 +42,8 @@ fn regular() -> u16 {
 struct Answer {
     #[serde(default)]
     text: String, // a line of the game text it read, to draw the samples with
+    #[serde(default)]
+    case: String, // "normal" | "upper" | "smallCaps"
     fonts: Vec<Guess>,
 }
 
@@ -60,6 +62,7 @@ pub struct FontCandidate {
 #[serde(rename_all = "camelCase")]
 pub struct FontDetection {
     pub text: String,
+    pub caps: String, // letter case the game uses: "" | "upper" | "smallCaps" (as in GameArea)
     pub candidates: Vec<FontCandidate>,
 }
 
@@ -88,7 +91,7 @@ impl FontFinder {
             .ask_about_image(&prompt(ui_language), png)
             .await
             .map_err(AppError::from_translate)?;
-        let (text, guesses) = parse_answer(&answer).map_err(AppError::from_translate)?;
+        let (text, caps, guesses) = parse_answer(&answer).map_err(AppError::from_translate)?;
 
         let downloads = join_all(guesses.iter().map(|g| download(http, &g.family, g.weight))).await;
         let mut found = Vec::new();
@@ -115,29 +118,39 @@ impl FontFinder {
         *self.downloaded.lock().unwrap() = downloaded;
         Ok(FontDetection {
             text,
+            caps,
             candidates: found,
         })
     }
 }
 
-/// What the model is asked: a few real Google Fonts families as JSON.
+/// What the model is asked. It is told to judge only the letter shapes: left
+/// alone, models pick "themed" fonts (a Greek-myth game gets Greek-looking
+/// decorative fonts even when its menus use a plain sans-serif). Classifying
+/// the letters first makes the names that follow much closer.
 fn prompt(ui_language: &str) -> String {
     format!(
-        "This image is a crop of a video game screen showing in-game text. \
-         Identify the typeface of that text and name the {ASKED} closest font families \
-         available on Google Fonts (fonts.google.com), best match first. \
-         Use exact Google Fonts family names; never name a font that isn't on Google Fonts. \
+        "This image is a crop of a video game screen. Look ONLY at the shapes of the letters \
+         of the in-game text (menu items, dialogue, labels). Ignore the logo, the art and the \
+         game's theme: games often use plain fonts for their text.\n\
+         First classify the letters: serif or sans-serif; geometric, grotesque, humanist, \
+         slab or decorative; stroke contrast and weight; letter case: normal, all uppercase, \
+         or small caps (lowercase letters drawn as smaller capitals).\n\
+         Then name the {ASKED} font families available on Google Fonts (fonts.google.com) \
+         whose letters are closest, best match first. Use exact Google Fonts family names; \
+         never name a font that isn't on Google Fonts.\n\
          Answer with JSON only, no markdown: \
-         {{\"text\":\"...\",\"fonts\":[{{\"family\":\"Family Name\",\"weight\":400,\"reason\":\"...\"}}]}} \
+         {{\"text\":\"...\",\"case\":\"normal\",\"fonts\":[{{\"family\":\"Family Name\",\"weight\":400,\"reason\":\"...\"}}]}} \
          where text is one line of the game text exactly as written (at most 60 characters), \
-         weight is the closest weight (100 to 900) and reason is a few words \
-         in {lang} about what matches (serifs, stroke, letter shapes).",
+         case is normal, upper or smallCaps, weight is the closest weight (100 to 900) \
+         and reason is a few words in {lang} about what matches.",
         lang = language_name(ui_language),
     )
 }
 
-/// Reads the model's JSON (text it read + guesses), tolerating code fences or text around it.
-fn parse_answer(answer: &str) -> Result<(String, Vec<Guess>), TranslateError> {
+/// Reads the model's JSON (text it read, letter case, guesses), tolerating
+/// code fences or text around it.
+fn parse_answer(answer: &str) -> Result<(String, String, Vec<Guess>), TranslateError> {
     let invalid = || TranslateError::Provider(format!("unexpected answer: {answer}"));
     let start = answer.find('{').ok_or_else(invalid)?;
     let end = answer.rfind('}').ok_or_else(invalid)?;
@@ -148,7 +161,12 @@ fn parse_answer(answer: &str) -> Result<(String, Vec<Guess>), TranslateError> {
         .filter(|g| safe_family(&g.family))
         .take(ASKED)
         .collect();
-    Ok((parsed.text.chars().take(60).collect(), guesses))
+    let caps = match parsed.case.as_str() {
+        "upper" | "uppercase" => "upper",
+        "smallCaps" | "small caps" | "small-caps" => "smallCaps",
+        _ => "",
+    };
+    Ok((parsed.text.chars().take(60).collect(), caps.to_string(), guesses))
 }
 
 /// Family names are letters, digits and spaces; anything else could change the URL.
@@ -200,9 +218,10 @@ mod tests {
 
     #[test]
     fn reads_json_inside_code_fences() {
-        let answer = "```json\n{\"text\":\"Hello\",\"fonts\":[{\"family\":\"Cinzel\",\"weight\":600,\"reason\":\"serifas\"},{\"family\":\"Spectral\"}]}\n```";
-        let (text, guesses) = parse_answer(answer).unwrap();
+        let answer = "```json\n{\"text\":\"Hello\",\"case\":\"smallCaps\",\"fonts\":[{\"family\":\"Cinzel\",\"weight\":600,\"reason\":\"serifas\"},{\"family\":\"Spectral\"}]}\n```";
+        let (text, caps, guesses) = parse_answer(answer).unwrap();
         assert_eq!(text, "Hello");
+        assert_eq!(caps, "smallCaps");
         assert_eq!(guesses.len(), 2);
         assert_eq!(guesses[0].weight, 600);
         assert_eq!(guesses[1].weight, 400); // default when missing
@@ -211,7 +230,8 @@ mod tests {
     #[test]
     fn drops_names_that_could_change_the_url() {
         let answer = r#"{"fonts":[{"family":"Roboto&x=1"},{"family":"Open Sans"}]}"#;
-        let (_, guesses) = parse_answer(answer).unwrap();
+        let (_, caps, guesses) = parse_answer(answer).unwrap();
+        assert_eq!(caps, ""); // no case given: keep the translation as it is
         assert_eq!(guesses.len(), 1);
         assert_eq!(guesses[0].family, "Open Sans");
     }

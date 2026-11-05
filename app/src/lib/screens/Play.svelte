@@ -20,6 +20,7 @@
     profileKey,
     newArea,
     type AreaMode,
+    type LetterCase,
     type GameWindow,
     type OcrTextEvent,
     type Region,
@@ -35,6 +36,7 @@
   let areaMode = $state<AreaMode>("dialogue");
   let region = $state<Region | null>(null);
   let font = $state(""); // the area's font ("" = app default)
+  let caps = $state<LetterCase>(""); // the area's letter case
   let preview = $state<GamePreview>();
   let running = $state(false);
   let error = $state<string | null>(null);
@@ -77,6 +79,7 @@
     areaMode = saved?.mode ?? "dialogue";
     region = saved?.region ?? null;
     font = saved?.font ?? "";
+    caps = saved?.caps ?? "";
     step = 1;
   }
 
@@ -86,7 +89,7 @@
     // Keep the area's style; position and font come from this step.
     const key = profileKey(game);
     const existing = app.settings.profiles[key];
-    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region, font };
+    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region, font, caps };
     app.settings.profiles[key] = { title: game.title, areas: [area, ...(existing?.areas.slice(1) ?? [])] };
     try {
       await persistSettings();
@@ -216,7 +219,7 @@
           </label>
         {/each}
       </div>
-      <FontDetect snapshot={() => preview!.snapshot(areaMode === "dialogue" ? region : null)} bind:value={font} />
+      <FontDetect snapshot={() => preview!.snapshot(areaMode === "dialogue" ? region : null)} bind:value={font} bind:caps />
       <div class="actions">
         <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
         <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>

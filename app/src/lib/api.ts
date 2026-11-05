@@ -32,7 +32,11 @@ export interface GameArea {
   region: Region | null;
   font: string; // family name, "imported:<file>", or "" for the default
   style: AreaStyle;
+  caps: LetterCase; // letter case the game uses, applied to the translation
 }
+
+// "" keeps the translation as written; the others copy the game's look.
+export type LetterCase = "" | "upper" | "smallCaps";
 
 // What Subquest remembers about each game (mirrors GameProfile in settings.rs).
 export interface GameProfile {
@@ -42,7 +46,7 @@ export interface GameProfile {
 
 // A new area with the most common setup: dialogue box, game colors, default font.
 export function newArea(): GameArea {
-  return { name: "", mode: "dialogue", region: null, font: "", style: "inPlace" };
+  return { name: "", mode: "dialogue", region: null, font: "", style: "inPlace", caps: "" };
 }
 
 export interface Settings {
@@ -50,7 +54,7 @@ export interface Settings {
   sourceLanguage: string;
   targetLanguage: string;
   ocrEngine: string;
-  translator: { kind: string; baseUrl: string; model: string; apiKey: string };
+  translator: { kind: string; baseUrl: string; model: string; visionModel: string; apiKey: string };
   overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean };
   tutorialDone: boolean;
   profiles: Record<string, GameProfile>; // key: lowercase executable name
@@ -99,7 +103,7 @@ export const defaultSettings: Settings = {
   sourceLanguage: "en",
   targetLanguage: "pt-BR",
   ocrEngine: "windows",
-  translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", apiKey: "" },
+  translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", visionModel: "", apiKey: "" },
   overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
   tutorialDone: false,
   profiles: {},
@@ -212,6 +216,7 @@ export interface FontCandidate {
 // What the model read in the crop and the fonts it suggests, best match first.
 export interface FontDetection {
   text: string;
+  caps: LetterCase; // letter case the model saw in the game
   candidates: FontCandidate[];
 }
 
@@ -222,6 +227,7 @@ export async function detectFont(png: Blob): Promise<FontDetection> {
     await new Promise((r) => setTimeout(r, 900));
     return {
       text: "Seas reflect her gleaming beauty",
+      caps: "smallCaps",
       candidates: [
         { family: "Cinzel", weight: 600, reason: "serifas clássicas, maiúsculas largas", file: "Cinzel-600.ttf" },
         { family: "Crimson Pro", weight: 400, reason: "serifa de livro, traço fino", file: "CrimsonPro-400.ttf" },

@@ -106,7 +106,10 @@
     "modelHelp": "Para diálogos, prefiere un modelo rápido (los \"flash\", por ejemplo).",
     "test": "Probar traducción",
     "testing": "Probando…",
-    "testTime": "en {ms} ms"
+    "testTime": "en {ms} ms",
+    "visionModel": "Modelo para detectar fuentes",
+    "visionModelHelp": "Opcional. Reconocer fuentes es difícil; un modelo más fuerte (p. ej. uno \"pro\") acierta más. Vacío usa el mismo de la traducción.",
+    "visionModelSame": "El mismo de la traducción"
   },
   "tutorial": {
     "title": "Cómo usarlo",
@@ -184,7 +187,13 @@
       "use": "Usar esta",
       "inUse": "En uso",
       "weight": "peso {weight}",
-      "snapshotFailed": "No se pudo capturar la pantalla del juego."
+      "snapshotFailed": "No se pudo capturar la pantalla del juego.",
+      "case": "Letras",
+      "cases": {
+        "normal": "Como se traduce",
+        "upper": "Mayúsculas",
+        "smallCaps": "Versalitas"
+      }
     }
   }
 }

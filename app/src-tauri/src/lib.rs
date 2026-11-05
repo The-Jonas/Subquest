@@ -399,7 +399,12 @@ async fn detect_font(
     };
     let settings = state.settings.lock().unwrap().clone();
     let http = &state.translation.http;
-    let model = translation::backend(http, &settings.translator);
+    // A stronger model can be set just for this one-off job (typography is hard).
+    let mut translator = settings.translator.clone();
+    if !translator.vision_model.trim().is_empty() {
+        translator.model = translator.vision_model.clone();
+    }
+    let model = translation::backend(http, &translator);
     state
         .font_finder
         .detect(&model, http, png, &settings.ui_language)

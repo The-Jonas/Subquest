@@ -146,6 +146,28 @@
               : t("settings.modelHelp")}
         </small>
       </div>
+      <!-- Font detection only: may be a stronger (slower) model than the translator -->
+      <div class="field wide">
+        <label for="vision-model">{t("settings.visionModel")}</label>
+        {#if models.length}
+          <select id="vision-model" class="input" bind:value={app.settings.translator.visionModel}>
+            <option value="">{t("settings.visionModelSame")}</option>
+            {#if app.settings.translator.visionModel && !models.includes(app.settings.translator.visionModel)}
+              <option value={app.settings.translator.visionModel}>{app.settings.translator.visionModel}</option>
+            {/if}
+            {#each models as m (m)}<option value={m}>{m}</option>{/each}
+          </select>
+        {:else}
+          <input
+            id="vision-model"
+            class="input"
+            bind:value={app.settings.translator.visionModel}
+            placeholder={t("settings.visionModelSame")}
+            spellcheck="false"
+          />
+        {/if}
+        <small>{t("settings.visionModelHelp")}</small>
+      </div>
     </div>
 
     <!-- Test: one sample line through the real service, with the time it took -->

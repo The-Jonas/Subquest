@@ -89,6 +89,14 @@
                   onchange={() => ensureFont(area.font).then(() => save(key))}
                 />
               </label>
+              <label class="field">
+                <span>{t("fonts.detect.case")}</span>
+                <select class="input" bind:value={area.caps} onchange={() => save(key)}>
+                  {#each ["", "upper", "smallCaps"] as c (c)}
+                    <option value={c}>{t(`fonts.detect.cases.${c || "normal"}`)}</option>
+                  {/each}
+                </select>
+              </label>
               <div class="field">
                 <span>{t("profiles.style")}</span>
                 <div class="styles" role="radiogroup">
@@ -101,7 +109,13 @@
                   {/each}
                 </div>
               </div>
-              <figure class="sample" class:in-place={area.style === "inPlace"} style:font-family={cssFamily(area.font)}>
+              <figure
+                class="sample"
+                class:in-place={area.style === "inPlace"}
+                style:font-family={cssFamily(area.font)}
+                style:text-transform={area.caps === "upper" ? "uppercase" : null}
+                style:font-variant-caps={area.caps === "smallCaps" ? "small-caps" : null}
+              >
                 {t("profiles.sample")}
               </figure>
               {#if saved === key}<p class="ok" role="status">{t("settings.saved")}</p>{/if}

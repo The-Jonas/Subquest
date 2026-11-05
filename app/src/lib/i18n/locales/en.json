@@ -106,7 +106,10 @@
     "modelHelp": "For dialogue, prefer a fast model (the \"flash\" ones, for example).",
     "test": "Test translation",
     "testing": "Testing…",
-    "testTime": "in {ms} ms"
+    "testTime": "in {ms} ms",
+    "visionModel": "Model for font detection",
+    "visionModelHelp": "Optional. Recognizing fonts is hard; a stronger model (e.g. a \"pro\" one) gets closer. Empty uses the translation model.",
+    "visionModelSame": "Same as translation"
   },
   "tutorial": {
     "title": "How to use",
@@ -184,7 +187,13 @@
       "use": "Use this one",
       "inUse": "In use",
       "weight": "weight {weight}",
-      "snapshotFailed": "Couldn't capture the game screen."
+      "snapshotFailed": "Couldn't capture the game screen.",
+      "case": "Letters",
+      "cases": {
+        "normal": "As translated",
+        "upper": "Uppercase",
+        "smallCaps": "Small caps"
+      }
     }
   }
 }

@@ -106,7 +106,10 @@
     "modelHelp": "Para traduzir falas, prefira um modelo rápido (os \"flash\", por exemplo).",
     "test": "Testar tradução",
     "testing": "Testando…",
-    "testTime": "em {ms} ms"
+    "testTime": "em {ms} ms",
+    "visionModel": "Modelo para detectar fontes",
+    "visionModelHelp": "Opcional. Reconhecer fontes é difícil; um modelo mais forte (ex.: um \"pro\") acerta mais. Vazio usa o mesmo da tradução.",
+    "visionModelSame": "Mesmo da tradução"
   },
   "tutorial": {
     "title": "Como usar",
@@ -184,7 +187,13 @@
       "use": "Usar esta",
       "inUse": "Em uso",
       "weight": "peso {weight}",
-      "snapshotFailed": "Não deu para capturar a tela do jogo."
+      "snapshotFailed": "Não deu para capturar a tela do jogo.",
+      "case": "Letras",
+      "cases": {
+        "normal": "Como traduzido",
+        "upper": "Maiúsculas",
+        "smallCaps": "Versaletes (maiúsculas pequenas)"
+      }
     }
   }
 }

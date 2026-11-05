@@ -2,17 +2,21 @@
   FontDetect — finds the game's font. Takes a full-size crop of the game text
   (`snapshot`), asks the translator model for the closest Google Fonts and
   shows each one writing the line the model read, so the user compares it with
-  the game by eye. "Use this one" keeps the file and picks it for the area.
+  the game by eye. "Use this one" keeps the file and picks it for the area,
+  along with the letter case the model saw (the user can change it).
 -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { detectFont, keepCandidateFont, errorKind, type FontDetection } from "../api";
+  import { detectFont, keepCandidateFont, errorKind, type FontDetection, type LetterCase } from "../api";
   import { candidateFamily, importedOption, loadCandidateFont, loadImportedFont } from "../fonts";
 
   let {
     snapshot,
     value = $bindable(""),
-  }: { snapshot: () => Promise<Blob>; value?: string } = $props();
+    caps = $bindable<LetterCase>(""),
+  }: { snapshot: () => Promise<Blob>; value?: string; caps?: LetterCase } = $props();
+
+  const cases: LetterCase[] = ["", "upper", "smallCaps"];
 
   let busy = $state(false);
   let error = $state<string | null>(null);
@@ -42,6 +46,7 @@
       const found = await detectFont(png);
       await Promise.all(found.candidates.map((c) => loadCandidateFont(c.file).catch(() => {})));
       result = found;
+      caps = found.caps; // the samples show the game's case right away
     } catch (e) {
       error = t(`errors.${errorKind(e)}`);
     } finally {
@@ -86,14 +91,28 @@
 
   {#if result}
     <!-- The game's own pixels first, then each candidate writing the same line -->
-    {#if crop}
-      <img class="crop" src={crop} alt="" />
-    {/if}
+    <div class="reference">
+      {#if crop}
+        <img class="crop" src={crop} alt="" />
+      {/if}
+      <label class="case">
+        <span>{t("fonts.detect.case")}</span>
+        <select class="input" bind:value={caps}>
+          {#each cases as c (c)}<option value={c}>{t(`fonts.detect.cases.${c || "normal"}`)}</option>{/each}
+        </select>
+      </label>
+    </div>
     <ul class="candidates">
       {#each result.candidates as c (c.file)}
         {@const chosen = value === `imported:${c.file}`}
         <li class:chosen>
-          <p class="sample" style:font-family={candidateFamily(c.file, c.family)} style:font-weight={c.weight}>
+          <p
+            class="sample"
+            class:upper={caps === "upper"}
+            class:small-caps={caps === "smallCaps"}
+            style:font-family={candidateFamily(c.file, c.family)}
+            style:font-weight={c.weight}
+          >
             {sample}
           </p>
           <div class="meta">
@@ -174,6 +193,25 @@
     object-position: left center;
     border-radius: 6px;
     border: 1px solid var(--line);
+  }
+
+  .reference {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .case {
+    display: grid;
+    gap: 4px;
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+  }
+  .upper {
+    text-transform: uppercase;
+  }
+  .small-caps {
+    font-variant-caps: small-caps;
   }
 
   .candidates {
