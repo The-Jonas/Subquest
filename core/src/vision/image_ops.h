@@ -15,5 +15,6 @@ struct RgbaImage {
 };
 
 RgbaImage downscale_to_rgba(const Frame& src, int32_t max_width); // shrinks keeping aspect ratio (never enlarges) and swaps BGRA -> RGBA
+bool fit_within(const Frame& src, int32_t max_dim, Frame& out);    // shrinks (still BGRA) so no side exceeds max_dim; false = already fits
 
 } // namespace subquest

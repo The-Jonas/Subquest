@@ -53,7 +53,8 @@ struct CoreStatus {
 struct OcrTextEvent {
     text: String,
     frame_id: u64,
-    ocr_ms: f64,
+    ocr_ms: f64,   // recognition only
+    total_ms: f64, // from frame capture until the text was ready
 }
 
 /// Returns the loaded core or the `coreMissing` error.
@@ -93,6 +94,7 @@ unsafe extern "C" fn on_ocr_text(
     text: *const c_char,
     frame_id: u64,
     ocr_ms: f64,
+    total_ms: f64,
     user: *mut c_void,
 ) {
     let app = &*(user as *const AppHandle);
@@ -103,6 +105,7 @@ unsafe extern "C" fn on_ocr_text(
             text,
             frame_id,
             ocr_ms,
+            total_ms,
         },
     );
 }

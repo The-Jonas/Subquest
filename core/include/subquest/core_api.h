@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 2u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 3u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -32,7 +32,8 @@ typedef enum SqStatus {
     SQ_ERR_ALREADY_RUNNING = 2, /* sq_start called while a session is active */
     SQ_ERR_NOT_RUNNING = 3,     /* sq_stop with no active session */
     SQ_ERR_PLATFORM = 4,        /* a Windows API failed (capture, OCR...) */
-    SQ_ERR_NOT_IMPLEMENTED = 5  /* feature still a stub */
+    SQ_ERR_NOT_IMPLEMENTED = 5, /* feature still a stub */
+    SQ_ERR_OCR_LANGUAGE = 6     /* Windows has no OCR installed for the requested language */
 } SqStatus;
 
 typedef struct SqRect {
@@ -50,8 +51,10 @@ typedef struct SqSessionConfig {
     float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
 } SqSessionConfig;
 
-/* Called on the OCR thread when NEW text is recognized. */
-typedef void (*SqTextCallback)(const char* utf8_text, uint64_t frame_id, double ocr_ms, void* user_data);
+/* Called on the OCR thread when NEW text is recognized.
+ * ocr_ms = recognition only; total_ms = from frame capture until the text was ready. */
+typedef void (*SqTextCallback)(const char* utf8_text, uint64_t frame_id, double ocr_ms, double total_ms,
+                               void* user_data);
 
 /* Called for every preview frame: contiguous RGBA, width * height * 4 bytes.
  * source_width/height = real capture size, to convert coordinates. */

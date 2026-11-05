@@ -27,6 +27,7 @@ impl AppError {
             3 => "notRunning",
             4 => "platform",
             5 => "notImplemented",
+            6 => "ocrLanguage",
             _ => "unknown",
         };
         Self {
@@ -52,6 +53,7 @@ mod tests {
     fn core_status_maps_to_kind() {
         assert_eq!(AppError::from_status(5, "x").kind, "notImplemented");
         assert_eq!(AppError::from_status(4, "x").kind, "platform");
+        assert_eq!(AppError::from_status(6, "x").kind, "ocrLanguage");
         assert_eq!(AppError::from_status(99, "x").kind, "unknown");
     }
 }

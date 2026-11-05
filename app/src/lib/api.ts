@@ -56,7 +56,8 @@ export interface PreviewFrame {
 export interface OcrTextEvent {
   text: string;
   frameId: number;
-  ocrMs: number;
+  ocrMs: number; // recognition only
+  totalMs: number; // from frame capture until the text was ready
 }
 
 // True when the page runs inside the Tauri app.
@@ -182,8 +183,24 @@ export async function startPreview(
   };
 }
 
+// Browser mode: emits a few sample lines so the running screen can be designed.
+function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
+  const samples = [
+    "Mmmm, mmmmrrnnnn...",
+    "You came back. Of course you did.",
+    "The Crossroads are quiet tonight, Princess.",
+  ];
+  let frameId = 0;
+  const timer = setInterval(() => {
+    const text = samples[frameId % samples.length];
+    frameId += 1;
+    handler({ text, frameId, ocrMs: 30 + Math.random() * 25, totalMs: 120 + Math.random() * 60 });
+  }, 1800);
+  return () => clearInterval(timer);
+}
+
 // Listens for lines recognized by OCR; returns the function that stops listening.
 export async function onOcrText(handler: (e: OcrTextEvent) => void): Promise<UnlistenFn> {
-  if (!inTauri) return () => {};
+  if (!inTauri) return fakeOcrFeed(handler);
   return listen<OcrTextEvent>("ocr-text", (event) => handler(event.payload));
 }

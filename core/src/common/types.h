@@ -36,6 +36,7 @@ struct OcrResult {
     std::string full_text;  // lines joined by '\n'
     uint64_t frame_id = 0;
     double elapsed_ms = 0;  // time spent on recognition only
+    double total_ms = 0;    // from frame capture until the text was ready
 };
 
 } // namespace subquest

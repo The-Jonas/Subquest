@@ -45,7 +45,8 @@
       "stop": "Parar",
       "running": "Traduzindo {game}",
       "waiting": "Esperando a primeira fala aparecer no jogo…",
-      "change": "Trocar jogo"
+      "change": "Trocar jogo",
+      "timing": "OCR em {ocr} ms, {total} ms desde a captura"
     },
     "back": "Voltar",
     "next": "Continuar"
@@ -126,6 +127,7 @@
     "notRunning": "Não há nenhuma tradução em andamento.",
     "platform": "O Windows recusou a captura dessa janela. Confira se o jogo está aberto, em janela ou sem borda, e não minimizado.",
     "notImplemented": "Essa parte ainda está em construção. Ela chega nos próximos passos da fase 1.",
-    "unknown": "Algo deu errado. Os detalhes estão no console (F12)."
+    "unknown": "Algo deu errado. Os detalhes estão no console (F12).",
+    "ocrLanguage": "O Windows não tem o reconhecimento de texto (OCR) do idioma do jogo. Em Configurações > Hora e idioma > Idioma e região, adicione o idioma do jogo (por exemplo, English (United States)); o OCR vem junto. Depois reabra o Subquest."
   }
 }

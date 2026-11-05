@@ -109,20 +109,30 @@
     }
   }
 
-  onDestroy(() => unlisten?.());
+  // Leaving the Play screen ends the session, so nothing keeps capturing in the background.
+  onDestroy(() => {
+    if (running) stopSession().catch(errorKind);
+    unlisten?.();
+  });
   refresh();
 </script>
 
-<div class="play">
+<!-- The area step gets a wider layout: a bigger preview makes marking precise -->
+<div class="play" class:wide={step === 1 && !running}>
   <DialogueBox speaker={t("play.speaker")} line={question}>
     {#if running}
-      <div class="feed" aria-live="polite">
+      <ol class="feed" aria-live="polite">
         {#each lines as l (l.frameId)}
-          <p>{l.text}</p>
+          <li>
+            <p class="text">{l.text}</p>
+            <p class="timing">
+              {t("play.start.timing", { ocr: String(Math.round(l.ocrMs)), total: String(Math.round(l.totalMs)) })}
+            </p>
+          </li>
         {:else}
-          <p class="muted live">{t("play.start.waiting")}</p>
+          <li class="muted live">{t("play.start.waiting")}</li>
         {/each}
-      </div>
+      </ol>
       <div class="actions">
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
       </div>
@@ -317,12 +327,35 @@
     font-size: var(--text-md);
   }
 
-  .feed {
-    display: grid;
-    gap: 8px;
+  .play.wide {
+    max-width: 1120px;
   }
-  .feed p:first-child:not(.muted) {
-    font-size: var(--text-md);
+
+  /* Newest line on top, at full size; older ones fade back */
+  .feed {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+  }
+  .feed li {
+    display: grid;
+    gap: 2px;
+  }
+  .feed li:not(:first-child) {
+    opacity: 0.55;
+  }
+  .feed .text {
+    white-space: pre-line; /* keeps the line breaks the OCR found */
+  }
+  .feed li:first-child .text {
+    font-size: var(--text-lg);
+  }
+  .timing {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
   }
   .live {
     color: var(--live);

@@ -14,7 +14,7 @@
     region = $bindable(null),
   }: { windowHandle: number; selectable?: boolean; region?: Region | null } = $props();
 
-  const MAX_WIDTH = 640; // preview width: enough to make out the dialogue box
+  const MAX_WIDTH = 1024; // preview width: big enough to mark the area precisely, light enough for 8 fps
   const MIN_SIZE = 12; // smallest area accepted, in capture pixels (filters out accidental clicks)
 
   let canvas = $state<HTMLCanvasElement>();
@@ -160,9 +160,11 @@
     aspect-ratio: auto;
   }
 
+  /* The stage hugs the canvas exactly, so percentages map 1:1 onto the image */
   .stage {
     position: relative;
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     touch-action: none;
     user-select: none;
   }
@@ -170,9 +172,13 @@
     cursor: crosshair;
   }
 
+  /* As big as the box allows, but short enough that the choices and buttons
+     below still fit in the window (~460px is everything else on the screen) */
   canvas {
     display: block;
-    width: 100%;
+    max-width: 100%;
+    max-height: max(240px, calc(100vh - 460px));
+    width: auto;
     height: auto;
   }
   .preview:not(.live) .stage {

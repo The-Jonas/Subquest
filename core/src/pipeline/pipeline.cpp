@@ -1,5 +1,7 @@
 #include "pipeline/pipeline.h"
 
+#include <chrono>
+
 namespace subquest {
 
 // Takes the concrete implementations (dependency injection makes testing easier).
@@ -13,7 +15,11 @@ Pipeline::~Pipeline() { stop(); }
 // Order matters: capture must never deliver frames to nobody.
 StartError Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
     if (running_) return StartError::AlreadyRunning;
-    if (!ocr_->load(config.ocr_language)) return StartError::Ocr;
+    switch (ocr_->load(config.ocr_language)) {
+        case OcrLoadError::None: break;
+        case OcrLoadError::LanguageMissing: return StartError::OcrLanguage;
+        case OcrLoadError::Platform: return StartError::Ocr;
+    }
 
     detector_ = ChangeDetector(config.detector);
     ocr_slot_.reset();
@@ -46,9 +52,13 @@ void Pipeline::on_frame(Frame&& frame) {
 }
 
 // Drains the slot until the session closes; skips empty or repeated text.
+// total_ms uses the same steady clock as the capture timestamp.
 void Pipeline::ocr_loop() {
     while (auto frame = ocr_slot_.take()) {
         OcrResult result = ocr_->recognize(*frame);
+        const auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::steady_clock::now().time_since_epoch()).count();
+        result.total_ms = double(now_us - int64_t(frame->timestamp_us)) / 1000.0;
         if (result.full_text.empty() || result.full_text == last_text_) continue;
         last_text_ = result.full_text;
         if (on_text_) on_text_(result);

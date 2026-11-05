@@ -29,7 +29,7 @@ struct PipelineConfig {
 
 using TextCallback = std::function<void(const OcrResult&)>; // called on the OCR thread
 
-enum class StartError { None, AlreadyRunning, Ocr, Capture }; // which stage kept the session from starting
+enum class StartError { None, AlreadyRunning, OcrLanguage, Ocr, Capture }; // which stage kept the session from starting
 
 class Pipeline {
 public:
@@ -40,6 +40,7 @@ public:
     void stop();                                                    // idempotent; waits for the threads
     bool running() const { return running_; }
     const std::string& capture_error() const { return capture_->error(); }
+    const std::string& ocr_error() const { return ocr_->error(); }
 
 private:
     void on_frame(Frame&& frame); // runs on the capture thread: only decides and forwards, never blocks

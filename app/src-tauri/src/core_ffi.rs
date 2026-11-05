@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 2;
+pub const EXPECTED_API_VERSION: u32 = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -34,7 +34,7 @@ pub struct SqSessionConfig {
     pub change_threshold: f32,
 }
 
-pub type SqTextCallback = unsafe extern "C" fn(*const c_char, u64, f64, *mut c_void);
+pub type SqTextCallback = unsafe extern "C" fn(*const c_char, u64, f64, f64, *mut c_void);
 pub type SqWindowCallback = unsafe extern "C" fn(u64, *const c_char, *const c_char, *mut c_void);
 pub type SqPreviewCallback = unsafe extern "C" fn(*const u8, i32, i32, i32, i32, *mut c_void);
 

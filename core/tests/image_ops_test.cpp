@@ -40,6 +40,12 @@ int main() {
     RgbaImage same = downscale_to_rgba(f, 4000);
     check(same.width == 400 && same.height == 200, "never enlarges");
 
+    Frame fitted;
+    check(!fit_within(f, 400, fitted), "fit_within leaves a frame that already fits");
+    check(fit_within(f, 100, fitted) && fitted.width == 100 && fitted.height == 50, "fit_within shrinks the longest side");
+    const uint8_t* fl = fitted.bgra.data() + (25 * 100 + 10) * 4;
+    check(fl[0] == 255 && fl[2] == 0, "fit_within keeps BGRA order");
+
     std::printf("%s\n", failures ? "FAILED" : "ALL OK");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

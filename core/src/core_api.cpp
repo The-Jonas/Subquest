@@ -69,12 +69,13 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     if (!s.overlay) s.overlay = std::make_unique<OverlayWindow>();
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
-        callback(r.full_text.c_str(), r.frame_id, r.elapsed_ms, user_data);
+        callback(r.full_text.c_str(), r.frame_id, r.elapsed_ms, r.total_ms, user_data);
     });
     switch (result) {
         case StartError::None: return SQ_OK;
         case StartError::AlreadyRunning: return fail(SQ_ERR_ALREADY_RUNNING, "session already running");
-        case StartError::Ocr: return fail(SQ_ERR_NOT_IMPLEMENTED, "OCR not implemented yet");
+        case StartError::OcrLanguage: return fail(SQ_ERR_OCR_LANGUAGE, s.pipeline->ocr_error().c_str());
+        case StartError::Ocr: return fail(SQ_ERR_PLATFORM, s.pipeline->ocr_error().c_str());
         case StartError::Capture: return fail(SQ_ERR_PLATFORM, s.pipeline->capture_error().c_str());
     }
     return fail(SQ_ERR_PLATFORM, "unknown error");
