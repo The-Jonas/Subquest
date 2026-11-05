@@ -20,6 +20,16 @@ fn is_transient(status: reqwest::StatusCode) -> bool {
         || status == reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
+/// Lowest reasoning level each Gemini generation accepts: 2.5 models can turn
+/// thinking off ("none"); Gemini 3 models can't, so "low" is the minimum.
+/// Other services get no parameter at all (not every server knows it).
+fn gemini_reasoning(base_url: &str, model: &str) -> Option<&'static str> {
+    if !base_url.contains("generativelanguage.googleapis.com") {
+        return None;
+    }
+    Some(if model.contains("2.5") { "none" } else { "low" })
+}
+
 /// Async pause on Tauri's runtime (tokio), without blocking the thread.
 async fn tokio_sleep(ms: u64) {
     tokio::time::sleep(Duration::from_millis(ms)).await;
@@ -133,8 +143,8 @@ impl OpenAiCompatTranslator {
 
     /// Streams the translation. `on_partial` gets the text accumulated so far after
     /// every chunk and returns false to cancel (a newer line made this one stale).
-    /// Low temperature keeps translations stable; on Gemini, reasoning is kept low
-    /// because thinking adds latency and doesn't help short dialogue lines.
+    /// Low temperature keeps translations stable; on Gemini, reasoning is turned
+    /// down because thinking adds latency and doesn't help short dialogue lines.
     pub async fn translate(
         &self,
         request: &TranslationRequest,
@@ -151,8 +161,8 @@ impl OpenAiCompatTranslator {
             "stream": true,
             "temperature": 0.2,
         });
-        if self.base_url.contains("generativelanguage.googleapis.com") {
-            body["reasoning_effort"] = json!("low");
+        if let Some(effort) = gemini_reasoning(&self.base_url, &self.model) {
+            body["reasoning_effort"] = json!(effort);
         }
 
         let response = self.send_with_retry(&body).await?;
@@ -267,6 +277,20 @@ mod tests {
             }
         });
         (format!("http://{addr}/v1/"), rx)
+    }
+
+    #[test]
+    fn reasoning_is_turned_down_only_on_gemini() {
+        let gemini = "https://generativelanguage.googleapis.com/v1beta/openai/";
+        assert_eq!(
+            gemini_reasoning(gemini, "gemini-2.5-flash-lite"),
+            Some("none")
+        );
+        assert_eq!(gemini_reasoning(gemini, "gemini-3.8-flash"), Some("low"));
+        assert_eq!(
+            gemini_reasoning("http://localhost:11434/v1", "qwen2.5:7b"),
+            None
+        );
     }
 
     #[test]

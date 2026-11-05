@@ -1,6 +1,8 @@
 //! Glue between OCR and translation: every recognized line becomes a
-//! translation streamed to the UI, with the previous lines as context, a cache
-//! for repeats, and cancellation when a newer line makes the current one stale.
+//! translation streamed to the UI, with the previous lines as context and a
+//! cache for repeats. Every line is translated to the end (lines can arrive
+//! faster than the API answers, e.g. in songs); `latest_line` tells which one
+//! is current, so the overlay can show only the newest.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -24,7 +26,7 @@ pub struct TranslationState {
     pub http: reqwest::Client, // one client, so connections get reused (lower latency)
     pub cache: Mutex<TranslationCache>,
     pub context: Mutex<VecDeque<ContextLine>>, // reset when a session starts
-    pub latest_line: AtomicU64,                // frame id of the newest OCR line
+    pub latest_line: AtomicU64,                // frame id of the newest OCR line (for the overlay)
 }
 
 impl TranslationState {
@@ -122,14 +124,10 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
             .collect(),
         glossary: Vec::new(), // TODO(phase 3): per-game glossary from the profile
     };
-    let is_current = || translation.latest_line.load(Ordering::SeqCst) == frame_id;
     let result = backend(&translation.http, &settings.translator)
         .translate(&request, |partial| {
-            if !is_current() {
-                return false;
-            }
             emit(partial, false, false, None);
-            true
+            true // never cancel: older lines still belong in the history
         })
         .await;
 
@@ -139,7 +137,7 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
             emit(&full, true, false, None);
             remember(translation, text, full);
         }
-        Err(TranslateError::Cancelled) => {} // a newer line took over; nothing to show
+        Err(TranslateError::Cancelled) => {} // not used by this flow (we never cancel)
         Err(e) => {
             log::warn(&format!("translation failed: {e}"));
             emit("", true, false, Some(e.kind().to_string()));
