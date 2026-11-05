@@ -1,0 +1,91 @@
+{
+  "nav": { "play": "Jogar", "profiles": "Perfis", "settings": "Ajustes", "tutorial": "Tutorial" },
+  "core": {
+    "ok": "Núcleo pronto",
+    "missing": "Núcleo não encontrado",
+    "missingHelp": "Compile a pasta core (veja o README) para listar janelas e traduzir. A interface funciona mesmo assim."
+  },
+  "play": {
+    "speaker": "Subquest",
+    "steps": { "game": "Jogo", "area": "Área", "start": "Começar" },
+    "game": {
+      "question": "Qual jogo vamos traduzir?",
+      "hint": "Abra o jogo em modo janela ou janela sem borda. Ele aparece aqui.",
+      "refresh": "Atualizar lista",
+      "empty": "Nenhuma janela aberta. Abra o jogo e atualize a lista.",
+      "choose": "Escolher"
+    },
+    "area": {
+      "question": "Onde aparecem as falas?",
+      "dialogue": "Numa caixa de diálogo",
+      "dialogueHelp": "Mais rápido e mais preciso. Você marca a área uma vez e ela fica salva no perfil do jogo.",
+      "screen": "Em qualquer lugar da tela",
+      "screenHelp": "Menus, itens e placas. Mais lento: o texto é procurado na janela inteira.",
+      "mark": "Marcar a área",
+      "marked": "Área marcada",
+      "notYet": "Marcar a área chega junto com a captura (fase 1). Por enquanto, a janela inteira será usada."
+    },
+    "start": {
+      "question": "Tudo pronto.",
+      "summary": "Vou ler {game} em {source} e mostrar a tradução em {target}.",
+      "button": "Começar a traduzir",
+      "stop": "Parar",
+      "running": "Traduzindo {game}",
+      "waiting": "Esperando a primeira fala aparecer no jogo…",
+      "change": "Trocar jogo"
+    },
+    "back": "Voltar",
+    "next": "Continuar"
+  },
+  "profiles": {
+    "title": "Perfis de jogo",
+    "empty": "Nenhum perfil ainda. Quando você traduzir um jogo, a área das falas, o idioma e o glossário dele ficam salvos aqui."
+  },
+  "settings": {
+    "title": "Ajustes",
+    "languages": "Idiomas",
+    "uiLanguage": "Idioma da interface",
+    "sourceLanguage": "Idioma do jogo",
+    "targetLanguage": "Traduzir para",
+    "translation": "Tradução",
+    "service": "Serviço",
+    "serviceLlm": "Modelo de linguagem (OpenAI, Gemini, Ollama…)",
+    "serviceDeepl": "DeepL",
+    "baseUrl": "Endereço da API",
+    "baseUrlHelp": "O padrão aponta para o Ollama no seu PC: grátis e sem chave.",
+    "model": "Modelo",
+    "apiKey": "Chave da API",
+    "apiKeyHelp": "Fica só no seu computador. Deixe vazio para modelos locais.",
+    "overlay": "Legenda no jogo",
+    "fontSize": "Tamanho do texto",
+    "opacity": "Fundo",
+    "showOriginal": "Mostrar o texto original acima da tradução",
+    "preview": "Prévia",
+    "previewOriginal": "The bridge is out. You'll have to find another way across.",
+    "previewText": "A ponte caiu. Você vai ter que achar outro jeito de atravessar.",
+    "save": "Salvar ajustes",
+    "saved": "Ajustes salvos"
+  },
+  "tutorial": {
+    "title": "Como usar",
+    "skip": "Pular tutorial",
+    "back": "Voltar",
+    "next": "Próximo",
+    "done": "Bora jogar",
+    "pages": [
+      { "title": "Deixe o jogo em janela", "text": "O Subquest lê a tela do jogo. Use o modo janela ou janela sem borda (borderless) nas opções de vídeo do jogo; a tela cheia exclusiva bloqueia a captura." },
+      { "title": "Escolha o jogo", "text": "Em Jogar, escolha a janela do jogo na lista. Se ele não aparecer, confira se não está minimizado e atualize a lista." },
+      { "title": "Mostre onde ficam as falas", "text": "Se o jogo usa caixa de diálogo, marque só essa área: o Subquest fica mais rápido e erra menos. Para menus e placas, use a tela inteira." },
+      { "title": "Escolha quem traduz", "text": "Em Ajustes, escolha o serviço. Um modelo local pelo Ollama é grátis e funciona offline; serviços na nuvem pedem uma chave de API e costumam traduzir melhor." },
+      { "title": "Jogue", "text": "A tradução aparece por cima do jogo, sem roubar o foco. Cada jogo ganha um perfil com a área e o glossário dele, para a próxima vez já começar pronto." }
+    ]
+  },
+  "languages": {
+    "en": "Inglês",
+    "ja": "Japonês",
+    "zh-Hans": "Chinês (simplificado)",
+    "ko": "Coreano",
+    "pt-BR": "Português (Brasil)",
+    "es": "Espanhol"
+  }
+}

@@ -1,0 +1,39 @@
+# --- Node / Vite ---
+node_modules/
+app/dist/
+*.log
+.vite/
+
+# --- Rust / Tauri ---
+app/src-tauri/target/
+app/src-tauri/gen/
+
+# --- C++ / CMake ---
+core/build/
+build/
+out/
+CMakeUserPresets.json
+*.obj
+*.pdb
+*.ilk
+
+# --- Modelos de OCR (baixados na primeira execução, nunca versionados) ---
+models/
+*.onnx
+
+# --- Segredos e config local do usuário ---
+.env
+.env.*
+config.local.json
+*.key
+
+# --- Editores / SO ---
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+.DS_Store
+
+# --- DLL do núcleo copiada pelo CMake para o app ---
+app/src-tauri/bin/

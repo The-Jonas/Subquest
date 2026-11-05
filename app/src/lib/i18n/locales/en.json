@@ -1,0 +1,115 @@
+{
+  "nav": {
+    "play": "Play",
+    "profiles": "Profiles",
+    "settings": "Settings",
+    "tutorial": "Tutorial"
+  },
+  "core": {
+    "ok": "Core ready",
+    "missing": "Core not found",
+    "missingHelp": "Build the core folder (see the README) to list windows and translate. The interface works anyway."
+  },
+  "play": {
+    "speaker": "Subquest",
+    "steps": {
+      "game": "Game",
+      "area": "Area",
+      "start": "Start"
+    },
+    "game": {
+      "question": "Which game are we translating?",
+      "hint": "Run the game in windowed or borderless mode. It will show up here.",
+      "refresh": "Refresh list",
+      "empty": "No windows open. Start the game and refresh the list.",
+      "choose": "Choose"
+    },
+    "area": {
+      "question": "Where does the dialogue appear?",
+      "dialogue": "In a dialogue box",
+      "dialogueHelp": "Faster and more accurate. Mark the area once and it is saved in the game's profile.",
+      "screen": "Anywhere on screen",
+      "screenHelp": "Menus, items and signs. Slower: text is searched across the whole window.",
+      "mark": "Mark the area",
+      "marked": "Area marked",
+      "notYet": "Area marking arrives with capture (phase 1). For now, the whole window is used."
+    },
+    "start": {
+      "question": "All set.",
+      "summary": "I'll read {game} in {source} and show the translation in {target}.",
+      "button": "Start translating",
+      "stop": "Stop",
+      "running": "Translating {game}",
+      "waiting": "Waiting for the first line to appear in the game…",
+      "change": "Change game"
+    },
+    "back": "Back",
+    "next": "Continue"
+  },
+  "profiles": {
+    "title": "Game profiles",
+    "empty": "No profiles yet. Once you translate a game, its dialogue area, language and glossary are saved here."
+  },
+  "settings": {
+    "title": "Settings",
+    "languages": "Languages",
+    "uiLanguage": "Interface language",
+    "sourceLanguage": "Game language",
+    "targetLanguage": "Translate to",
+    "translation": "Translation",
+    "service": "Service",
+    "serviceLlm": "Language model (OpenAI, Gemini, Ollama…)",
+    "serviceDeepl": "DeepL",
+    "baseUrl": "API address",
+    "baseUrlHelp": "The default points to Ollama on your PC: free and keyless.",
+    "model": "Model",
+    "apiKey": "API key",
+    "apiKeyHelp": "Stays on your computer only. Leave empty for local models.",
+    "overlay": "In-game subtitle",
+    "fontSize": "Text size",
+    "opacity": "Background",
+    "showOriginal": "Show the original text above the translation",
+    "preview": "Preview",
+    "previewOriginal": "橋が落ちている。別の道を探すしかない。",
+    "previewText": "The bridge is out. You'll have to find another way across.",
+    "save": "Save settings",
+    "saved": "Settings saved"
+  },
+  "tutorial": {
+    "title": "How to use",
+    "skip": "Skip tutorial",
+    "back": "Back",
+    "next": "Next",
+    "done": "Let's play",
+    "pages": [
+      {
+        "title": "Run the game in a window",
+        "text": "Subquest reads the game screen. Use windowed or borderless mode in the game's video options; exclusive fullscreen blocks capture."
+      },
+      {
+        "title": "Pick the game",
+        "text": "In Play, choose the game window from the list. If it isn't there, make sure it isn't minimized and refresh the list."
+      },
+      {
+        "title": "Show where the dialogue is",
+        "text": "If the game uses a dialogue box, mark just that area: Subquest gets faster and makes fewer mistakes. For menus and signs, use the whole screen."
+      },
+      {
+        "title": "Pick who translates",
+        "text": "In Settings, choose the service. A local model through Ollama is free and works offline; cloud services need an API key and usually translate better."
+      },
+      {
+        "title": "Play",
+        "text": "The translation shows up over the game without stealing focus. Each game gets a profile with its area and glossary, so next time it starts ready."
+      }
+    ]
+  },
+  "languages": {
+    "en": "English",
+    "ja": "Japanese",
+    "zh-Hans": "Chinese (Simplified)",
+    "ko": "Korean",
+    "pt-BR": "Portuguese (Brazil)",
+    "es": "Spanish"
+  }
+}

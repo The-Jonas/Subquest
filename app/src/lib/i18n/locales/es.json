@@ -1,0 +1,91 @@
+{
+  "nav": { "play": "Jugar", "profiles": "Perfiles", "settings": "Ajustes", "tutorial": "Tutorial" },
+  "core": {
+    "ok": "Núcleo listo",
+    "missing": "Núcleo no encontrado",
+    "missingHelp": "Compila la carpeta core (mira el README) para listar ventanas y traducir. La interfaz funciona igual."
+  },
+  "play": {
+    "speaker": "Subquest",
+    "steps": { "game": "Juego", "area": "Área", "start": "Empezar" },
+    "game": {
+      "question": "¿Qué juego vamos a traducir?",
+      "hint": "Abre el juego en modo ventana o ventana sin bordes. Aparecerá aquí.",
+      "refresh": "Actualizar lista",
+      "empty": "No hay ventanas abiertas. Abre el juego y actualiza la lista.",
+      "choose": "Elegir"
+    },
+    "area": {
+      "question": "¿Dónde aparecen los diálogos?",
+      "dialogue": "En un cuadro de diálogo",
+      "dialogueHelp": "Más rápido y preciso. Marcas el área una vez y queda guardada en el perfil del juego.",
+      "screen": "En cualquier parte de la pantalla",
+      "screenHelp": "Menús, objetos y carteles. Más lento: el texto se busca en toda la ventana.",
+      "mark": "Marcar el área",
+      "marked": "Área marcada",
+      "notYet": "Marcar el área llega junto con la captura (fase 1). Por ahora se usa toda la ventana."
+    },
+    "start": {
+      "question": "Todo listo.",
+      "summary": "Voy a leer {game} en {source} y mostrar la traducción en {target}.",
+      "button": "Empezar a traducir",
+      "stop": "Detener",
+      "running": "Traduciendo {game}",
+      "waiting": "Esperando a que aparezca el primer diálogo en el juego…",
+      "change": "Cambiar de juego"
+    },
+    "back": "Volver",
+    "next": "Continuar"
+  },
+  "profiles": {
+    "title": "Perfiles de juego",
+    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, su área de diálogo, idioma y glosario se guardan aquí."
+  },
+  "settings": {
+    "title": "Ajustes",
+    "languages": "Idiomas",
+    "uiLanguage": "Idioma de la interfaz",
+    "sourceLanguage": "Idioma del juego",
+    "targetLanguage": "Traducir a",
+    "translation": "Traducción",
+    "service": "Servicio",
+    "serviceLlm": "Modelo de lenguaje (OpenAI, Gemini, Ollama…)",
+    "serviceDeepl": "DeepL",
+    "baseUrl": "Dirección de la API",
+    "baseUrlHelp": "Por defecto apunta a Ollama en tu PC: gratis y sin clave.",
+    "model": "Modelo",
+    "apiKey": "Clave de la API",
+    "apiKeyHelp": "Se queda solo en tu computadora. Déjala vacía para modelos locales.",
+    "overlay": "Subtítulo en el juego",
+    "fontSize": "Tamaño del texto",
+    "opacity": "Fondo",
+    "showOriginal": "Mostrar el texto original sobre la traducción",
+    "preview": "Vista previa",
+    "previewOriginal": "The bridge is out. You'll have to find another way across.",
+    "previewText": "El puente se cayó. Tendrás que encontrar otra forma de cruzar.",
+    "save": "Guardar ajustes",
+    "saved": "Ajustes guardados"
+  },
+  "tutorial": {
+    "title": "Cómo usarlo",
+    "skip": "Saltar tutorial",
+    "back": "Volver",
+    "next": "Siguiente",
+    "done": "A jugar",
+    "pages": [
+      { "title": "Pon el juego en ventana", "text": "Subquest lee la pantalla del juego. Usa el modo ventana o sin bordes en las opciones de video; la pantalla completa exclusiva bloquea la captura." },
+      { "title": "Elige el juego", "text": "En Jugar, elige la ventana del juego en la lista. Si no aparece, revisa que no esté minimizado y actualiza la lista." },
+      { "title": "Muestra dónde están los diálogos", "text": "Si el juego usa cuadro de diálogo, marca solo esa área: Subquest va más rápido y se equivoca menos. Para menús y carteles, usa toda la pantalla." },
+      { "title": "Elige quién traduce", "text": "En Ajustes, elige el servicio. Un modelo local con Ollama es gratis y funciona sin internet; los servicios en la nube piden una clave de API y suelen traducir mejor." },
+      { "title": "Juega", "text": "La traducción aparece sobre el juego sin quitarle el foco. Cada juego recibe un perfil con su área y glosario, para que la próxima vez empiece listo." }
+    ]
+  },
+  "languages": {
+    "en": "Inglés",
+    "ja": "Japonés",
+    "zh-Hans": "Chino (simplificado)",
+    "ko": "Coreano",
+    "pt-BR": "Portugués (Brasil)",
+    "es": "Español"
+  }
+}
