@@ -97,10 +97,25 @@
     draft = null;
   }
 
-  // Percent-based style so the rectangle follows the canvas at any size.
+  // Rectangle edges as percentages, so everything follows the canvas at any size.
+  function edges(r: Region) {
+    const left = (r[0] / sourceWidth) * 100;
+    const top = (r[1] / sourceHeight) * 100;
+    return { left, top, right: left + (r[2] / sourceWidth) * 100, bottom: top + (r[3] / sourceHeight) * 100 };
+  }
+
+  // Position and size of the gold outline.
   function boxStyle(r: Region): string {
-    const pct = (v: number, total: number) => `${(v / total) * 100}%`;
-    return `left:${pct(r[0], sourceWidth)};top:${pct(r[1], sourceHeight)};width:${pct(r[2], sourceWidth)};height:${pct(r[3], sourceHeight)}`;
+    const e = edges(r);
+    return `left:${e.left}%;top:${e.top}%;width:${e.right - e.left}%;height:${e.bottom - e.top}%`;
+  }
+
+  // Dark layer over the whole image with a hole where the area is: the outer
+  // square and the inner one are drawn as one polygon with the even-odd rule.
+  function shadeStyle(r: Region): string {
+    const e = edges(r);
+    const hole = `${e.left}% ${e.top}%, ${e.left}% ${e.bottom}%, ${e.right}% ${e.bottom}%, ${e.right}% ${e.top}%, ${e.left}% ${e.top}%`;
+    return `clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${hole})`;
   }
 </script>
 
@@ -117,6 +132,7 @@
   >
     <canvas bind:this={canvas} aria-label={t("play.area.previewLabel")}></canvas>
     {#if selectable && shown && sourceWidth > 0}
+      <div class="shade" style={shadeStyle(shown)}></div>
       <div class="area" style={boxStyle(shown)}></div>
     {/if}
   </div>
@@ -165,12 +181,17 @@
     opacity: 0;
   }
 
-  /* Marked area: gold outline, and everything outside it dimmed by a huge shadow */
+  /* Everything outside the marked area is dimmed; the area itself gets a gold outline */
+  .shade {
+    position: absolute;
+    inset: 0;
+    background: rgb(8 10 22 / 0.6);
+    pointer-events: none;
+  }
   .area {
     position: absolute;
     border: 2px solid var(--gold);
     border-radius: 3px;
-    box-shadow: 0 0 0 9999px rgb(8 10 22 / 0.55);
     pointer-events: none;
   }
 
