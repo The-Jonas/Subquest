@@ -1,32 +1,53 @@
 //! Glue between OCR and translation: every recognized line becomes a
 //! translation streamed to the UI, with the previous lines as context and a
 //! cache for repeats. Every line is translated to the end (lines can arrive
-//! faster than the API answers, e.g. in songs); `latest_line` tells which one
-//! is current, so the overlay can show only the newest.
+//! faster than the API answers, e.g. in songs). A new OCR reading that is just
+//! the newest line read slightly differently reuses that line's translation
+//! instead of starting another request.
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::watch;
 
 use crate::settings::{Settings, TranslatorSettings};
 use crate::translate::cache::TranslationCache;
 use crate::translate::openai_compat::OpenAiCompatTranslator;
+use crate::translate::similar;
 use crate::translate::{ContextLine, TranslateError, TranslationRequest};
 use crate::AppState;
 
 const CONTEXT_LINES: usize = 6; // previous lines sent along: enough for tone, cheap on tokens
 const CACHE_CAPACITY: usize = 2000;
+const REUSE_WAIT: Duration = Duration::from_secs(20); // a re-reading waits this long for the original
+
+/// Final translation of a line, shared with its re-readings (None while it streams).
+type Shared = watch::Receiver<Option<String>>;
+
+/// The newest line that got its own translation.
+struct Recent {
+    normalized: String,
+    frame_id: u64,
+    result: Shared,
+}
+
+/// What to do with a line that just arrived from OCR.
+pub enum Plan {
+    /// A new line: translate it and publish the result here.
+    New(watch::Sender<Option<String>>),
+    /// The newest line read again: wait for its translation (`of` is its frame id).
+    Reuse { of: u64, result: Shared },
+}
 
 /// Translation state that lives as long as the app.
 pub struct TranslationState {
     pub http: reqwest::Client, // one client, so connections get reused (lower latency)
     pub cache: Mutex<TranslationCache>,
     pub context: Mutex<VecDeque<ContextLine>>, // reset when a session starts
-    pub latest_line: AtomicU64,                // frame id of the newest OCR line (for the overlay)
+    recent: Mutex<Option<Recent>>,             // newest line with its own translation
 }
 
 impl TranslationState {
@@ -36,14 +57,36 @@ impl TranslationState {
             http: reqwest::Client::new(),
             cache: Mutex::new(TranslationCache::new(CACHE_CAPACITY)),
             context: Mutex::new(VecDeque::new()),
-            latest_line: AtomicU64::new(0),
+            recent: Mutex::new(None),
         }
     }
 
     /// Forgets the previous game's lines; the cache stays (same lines, same answer).
     pub fn reset_context(&self) {
         self.context.lock().unwrap().clear();
-        self.latest_line.store(0, Ordering::SeqCst);
+        *self.recent.lock().unwrap() = None;
+    }
+
+    /// Decides whether a line needs its own translation or is the newest line
+    /// read again with small OCR differences. Runs on the OCR thread, so it's quick.
+    pub fn plan(&self, text: &str, frame_id: u64) -> Plan {
+        let normalized = similar::normalize(text);
+        let mut recent = self.recent.lock().unwrap();
+        if let Some(r) = recent.as_ref() {
+            if similar::same_line(&r.normalized, &normalized) {
+                return Plan::Reuse {
+                    of: r.frame_id,
+                    result: r.result.clone(),
+                };
+            }
+        }
+        let (sender, result) = watch::channel(None);
+        *recent = Some(Recent {
+            normalized,
+            frame_id,
+            result,
+        });
+        Plan::New(sender)
     }
 }
 
@@ -71,10 +114,9 @@ struct TranslationEvent {
 
 /// Translates one OCR line and streams the result to the UI. Runs on the async
 /// runtime, never on the OCR thread, so OCR keeps its pace while the network works.
-pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
+pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: Plan) {
     let state = app.state::<AppState>();
     let translation = &state.translation;
-    translation.latest_line.store(frame_id, Ordering::SeqCst);
     let started = Instant::now();
     let settings: Settings = state.settings.lock().unwrap().clone();
 
@@ -93,6 +135,19 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
         );
     };
 
+    let publish = match plan {
+        Plan::New(sender) => sender,
+        Plan::Reuse { mut result, .. } => {
+            // Same line read again: no request, just its translation once it's ready.
+            let ready = tokio::time::timeout(REUSE_WAIT, result.wait_for(Option::is_some)).await;
+            if let Ok(Ok(full)) = ready {
+                let full = full.clone().unwrap_or_default();
+                emit(&full, true, true, None);
+            }
+            return;
+        }
+    };
+
     let key = TranslationCache::key(
         &settings.translator.model,
         &settings.source_language,
@@ -106,6 +161,7 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
         .get(&key)
         .map(str::to_owned);
     if let Some(cached) = hit {
+        publish.send_replace(Some(cached.clone()));
         emit(&cached, true, true, None);
         remember(translation, text, cached);
         return;
@@ -134,11 +190,13 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64) {
     match result {
         Ok(full) => {
             translation.cache.lock().unwrap().insert(key, full.clone());
+            publish.send_replace(Some(full.clone()));
             emit(&full, true, false, None);
             remember(translation, text, full);
         }
         Err(TranslateError::Cancelled) => {} // not used by this flow (we never cancel)
         Err(e) => {
+            // Dropping `publish` here releases any re-readings that were waiting.
             log::warn(&format!("translation failed: {e}"));
             emit("", true, false, Some(e.kind().to_string()));
         }

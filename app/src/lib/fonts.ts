@@ -4,7 +4,7 @@
 //  - built-in: bundled with the app (work offline, same on every PC)
 //  - system:   fonts that ship with Windows
 //  - imported: files the user added in the Fonts screen ("imported:<file>")
-import { listFonts, readFont, type ImportedFont } from "./api";
+import { candidateFont, listFonts, readFont, type ImportedFont } from "./api";
 
 export interface FontOption {
   value: string; // what is stored in the area ("" = default)
@@ -76,4 +76,19 @@ export async function loadAllImported(): Promise<ImportedFont[]> {
   const fonts = await listFonts();
   await Promise.all(fonts.map((f) => loadImportedFont(f.file).catch(() => {})));
   return fonts;
+}
+
+// CSS family for a suggested (not yet kept) font. The family name itself comes
+// second, so the browser demo can fall back to a built-in font with that name.
+export function candidateFamily(file: string, family: string): string {
+  return `'sq-candidate-${file.replace(/[^a-zA-Z0-9_-]/g, "_")}', '${family}', '${family} Variable', system-ui`;
+}
+
+// Registers a suggested font with the page so its sample can be drawn.
+export async function loadCandidateFont(file: string): Promise<void> {
+  const bytes = await candidateFont(file);
+  if (!bytes.byteLength) return;
+  const face = new FontFace(`sq-candidate-${file.replace(/[^a-zA-Z0-9_-]/g, "_")}`, bytes);
+  await face.load();
+  document.fonts.add(face);
 }

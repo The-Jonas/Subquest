@@ -6,6 +6,7 @@
   import { onDestroy } from "svelte";
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
+  import FontDetect from "../components/FontDetect.svelte";
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
   import {
@@ -33,6 +34,8 @@
   let game = $state<GameWindow | null>(null);
   let areaMode = $state<AreaMode>("dialogue");
   let region = $state<Region | null>(null);
+  let font = $state(""); // the area's font ("" = app default)
+  let preview = $state<GamePreview>();
   let running = $state(false);
   let error = $state<string | null>(null);
   let lines = $state<OcrTextEvent[]>([]);
@@ -73,16 +76,17 @@
     const saved = app.settings.profiles[profileKey(w)]?.areas[0];
     areaMode = saved?.mode ?? "dialogue";
     region = saved?.region ?? null;
+    font = saved?.font ?? "";
     step = 1;
   }
 
   // Saves the area choice in the game's profile and moves on to the summary.
   async function confirmArea() {
     if (!game || !canContinue) return;
-    // Keep the area's look (font, style) when only its position changes.
+    // Keep the area's style; position and font come from this step.
     const key = profileKey(game);
     const existing = app.settings.profiles[key];
-    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region };
+    const area = { ...(existing?.areas[0] ?? newArea()), mode: areaMode, region, font };
     app.settings.profiles[key] = { title: game.title, areas: [area, ...(existing?.areas.slice(1) ?? [])] };
     try {
       await persistSettings();
@@ -105,7 +109,7 @@
     lines = [];
     translations = {};
     try {
-      unlisteners.push(await onOcrText((e) => (lines = [e, ...lines].slice(0, 6))));
+      unlisteners.push(await onOcrText((e) => e.text && (lines = [e, ...lines].slice(0, 6))));
       unlisteners.push(await onTranslation((e) => (translations[e.frameId] = e)));
       await startSession(game.handle, areaMode === "dialogue" ? region : null, profileKey(game));
       running = true;
@@ -191,7 +195,7 @@
       </div>
     {:else if step === 1}
       {#if game}
-        <GamePreview windowHandle={game.handle} selectable={areaMode === "dialogue"} bind:region />
+        <GamePreview bind:this={preview} windowHandle={game.handle} selectable={areaMode === "dialogue"} bind:region />
       {/if}
       <div class="area-hint">
         {#if areaMode === "dialogue" && region}
@@ -212,6 +216,7 @@
           </label>
         {/each}
       </div>
+      <FontDetect snapshot={() => preview!.snapshot(areaMode === "dialogue" ? region : null)} bind:value={font} />
       <div class="actions">
         <button class="btn btn-ghost" onclick={() => (step = 0)}>{t("play.back")}</button>
         <button class="btn btn-primary" onclick={confirmArea} disabled={!canContinue}>{t("play.next")}</button>

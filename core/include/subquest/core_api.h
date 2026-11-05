@@ -74,7 +74,8 @@ typedef struct SqOcrEvent {
     uint32_t text_rgb;       /* whole area: text color (0xRRGGBB) */
 } SqOcrEvent;
 
-/* Called on the OCR thread when NEW text is recognized. */
+/* Called on the OCR thread when NEW text is recognized, and once with empty
+   text (utf8_text "" and line_count 0) when the text disappears. */
 typedef void (*SqTextCallback)(const SqOcrEvent* event, void* user_data);
 
 /* Called for every preview frame: contiguous RGBA, width * height * 4 bytes.

@@ -53,7 +53,8 @@ void Pipeline::on_frame(Frame&& frame) {
     if (detector_.feed(frame)) ocr_slot_.put(std::move(frame));
 }
 
-// Drains the slot until the session closes; skips empty or repeated text.
+// Drains the slot until the session closes; skips repeated text. When the text
+// disappears, sends one empty result so the UI can hide the old translation.
 // total_ms uses the same steady clock as the capture timestamp.
 void Pipeline::ocr_loop() {
     while (auto frame = ocr_slot_.take()) {
@@ -61,16 +62,18 @@ void Pipeline::ocr_loop() {
         const auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
                                 std::chrono::steady_clock::now().time_since_epoch()).count();
         result.total_ms = double(now_us - int64_t(frame->timestamp_us)) / 1000.0;
-        if (result.full_text.empty() || result.full_text == last_text_) continue;
+        if (result.full_text == last_text_) continue; // nothing new (still the same, or still empty)
         last_text_ = result.full_text;
-        // Colors only for new text: cheap enough (a few thousand pixels per line).
-        const TextColors colors = sample_colors(*frame, result.lines);
-        result.background_rgb = colors.background;
-        result.text_rgb = colors.text;
-        for (OcrLine& line : result.lines) {
-            const TextColors c = sample_line_colors(*frame, line.box);
-            line.background_rgb = c.background;
-            line.text_rgb = c.text;
+        if (!result.full_text.empty()) {
+            // Colors only for new text: cheap enough (a few thousand pixels per line).
+            const TextColors colors = sample_colors(*frame, result.lines);
+            result.background_rgb = colors.background;
+            result.text_rgb = colors.text;
+            for (OcrLine& line : result.lines) {
+                const TextColors c = sample_line_colors(*frame, line.box);
+                line.background_rgb = c.background;
+                line.text_rgb = c.text;
+            }
         }
         result.frame_width = frame->width;
         result.frame_height = frame->height;

@@ -15,6 +15,9 @@
   }: { windowHandle: number; selectable?: boolean; region?: Region | null } = $props();
 
   const MAX_WIDTH = 1024; // preview width: big enough to mark the area precisely, light enough for 8 fps
+  const FULL_WIDTH = 8192; // asks for frames at the window's real size (never upscaled)
+  const SNAPSHOT_WAIT_MS = 2000; // after this, a snapshot settles for the preview frame
+  const MAX_CROP = 1600; // a crop wider than this is scaled down before it is sent
   const MIN_SIZE = 12; // smallest area accepted, in capture pixels (filters out accidental clicks)
 
   let canvas = $state<HTMLCanvasElement>();
@@ -25,6 +28,10 @@
   let sourceHeight = $state(0);
   let dragStart: [number, number] | null = null;
   let draft = $state<Region | null>(null);
+  let width = $state(MAX_WIDTH); // preview width asked from the core
+  let latest: PreviewFrame | null = null;
+  let shownHandle = 0; // game whose frames are on the canvas
+  let waitingFull: ((frame: PreviewFrame) => void) | null = null;
 
   const shown = $derived(draft ?? region); // rectangle being drawn wins over the saved one
 
@@ -39,17 +46,56 @@
     sourceWidth = frame.sourceWidth;
     sourceHeight = frame.sourceHeight;
     live = true;
+    latest = frame;
+    if (waitingFull && frame.image.width === frame.sourceWidth) waitingFull(frame);
   }
 
-  // (Re)starts capture whenever the chosen game changes; cleanup stops the previous one.
+  // PNG of the game at full resolution, cropped to `area` (or the whole window).
+  // For a moment the preview runs at the window's real size, then goes back.
+  export async function snapshot(area: Region | null): Promise<Blob> {
+    width = FULL_WIDTH;
+    const frame = await new Promise<PreviewFrame | null>((resolve) => {
+      waitingFull = resolve;
+      setTimeout(() => resolve(latest), SNAPSHOT_WAIT_MS);
+    });
+    waitingFull = null;
+    width = MAX_WIDTH;
+    if (!frame) throw new Error("no frame yet");
+
+    // Area in this frame's pixels (the fallback frame may be downscaled).
+    const scale = frame.image.width / frame.sourceWidth;
+    const [x, y, w, h] = (area ?? [0, 0, frame.sourceWidth, frame.sourceHeight]).map((v) => Math.round(v * scale));
+    const source = document.createElement("canvas");
+    source.width = frame.image.width;
+    source.height = frame.image.height;
+    source.getContext("2d")!.putImageData(frame.image, 0, 0);
+
+    const shrink = Math.min(1, MAX_CROP / w);
+    const crop = document.createElement("canvas");
+    crop.width = Math.max(1, Math.round(w * shrink));
+    crop.height = Math.max(1, Math.round(h * shrink));
+    crop.getContext("2d")!.drawImage(source, x, y, w, h, 0, 0, crop.width, crop.height);
+    return new Promise((resolve, reject) =>
+      crop.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("PNG encoding failed"))), "image/png"),
+    );
+  }
+
+  // (Re)starts capture whenever the chosen game or the asked width changes;
+  // cleanup stops the previous one.
   $effect(() => {
     const handle = windowHandle;
+    const maxWidth = width;
     let stop: (() => Promise<void>) | null = null;
     let cancelled = false;
-    live = false;
+    if (handle !== shownHandle) {
+      // Another game: forget the old image. Only a size switch keeps it on screen.
+      shownHandle = handle;
+      latest = null;
+      live = false;
+    }
     error = null;
 
-    startPreview(handle, MAX_WIDTH, draw)
+    startPreview(handle, maxWidth, draw)
       .then((fn) => {
         if (cancelled) fn();
         else stop = fn;

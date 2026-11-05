@@ -7,6 +7,7 @@
 
 pub mod cache;
 pub mod openai_compat;
+pub mod similar;
 pub mod sse;
 
 use serde::{Deserialize, Serialize};

@@ -78,7 +78,8 @@ export interface OcrTextEvent {
   textColor: string; // text color sampled from the game ("#rrggbb")
   frameWidth: number; // captured area size: line rects are in these pixels
   frameHeight: number;
-  lines: OcrLine[];
+  lines: OcrLine[]; // empty (with empty text) when the text left the screen
+  sameAs?: number | null; // this is that earlier line read again: keep its translation
 }
 
 // One recognized line, with its place and its own colors.
@@ -198,6 +199,52 @@ export async function removeFont(file: string): Promise<void> {
     return;
   }
   await invoke("remove_font", { file });
+}
+
+// A Google Font suggested for a game, downloaded and waiting for the user's choice.
+export interface FontCandidate {
+  family: string;
+  weight: number;
+  reason: string; // why it matches, in the UI language
+  file: string; // id; also its file name once kept
+}
+
+// What the model read in the crop and the fonts it suggests, best match first.
+export interface FontDetection {
+  text: string;
+  candidates: FontCandidate[];
+}
+
+// Asks the translator model which Google Fonts look like the game's text (PNG crop).
+export async function detectFont(png: Blob): Promise<FontDetection> {
+  if (!inTauri) {
+    // Browser mode: built-in fonts stand in for the downloads.
+    await new Promise((r) => setTimeout(r, 900));
+    return {
+      text: "Seas reflect her gleaming beauty",
+      candidates: [
+        { family: "Cinzel", weight: 600, reason: "serifas clássicas, maiúsculas largas", file: "Cinzel-600.ttf" },
+        { family: "Crimson Pro", weight: 400, reason: "serifa de livro, traço fino", file: "CrimsonPro-400.ttf" },
+      ],
+    };
+  }
+  return invoke("detect_font", new Uint8Array(await png.arrayBuffer()));
+}
+
+// Bytes of a suggested font, to show a sample before keeping it.
+export async function candidateFont(file: string): Promise<ArrayBuffer> {
+  if (!inTauri) return new ArrayBuffer(0);
+  return invoke("candidate_font", { file });
+}
+
+// Keeps a suggested font in the Fonts folder; returns it as an imported font.
+export async function keepCandidateFont(file: string): Promise<ImportedFont> {
+  if (!inTauri) {
+    const entry = { file, name: file.replace(/\.[^.]+$/, "") };
+    browserFonts = [...browserFonts.filter((f) => f.file !== file), entry];
+    return entry;
+  }
+  return invoke("keep_candidate_font", { file });
 }
 
 // Stops translating.

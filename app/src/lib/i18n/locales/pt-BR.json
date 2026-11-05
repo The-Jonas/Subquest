@@ -157,7 +157,8 @@
     "translatorNotConfigured": "Falta configurar o tradutor: confira o modelo e o endereço em Ajustes.",
     "translatorNetwork": "Não consegui falar com o serviço de tradução. Confira a internet e o endereço em Ajustes.",
     "translatorProvider": "O serviço de tradução recusou o pedido. Confira a chave e o modelo em Ajustes; se for limite de uso, espere um pouco.",
-    "translatorBusy": "O modelo está sobrecarregado agora (muita gente usando). Tente de novo em alguns segundos ou escolha outro modelo em Ajustes; os \"flash-lite\" costumam estar livres."
+    "translatorBusy": "O modelo está sobrecarregado agora (muita gente usando). Tente de novo em alguns segundos ou escolha outro modelo em Ajustes; os \"flash-lite\" costumam estar livres.",
+    "fontNotFound": "Nenhuma das fontes sugeridas existe no Google Fonts. Tente de novo ou marque uma área com mais texto."
   },
   "fonts": {
     "title": "Fontes",
@@ -173,6 +174,17 @@
       "builtIn": "Incluídas no Subquest",
       "windows": "Do Windows",
       "imported": "Importadas"
+    },
+    "detect": {
+      "title": "Fonte do jogo",
+      "help": "O modelo de tradução olha a área marcada e sugere fontes parecidas do Google Fonts.",
+      "button": "Detectar fonte",
+      "again": "Detectar de novo",
+      "working": "Olhando as letras do jogo…",
+      "use": "Usar esta",
+      "inUse": "Em uso",
+      "weight": "peso {weight}",
+      "snapshotFailed": "Não deu para capturar a tela do jogo."
     }
   }
 }

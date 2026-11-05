@@ -190,6 +190,37 @@ impl OpenAiCompatTranslator {
         Ok(text.trim().to_string())
     }
 
+    /// Asks one question about an image (PNG) and returns the whole answer.
+    /// Not streamed: used for one-off jobs like recognizing a game's font.
+    pub async fn ask_about_image(&self, prompt: &str, png: &[u8]) -> Result<String, TranslateError> {
+        use base64::Engine as _;
+        self.validate()?;
+        let image = format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(png)
+        );
+        let body = json!({
+            "model": self.model.trim(),
+            "messages": [{
+                "role": "user",
+                "content": [
+                    { "type": "text", "text": prompt },
+                    { "type": "image_url", "image_url": { "url": image } },
+                ],
+            }],
+            "temperature": 0.2,
+        });
+        let response = self.send_with_retry(&body).await?;
+        let answer: Value = response
+            .json()
+            .await
+            .map_err(|e| TranslateError::Network(e.to_string()))?;
+        answer["choices"][0]["message"]["content"]
+            .as_str()
+            .map(|text| text.trim().to_string())
+            .ok_or_else(|| TranslateError::Provider(format!("unexpected answer: {answer}")))
+    }
+
     /// Lists the model ids the service offers (`GET {base_url}/models`), so the
     /// user picks from real names instead of guessing them.
     pub async fn list_models(&self) -> Result<Vec<String>, TranslateError> {
@@ -390,6 +421,21 @@ mod tests {
         let result =
             tauri::async_runtime::block_on(translator(&url).translate(&request(), |_| false));
         assert_eq!(result, Err(TranslateError::Cancelled));
+    }
+
+    #[test]
+    fn sends_the_image_and_returns_the_answer() {
+        let (url, requests) = fake_server(
+            "application/json",
+            "{\"choices\":[{\"message\":{\"content\":\" {\\\"fonts\\\":[]} \"}}]}",
+        );
+        let answer =
+            tauri::async_runtime::block_on(translator(&url).ask_about_image("Which font?", b"PNG"))
+                .unwrap();
+        assert_eq!(answer, "{\"fonts\":[]}");
+        let request = requests.recv().unwrap();
+        assert!(request.contains("data:image/png;base64,UE5H")); // "PNG" in base64
+        assert!(request.contains("Which font?"));
     }
 
     #[test]

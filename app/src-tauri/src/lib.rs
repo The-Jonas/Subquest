@@ -3,6 +3,7 @@
 
 mod core_ffi;
 mod error;
+mod font_detect;
 mod fonts;
 mod overlay;
 mod settings;
@@ -22,6 +23,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use core_ffi::{Core, SqRect, WindowEntry};
 use error::AppError;
 use settings::{Settings, TranslatorSettings};
+use translate::similar;
 use translation::TranslationState;
 
 /// Channel the preview reaches the UI through, as raw bytes (no JSON).
@@ -38,6 +40,7 @@ struct AppState {
     translation: TranslationState,
     overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
     active_profile: Mutex<Option<String>>, // profile key of the game being translated (the overlay styles itself from it)
+    font_finder: font_detect::FontFinder,   // fonts suggested for a game, waiting for the user's choice
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -67,6 +70,7 @@ struct OcrTextEvent {
     frame_width: i32,   // captured area size: line boxes are in these pixels
     frame_height: i32,
     lines: Vec<OcrLineEvent>,
+    same_as: Option<u64>, // this is that earlier line read again: keep its translation
 }
 
 /// One recognized line with its place and colors, for drawing its translation in place.
@@ -140,7 +144,19 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
             text_color: css_color(l.text_rgb),
         })
         .collect();
-    let text = owned(e.utf8_text);
+    let mut text = owned(e.utf8_text);
+    let mut lines = lines;
+    let meaningful = similar::meaningful(&text);
+    if !meaningful {
+        // The text left the screen (or only stray marks are left): tell the UI, translate nothing.
+        text.clear();
+        lines = Vec::new();
+    }
+    let plan = meaningful.then(|| app.state::<AppState>().translation.plan(&text, e.frame_id));
+    let same_as = match &plan {
+        Some(translation::Plan::Reuse { of, .. }) => Some(*of),
+        _ => None,
+    };
     let _ = app.emit(
         "ocr-text",
         OcrTextEvent {
@@ -153,10 +169,13 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
             frame_width: e.frame_width,
             frame_height: e.frame_height,
             lines,
+            same_as,
         },
     );
-    let app = app.clone();
-    tauri::async_runtime::spawn(translation::translate_line(app, text, e.frame_id));
+    if let Some(plan) = plan {
+        let app = app.clone();
+        tauri::async_runtime::spawn(translation::translate_line(app, text, e.frame_id, plan));
+    }
 }
 
 /// Starts translating the chosen window, in the chosen region.
@@ -368,6 +387,45 @@ fn import_font(
     fonts::import(&state.data_dir, &name, bytes)
 }
 
+/// Suggests Google Fonts close to the game's font, from a PNG crop of its text
+/// (sent as raw bytes). Uses the translator's model, which must accept images.
+#[tauri::command]
+async fn detect_font(
+    state: State<'_, AppState>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<font_detect::FontDetection, AppError> {
+    let tauri::ipc::InvokeBody::Raw(png) = request.body() else {
+        return Err(AppError::other("expected the image as raw bytes"));
+    };
+    let settings = state.settings.lock().unwrap().clone();
+    let http = &state.translation.http;
+    let model = translation::backend(http, &settings.translator);
+    state
+        .font_finder
+        .detect(&model, http, png, &settings.ui_language)
+        .await
+}
+
+/// Bytes of a suggested font, so the UI can show a sample before keeping it.
+#[tauri::command]
+fn candidate_font(state: State<'_, AppState>, file: String) -> Result<tauri::ipc::Response, AppError> {
+    let bytes = state
+        .font_finder
+        .bytes(&file)
+        .ok_or_else(|| AppError::other("unknown font candidate"))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Keeps a suggested font: it goes to the Fonts folder like an imported file.
+#[tauri::command]
+fn keep_candidate_font(state: State<'_, AppState>, file: String) -> Result<fonts::FontEntry, AppError> {
+    let bytes = state
+        .font_finder
+        .bytes(&file)
+        .ok_or_else(|| AppError::other("unknown font candidate"))?;
+    fonts::import(&state.data_dir, &file, &bytes)
+}
+
 /// Decodes "%20"-style escapes (enough for file names sent by encodeURIComponent).
 fn percent_decode(text: &str) -> String {
     let bytes = text.as_bytes();
@@ -461,6 +519,7 @@ pub fn run() {
                 preview_user_data: Mutex::new(None),
                 translation: TranslationState::new(),
                 overlay_running: Mutex::new(None),
+                font_finder: font_detect::FontFinder::default(),
                 active_profile: Mutex::new(None),
             });
             Ok(())
@@ -479,6 +538,9 @@ pub fn run() {
             list_fonts,
             read_font,
             remove_font,
+            detect_font,
+            candidate_font,
+            keep_candidate_font,
             get_settings,
             save_settings
         ])

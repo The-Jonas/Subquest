@@ -157,7 +157,8 @@
     "translatorNotConfigured": "The translator isn't set up yet: check the model and address in Settings.",
     "translatorNetwork": "Couldn't reach the translation service. Check your internet and the address in Settings.",
     "translatorProvider": "The translation service refused the request. Check the key and model in Settings; if it is a usage limit, wait a bit.",
-    "translatorBusy": "The model is overloaded right now (high demand). Try again in a few seconds or pick another model in Settings; the \"flash-lite\" ones are usually free."
+    "translatorBusy": "The model is overloaded right now (high demand). Try again in a few seconds or pick another model in Settings; the \"flash-lite\" ones are usually free.",
+    "fontNotFound": "None of the suggested fonts exist on Google Fonts. Try again or mark an area with more text."
   },
   "fonts": {
     "title": "Fonts",
@@ -173,6 +174,17 @@
       "builtIn": "Included with Subquest",
       "windows": "From Windows",
       "imported": "Imported"
+    },
+    "detect": {
+      "title": "Game font",
+      "help": "The translation model looks at the marked area and suggests similar fonts from Google Fonts.",
+      "button": "Detect font",
+      "again": "Detect again",
+      "working": "Looking at the game's letters…",
+      "use": "Use this one",
+      "inUse": "In use",
+      "weight": "weight {weight}",
+      "snapshotFailed": "Couldn't capture the game screen."
     }
   }
 }

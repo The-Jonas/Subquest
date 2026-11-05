@@ -9,6 +9,8 @@
 
   When a new line appears in the game, the old translation disappears at once
   (in-place) so it never covers new text; the new one appears as it streams in.
+  The same line read again by OCR (small differences) keeps its translation.
+  When the text leaves the screen, the translation goes away HIDE_AFTER_MS later.
 -->
 <script lang="ts">
   import { onDestroy, tick } from "svelte";
@@ -28,6 +30,7 @@
   import { layout, pairLines } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
+  const HIDE_AFTER_MS = 1500; // how long a translation outlives its text on screen
 
   let settings = $state<Settings>(structuredClone(defaultSettings));
   let profileKey = $state<string | null>(null);
@@ -43,7 +46,10 @@
   let classicColors = $state({ box: "#0a0c18", text: "#ffffff" });
   let fontSize = $state(defaultSettings.overlay.fontSize);
   let box = $state<HTMLDivElement>();
-  let shownFrame = 0;
+  let shownFrame = 0; // classic: translations of older frames are ignored
+  let lastFrame = 0; // newest frame id seen from OCR
+  let aliases = new Set<number>(); // frame ids that are re-readings of `current`
+  let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const unlisteners: (() => void)[] = [];
 
   // The area being translated (first area of the active game's profile).
@@ -82,12 +88,40 @@
     }
   }
 
-  // New text in the game: in place, clear the old translation right away.
+  // True when a frame id is the line on screen or a re-reading of it.
+  function isCurrent(frameId: number): boolean {
+    return !!current && (frameId === current.frameId || aliases.has(frameId));
+  }
+
+  // Removes every translation from the screen (the text is gone from the game).
+  function hide() {
+    current = null;
+    translation = "";
+    aliases = new Set();
+    classicText = "";
+    classicOriginal = "";
+    shownFrame = lastFrame + 1; // a late translation must not bring them back
+  }
+
+  // New text in the game. Empty text: it left the screen, hide a moment later.
+  // The same line read again: keep what is shown. Otherwise, in place, clear
+  // the old translation right away so it never covers the new text.
   function onOcr(e: OcrTextEvent) {
+    clearTimeout(hideTimer);
+    lastFrame = Math.max(lastFrame, e.frameId);
+    if (!e.text) {
+      hideTimer = setTimeout(hide, HIDE_AFTER_MS);
+      return;
+    }
     lines[e.frameId] = e;
+    if (e.sameAs != null && isCurrent(e.sameAs)) {
+      aliases.add(e.frameId);
+      return;
+    }
     if (!current || e.frameId > current.frameId) {
       current = e;
       translation = "";
+      aliases = new Set();
     }
   }
 
@@ -95,7 +129,8 @@
   // previous text until the new one has its first words.
   function onTranslation(e: TranslationEvent) {
     if (!e.text || e.errorKind) return;
-    if (current && e.frameId === current.frameId) translation = e.text;
+    if (isCurrent(e.frameId)) translation = e.text;
+    else if (current && e.frameId < current.frameId) return; // an older line finished late
     if (e.frameId < shownFrame) return;
     shownFrame = e.frameId;
     classicText = e.text;
@@ -152,7 +187,10 @@
   }
 
   setup();
-  onDestroy(() => unlisteners.forEach((fn) => fn()));
+  onDestroy(() => {
+    clearTimeout(hideTimer);
+    unlisteners.forEach((fn) => fn());
+  });
 </script>
 
 <svelte:window onresize={() => !inPlace && classicText && fit()} />
