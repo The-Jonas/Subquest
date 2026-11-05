@@ -3,7 +3,6 @@
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
   import { session } from "../stores/session.svelte";
-  import { styles } from "../stores/styles.svelte";
 
   // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
@@ -44,10 +43,6 @@
           {#if item.id === "play" && session.running}
             <!-- The session keeps running on other screens: this dot says so -->
             <span class="live-dot" title={t("play.start.running", { game: session.game?.title ?? "" })}></span>
-          {/if}
-          {#if item.id === "styles" && styles.unseen > 0}
-            <!-- New ways of writing found in the game, waiting for a look -->
-            <span class="badge" title={t("styles.newBadge")}>{styles.unseen}</span>
           {/if}
           {#if item.id === "history" && session.unseenMissed > 0}
             <!-- Lines that passed before their translation was ready -->

@@ -1,5 +1,6 @@
 // Global UI state: settings and which screen is open.
-import { getSettings, saveSettings, defaultSettings, coreStatus, type Settings, type CoreStatus } from "../api";
+import { listen } from "@tauri-apps/api/event";
+import { getSettings, saveSettings, defaultSettings, coreStatus, inTauri, type Settings, type CoreStatus } from "../api";
 import { setLocale, type Locale } from "../i18n/index.svelte";
 import { watchStyles } from "./styles.svelte";
 
@@ -21,6 +22,8 @@ export async function boot() {
   if (!settings.tutorialDone) app.screen = "tutorial";
   app.ready = true;
   void watchStyles();
+  // Areas marked from the in-game toolbar change the settings from outside this window.
+  if (inTauri) void listen<Settings>("settings-changed", (e) => (app.settings = e.payload));
 }
 
 // Saves the current settings and applies the UI language.

@@ -239,18 +239,33 @@
   },
   "styles": {
     "title": "Estilos do jogo",
-    "intro": "Cada jeito que o jogo escreve (menus, falas, nomes, músicas) aparece aqui com um print da linha original. O Subquest já escolhe a fonte instalada mais parecida; troque quando quiser.",
-    "empty": "Nenhum estilo ainda. Eles aparecem sozinhos enquanto um jogo é traduzido.",
-    "size": "{px} px de altura",
-    "seen": "visto {count}×",
-    "new": "Novo",
-    "chosen": "Fonte escolhida: {font}",
-    "auto": "Fonte instalada mais parecida: {font} (automática)",
-    "matching": "Procurando a fonte instalada mais parecida…",
+    "intro": "Cada jogo escreve coisas diferentes com fontes diferentes. Tire um print de uma frase, escolha a fonte dela, e toda linha com a mesma cor de letra passa a usar essa fonte, em qualquer tamanho.",
+    "take": "Tirar print de um estilo",
+    "takeHelp": "Arraste sobre uma frase no jogo. Atalho: Ctrl+Shift+S.",
+    "takeNeedsGame": "Comece a traduzir este jogo para tirar prints dele.",
+    "empty": "Nenhum estilo ainda.",
+    "namePlaceholder": "Nome (ex.: Menu, Falas, Nomes)",
+    "color": "Cor das letras medida no print",
+    "noFont": "Escolha uma fonte para este estilo valer.",
     "search": "Procurar no Google Fonts",
     "searchTitle": "Fontes parecidas no Google Fonts",
     "searchHelp": "O modelo olha o print deste estilo e sugere fontes; a escolhida vale só para este estilo.",
-    "forget": "Esquecer",
-    "newBadge": "Estilos novos encontrados no jogo"
+    "forget": "Esquecer"
+  },
+  "toolbar": {
+    "move": "Arraste para mover",
+    "area": "Marcar uma área no jogo (Ctrl+Shift+A)",
+    "style": "Tirar print de um estilo (Ctrl+Shift+S)",
+    "pause": "Pausar a tradução (Ctrl+Shift+T)",
+    "resume": "Voltar a traduzir (Ctrl+Shift+T)",
+    "hide": "Esconder as traduções (Ctrl+Shift+H)",
+    "show": "Mostrar as traduções (Ctrl+Shift+H)",
+    "open": "Abrir o Subquest"
+  },
+  "select": {
+    "area": "Marque a nova área",
+    "style": "Marque uma frase deste estilo",
+    "howTo": "Arraste sobre o jogo. Botão direito cancela.",
+    "cancel": "Cancelar"
   }
 }

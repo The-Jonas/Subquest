@@ -239,18 +239,33 @@
   },
   "styles": {
     "title": "Estilos del juego",
-    "intro": "Cada forma en que el juego escribe (menús, diálogos, nombres, canciones) aparece aquí con una captura de la línea original. Subquest ya elige la fuente instalada más parecida; cámbiala cuando quieras.",
-    "empty": "Todavía no hay estilos. Aparecen solos mientras se traduce un juego.",
-    "size": "{px} px de alto",
-    "seen": "visto {count}×",
-    "new": "Nuevo",
-    "chosen": "Fuente elegida: {font}",
-    "auto": "Fuente instalada más parecida: {font} (automática)",
-    "matching": "Buscando la fuente instalada más parecida…",
+    "intro": "Cada juego escribe cosas distintas con fuentes distintas. Haz una captura de una frase, elige su fuente, y toda línea con el mismo color de letra usará esa fuente, en cualquier tamaño.",
+    "take": "Capturar un estilo",
+    "takeHelp": "Arrastra sobre una frase en el juego. Atajo: Ctrl+Shift+S.",
+    "takeNeedsGame": "Empieza a traducir este juego para capturarlo.",
+    "empty": "Todavía no hay estilos.",
+    "namePlaceholder": "Nombre (ej.: Menú, Diálogos, Nombres)",
+    "color": "Color de letra medido en la captura",
+    "noFont": "Elige una fuente para que este estilo tenga efecto.",
     "search": "Buscar en Google Fonts",
     "searchTitle": "Fuentes parecidas en Google Fonts",
     "searchHelp": "El modelo mira la captura de este estilo y sugiere fuentes; la elegida vale solo para este estilo.",
-    "forget": "Olvidar",
-    "newBadge": "Estilos nuevos encontrados en el juego"
+    "forget": "Olvidar"
+  },
+  "toolbar": {
+    "move": "Arrastra para mover",
+    "area": "Marcar un área en el juego (Ctrl+Shift+A)",
+    "style": "Capturar un estilo (Ctrl+Shift+S)",
+    "pause": "Pausar la traducción (Ctrl+Shift+T)",
+    "resume": "Volver a traducir (Ctrl+Shift+T)",
+    "hide": "Ocultar las traducciones (Ctrl+Shift+H)",
+    "show": "Mostrar las traducciones (Ctrl+Shift+H)",
+    "open": "Abrir Subquest"
+  },
+  "select": {
+    "area": "Marca la nueva área",
+    "style": "Marca una frase de este estilo",
+    "howTo": "Arrastra sobre el juego. Clic derecho cancela.",
+    "cancel": "Cancelar"
   }
 }

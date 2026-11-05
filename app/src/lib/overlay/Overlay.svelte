@@ -36,6 +36,8 @@
     type OcrTextEvent,
   } from "../api";
   import { cssFamily, ensureFont } from "../fonts";
+  import { t, setLocale, type Locale } from "../i18n/index.svelte";
+  import { finishSelection, type SelectionPurpose, type Region } from "../api";
   import { layout, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
@@ -65,6 +67,46 @@
   let fontReady = $state(0); // bumps when a font finishes loading, so text is measured again
   const metas = new Map<number, AreaMeta>();
   let gameStyles = $state<Record<string, TextStyle>>({}); // the game's text styles, by id
+
+  // Drawing a rectangle over the game (from the toolbar or a shortcut).
+  let selecting = $state<SelectionPurpose | null>(null);
+  let dragFrom: [number, number] | null = null;
+  let dragRect = $state<[number, number, number, number] | null>(null); // CSS px
+
+  // Starts or follows a drag on the selection layer.
+  function onSelectDown(e: PointerEvent) {
+    if (e.button === 2) return cancelSelection();
+    if (e.button !== 0) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragFrom = [e.clientX, e.clientY];
+    dragRect = [e.clientX, e.clientY, 0, 0];
+  }
+  function onSelectMove(e: PointerEvent) {
+    if (!dragFrom) return;
+    const [x0, y0] = dragFrom;
+    dragRect = [Math.min(x0, e.clientX), Math.min(y0, e.clientY), Math.abs(e.clientX - x0), Math.abs(e.clientY - y0)];
+  }
+
+  // Ends the drag: the rectangle goes to Rust in window pixels (CSS px x DPI).
+  async function onSelectUp() {
+    if (!dragFrom || !selecting || !dragRect) return;
+    const scale = window.devicePixelRatio || 1;
+    const rect = dragRect.map((v) => Math.round(v * scale)) as Region;
+    const purpose = selecting;
+    dragFrom = null;
+    dragRect = null;
+    selecting = null;
+    await finishSelection(purpose, rect).catch(() => {});
+  }
+
+  // Leaves selection mode without a rectangle (right click or the button).
+  async function cancelSelection() {
+    const purpose = selecting;
+    dragFrom = null;
+    dragRect = null;
+    selecting = null;
+    if (purpose) await finishSelection(purpose, null).catch(() => {});
+  }
   const lines: Record<number, OcrTextEvent> = {}; // OCR events by frame id
   const unlisteners: (() => void)[] = [];
 
@@ -94,13 +136,12 @@
   // Canvas used only to measure texts for the in-place layout.
   const measureCtx = document.createElement("canvas").getContext("2d")!;
 
-  // Font and letter case of a line: its style's chosen font, else the area's
-  // font when one was set, else the style's automatic match, else the default.
+  // Font and letter case of a line: its style's font (the user's print of
+  // that color), else its area's font, else the default.
   function lookFor(a: GameArea, styleId: string | null | undefined): { font: string; caps: LetterCase } {
     const style = styleId ? gameStyles[styleId] : undefined;
     if (style?.font) return { font: style.font, caps: style.caps };
-    if (a.font) return { font: a.font, caps: a.caps };
-    return { font: style?.autoFont ?? "", caps: a.caps };
+    return { font: a.font, caps: a.caps };
   }
 
   // Measures texts in a font and letter case.
@@ -253,7 +294,7 @@
   async function loadFonts() {
     const fonts = [
       ...areas.map((a) => a.font),
-      ...Object.values(gameStyles).flatMap((s) => [s.font, s.autoFont]),
+      ...Object.values(gameStyles).map((s) => s.font),
     ];
     await Promise.all(fonts.map((f) => ensureFont(f).catch(() => {})));
     fontReady += 1;
@@ -279,11 +320,13 @@
   async function setup() {
     if (!inTauri) return demo();
     settings = await getSettings();
+    setLocale(settings.uiLanguage as Locale);
     await useProfile(await activeProfile());
     unlisteners.push(await listen<string>("session-started", (e) => useProfile(e.payload)));
     unlisteners.push(await listen<OcrTextEvent>("ocr-text", (e) => onOcr(e.payload)));
     unlisteners.push(await listen<TranslationEvent>("translation", (e) => onTranslation(e.payload)));
     unlisteners.push(await listen("styles-changed", () => loadStyles()));
+    unlisteners.push(await listen<SelectionPurpose>("select-region", (e) => (selecting = e.payload)));
     unlisteners.push(
       await listen<Settings>("settings-changed", (e) => {
         settings = e.payload;
@@ -313,6 +356,9 @@
     view(0).current = e;
     view(0).translation = "Mares refletem sua beleza radiante\nMares refletem sua beleza radiante";
     document.fonts.ready.then(() => (fontReady += 1));
+    // overlay.html?select=area|style shows the selection mode, to design it.
+    const select = new URLSearchParams(location.search).get("select");
+    if (select === "area" || select === "style") selecting = select;
   }
 
   setup();
@@ -322,7 +368,35 @@
   });
 </script>
 
-<div class="stage" bind:clientWidth={viewWidth} bind:clientHeight={viewHeight}>
+<!-- While a rectangle is drawn, the translations step aside: the game's own
+     text must be visible to aim at, and nothing may catch the drag -->
+<div class="stage" class:selecting bind:clientWidth={viewWidth} bind:clientHeight={viewHeight}>
+  {#if selecting}
+    <!-- Selection mode: the game dims, the drag draws a gold rectangle -->
+    <div
+      class="select-layer"
+      onpointerdown={onSelectDown}
+      onpointermove={onSelectMove}
+      onpointerup={onSelectUp}
+      oncontextmenu={(e) => e.preventDefault()}
+      role="presentation"
+    >
+      <div class="select-hint">
+        <strong>{t(`select.${selecting}`)}</strong>
+        <span>{t("select.howTo")}</span>
+        <button onpointerdown={(e) => e.stopPropagation()} onclick={cancelSelection}>{t("select.cancel")}</button>
+      </div>
+      {#if dragRect}
+        <div
+          class="select-rect"
+          style:left="{dragRect[0]}px"
+          style:top="{dragRect[1]}px"
+          style:width="{dragRect[2]}px"
+          style:height="{dragRect[3]}px"
+        ></div>
+      {/if}
+    </div>
+  {/if}
   {#each patches as { look, patch: p }, i (i)}
     <!-- The cover hides the original line with the color around it... -->
     <div
@@ -392,6 +466,56 @@
      It reaches a bit past the letters (anti-aliased edges) and is softly
      blurred, so its edges melt into textured or gradient backgrounds instead
      of showing a hard rectangle. */
+  .select-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: crosshair;
+    background: rgb(8 10 22 / 0.35);
+  }
+  .select-hint {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px 10px 18px;
+    border: 1.5px solid #f2c14e;
+    border-radius: 12px;
+    background: rgb(15 18 34 / 0.95);
+    color: #eae4d3;
+    font: 15px "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+    white-space: nowrap; /* one line: it sits over the game, short and readable */
+    cursor: default;
+  }
+  .select-hint span {
+    color: #b9b3a3;
+    font-size: 13px;
+  }
+  .select-hint button {
+    padding: 6px 12px;
+    border: 1px solid #3a4160;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .select-rect {
+    position: absolute;
+    border: 2px solid #f2c14e;
+    border-radius: 3px;
+    background: rgb(242 193 78 / 0.08);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);
+  }
+
+  .selecting .cover,
+  .selecting .line,
+  .selecting .subtitle {
+    display: none;
+  }
   .cover {
     position: absolute;
     box-sizing: content-box;

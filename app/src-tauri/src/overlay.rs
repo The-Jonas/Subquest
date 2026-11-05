@@ -100,30 +100,68 @@ fn raise(overlay: &WebviewWindow) {
 #[cfg(not(windows))]
 fn raise(_overlay: &WebviewWindow) {}
 
-/// True when the window in front belongs to the game or to Subquest itself.
-/// Compared by process, so the game's own popups and Subquest's windows
-/// (main, overlay) count too.
+/// Which window is in front, as far as the overlay cares.
+#[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(not(windows), allow(dead_code))] // only Windows can tell who is in front
+enum Front {
+    Game,           // the game, or one of its popups
+    SubquestWindow, // Subquest's main window
+    Subquest,       // another Subquest window (overlay, toolbar)
+    Other,          // anything else: the translations hide
+}
+
+/// Finds out which window is in front. Compared by process, so the game's own
+/// popups count as the game.
 #[cfg(windows)]
-fn game_or_us_in_front(game: u64) -> bool {
+fn front_window(game: u64, main: Option<&WebviewWindow>) -> Front {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
     // SAFETY: plain queries on window handles; a stale handle just gives process 0.
     unsafe {
         let front = GetForegroundWindow();
         if front.is_null() {
-            return true; // nothing in front (e.g. switching desktops): don't blink
+            return Front::Game; // nothing in front (e.g. switching desktops): don't blink
+        }
+        if main.and_then(|m| m.hwnd().ok()).map(|h| h.0 as usize) == Some(front as usize) {
+            return Front::SubquestWindow;
         }
         let mut front_pid = 0u32;
         let mut game_pid = 0u32;
         GetWindowThreadProcessId(front, &mut front_pid);
         GetWindowThreadProcessId(game as usize as _, &mut game_pid);
-        front_pid == std::process::id() || (game_pid != 0 && front_pid == game_pid)
+        if front_pid == std::process::id() {
+            Front::Subquest
+        } else if game_pid != 0 && front_pid == game_pid {
+            Front::Game
+        } else {
+            Front::Other
+        }
     }
 }
 
 #[cfg(not(windows))]
-fn game_or_us_in_front(_game: u64) -> bool {
-    true
+fn front_window(_game: u64, _main: Option<&WebviewWindow>) -> Front {
+    Front::Game
 }
+
+/// Puts the overlay right under `window` (and out of the always-on-top band),
+/// without taking focus.
+#[cfg(windows)]
+fn below(overlay: &WebviewWindow, window: &WebviewWindow) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, HWND_NOTOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOOWNERZORDER, SWP_NOSIZE,
+    };
+    let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER;
+    if let (Ok(ours), Ok(theirs)) = (overlay.hwnd(), window.hwnd()) {
+        // SAFETY: valid window handles of ours; only the z-order changes.
+        unsafe {
+            SetWindowPos(ours.0 as _, HWND_NOTOPMOST, 0, 0, 0, 0, flags);
+            SetWindowPos(ours.0 as _, theirs.0 as _, 0, 0, 0, 0, flags);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn below(_overlay: &WebviewWindow, _window: &WebviewWindow) {}
 
 /// Shows the overlay over the game and starts following the game window.
 /// Any previous follow loop is stopped first.
@@ -155,7 +193,12 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                     }
                     // Only over the game: Alt+Tab to a browser hides the
                     // translation; the game or Subquest in front shows it.
-                    let wanted = game_or_us_in_front(game);
+                    // Hidden from the toolbar, or paused: hidden too.
+                    let main = app.get_webview_window("main");
+                    let front = front_window(game, main.as_ref());
+                    let hidden_by_user =
+                        state.overlay_hidden.load(Ordering::SeqCst) || state.paused.load(Ordering::SeqCst);
+                    let wanted = front != Front::Other && !hidden_by_user;
                     if wanted && !visible {
                         let _ = overlay.show();
                         visible = true;
@@ -164,7 +207,18 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                         visible = false;
                     }
                     if visible {
-                        raise(&overlay);
+                        if let (Front::SubquestWindow, Some(main)) = (front, main.as_ref()) {
+                            // Subquest in front: the translations stay over the
+                            // game but go under Subquest's window, not over it.
+                            below(&overlay, main);
+                        } else {
+                            raise(&overlay);
+                        }
+                    }
+                    if let Some(toolbar) = app.get_webview_window(crate::ingame::TOOLBAR) {
+                        if toolbar.is_visible().unwrap_or(false) {
+                            raise(&toolbar); // above the overlay, which also sits on top
+                        }
                     }
                 }
                 Ok((_, true)) => {

@@ -13,6 +13,9 @@ each under its own license. Keep this file updated whenever a dependency is adde
 | [reqwest](https://github.com/seanmonstar/reqwest) | Translation HTTP requests (streaming) | MIT / Apache-2.0 |
 | [futures-util](https://github.com/rust-lang/futures-rs) | Reading the response stream | MIT / Apache-2.0 |
 | [tokio](https://github.com/tokio-rs/tokio) | Pauses between retries, sharing a translation between OCR re-readings | MIT |
+| [png](https://github.com/image-rs/image-png) | Saving style prints | MIT / Apache-2.0 |
+| [tauri-plugin-global-shortcut](https://github.com/tauri-apps/plugins-workspace) | In-game shortcuts (Ctrl+Shift+A/S/T/H) | MIT / Apache-2.0 |
+| [windows-sys](https://github.com/microsoft/windows-rs) | Keeping the overlay above the game | MIT / Apache-2.0 |
 | [base64](https://github.com/marshallpierce/rust-base64) | Sending the game crop to the model (font detection) | MIT / Apache-2.0 |
 | [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) | UI typeface | SIL OFL 1.1 |
 | [Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont/) | UI typeface | SIL OFL 1.1 |

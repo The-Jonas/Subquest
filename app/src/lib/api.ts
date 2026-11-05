@@ -100,57 +100,51 @@ export interface OcrLine {
   style?: string | null; // id of the game's text style this line belongs to
 }
 
-// One way a game writes text (mirrors TextStyle in styles.rs).
+// One way a game writes text, from a print the user took (mirrors TextStyle in styles.rs).
 export interface TextStyle {
   id: string;
-  textRgb: number; // 0xRRGGBB
-  height: number; // line height in window pixels
-  sample: string; // the printed line
-  area: number;
-  seen: number;
-  lastSeen: number;
-  font: string; // chosen by the user ("" = not chosen)
+  name: string;
+  textRgb: number; // letter color measured on the print, 0xRRGGBB
+  font: string; // chosen font ("" = not chosen yet)
   caps: LetterCase;
-  autoFont: string; // closest installed font found by the app
-  new: boolean; // not yet seen in the Styles screen
+  manual: boolean;
 }
 
-// Browser mode: two made-up styles, with prints drawn on the fly.
+// Browser mode: one made-up style, with its print drawn on the fly.
 const browserStyles: TextStyle[] = [
-  { id: "s1", textRgb: 0xe9e4d6, height: 34, sample: "You came back. Of course you did.", area: 0, seen: 12, lastSeen: 0, font: "", caps: "", autoFont: "", new: true },
-  { id: "s2", textRgb: 0xf2c14e, height: 26, sample: "MELINOË", area: 0, seen: 4, lastSeen: 0, font: "", caps: "", autoFont: "", new: true },
+  { id: "s1", name: "", textRgb: 0x3de8a0, font: "", caps: "", manual: true },
 ];
 
-// A game's text styles.
+// A game's text styles, in the order they were taken.
 export async function listStyles(profileKey: string): Promise<TextStyle[]> {
   if (!inTauri) return structuredClone(browserStyles);
   return invoke("list_styles", { profileKey });
 }
 
-// PNG of a style's print (the line as the game drew it).
+// PNG of a style's print (the phrase as the game drew it).
 export async function stylePrint(profileKey: string, id: string): Promise<Blob> {
   if (!inTauri) {
     const s = browserStyles.find((x) => x.id === id)!;
     const canvas = document.createElement("canvas");
-    canvas.width = 560;
-    canvas.height = Math.round(s.height * 1.8);
+    canvas.width = 300;
+    canvas.height = 70;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#14181f";
+    ctx.fillStyle = "#0f2a22";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#" + s.textRgb.toString(16).padStart(6, "0");
-    ctx.font = `${s.height}px Georgia`;
-    ctx.fillText(s.sample, 12, s.height * 1.25);
+    ctx.font = "bold 44px Georgia";
+    ctx.fillText("PLAY", 24, 52);
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
   }
   const bytes: ArrayBuffer = await invoke("style_print", { profileKey, id });
   return new Blob([bytes], { type: "image/png" });
 }
 
-// Changes a style: chosen font and case, or the automatic font. Left-out fields stay.
+// Changes a style: its name, or its font and letter case. Left-out fields stay.
 export async function updateStyle(
   profileKey: string,
   id: string,
-  change: { font?: string; caps?: LetterCase; autoFont?: string },
+  change: { name?: string; font?: string; caps?: LetterCase },
 ) {
   if (!inTauri) {
     const s = browserStyles.find((x) => x.id === id);
@@ -160,13 +154,43 @@ export async function updateStyle(
   await invoke("update_style", { profileKey, id, ...change });
 }
 
-// Marks a game's styles as seen (clears the "new" badge).
-export async function markStylesSeen(profileKey: string) {
-  if (!inTauri) {
-    browserStyles.forEach((s) => (s.new = false));
-    return;
-  }
-  await invoke("mark_styles_seen", { profileKey });
+// What a rectangle drawn over the game is for.
+export type SelectionPurpose = "area" | "style";
+
+// Starts drawing a rectangle over the game (the overlay takes the mouse).
+export async function beginSelection(purpose: SelectionPurpose) {
+  if (!inTauri) return;
+  await invoke("begin_selection", { purpose });
+}
+
+// Sends the rectangle drawn over the game, in window pixels (null = cancelled).
+export async function finishSelection(purpose: SelectionPurpose, rect: Region | null) {
+  if (!inTauri) return;
+  await invoke("finish_selection", { purpose, rect });
+}
+
+// Pauses or resumes reading the game; returns true when now paused.
+export async function togglePause(): Promise<boolean> {
+  if (!inTauri) return false;
+  return invoke("toggle_pause");
+}
+
+// Hides or shows the translations; returns true when now hidden.
+export async function toggleHidden(): Promise<boolean> {
+  if (!inTauri) return false;
+  return invoke("toggle_hidden");
+}
+
+// [paused, hidden] when the toolbar opens.
+export async function sessionFlags(): Promise<[boolean, boolean]> {
+  if (!inTauri) return [false, false];
+  return invoke("session_flags");
+}
+
+// Brings Subquest to the front, optionally on a screen ("styles"...).
+export async function showMain(screen?: string) {
+  if (!inTauri) return;
+  await invoke("show_main", { screen: screen ?? null });
 }
 
 // Forgets a style and its print.

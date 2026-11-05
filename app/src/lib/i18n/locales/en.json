@@ -239,18 +239,33 @@
   },
   "styles": {
     "title": "Game styles",
-    "intro": "Every way the game writes (menus, dialogue, names, songs) shows up here with a print of the original line. Subquest already picks the closest installed font; change it whenever you like.",
-    "empty": "No styles yet. They show up on their own while a game is being translated.",
-    "size": "{px} px tall",
-    "seen": "seen {count}×",
-    "new": "New",
-    "chosen": "Chosen font: {font}",
-    "auto": "Closest installed font: {font} (automatic)",
-    "matching": "Looking for the closest installed font…",
+    "intro": "Each game writes different things in different fonts. Take a print of a phrase, pick its font, and every line with the same letter color uses that font, at any size.",
+    "take": "Take a style print",
+    "takeHelp": "Drag over a phrase in the game. Shortcut: Ctrl+Shift+S.",
+    "takeNeedsGame": "Start translating this game to take prints of it.",
+    "empty": "No styles yet.",
+    "namePlaceholder": "Name (e.g. Menu, Dialogue, Names)",
+    "color": "Letter color measured on the print",
+    "noFont": "Pick a font for this style to take effect.",
     "search": "Search Google Fonts",
     "searchTitle": "Similar fonts on Google Fonts",
     "searchHelp": "The model looks at this style's print and suggests fonts; the one you keep applies to this style only.",
-    "forget": "Forget",
-    "newBadge": "New styles found in the game"
+    "forget": "Forget"
+  },
+  "toolbar": {
+    "move": "Drag to move",
+    "area": "Mark an area in the game (Ctrl+Shift+A)",
+    "style": "Take a style print (Ctrl+Shift+S)",
+    "pause": "Pause translating (Ctrl+Shift+T)",
+    "resume": "Resume translating (Ctrl+Shift+T)",
+    "hide": "Hide translations (Ctrl+Shift+H)",
+    "show": "Show translations (Ctrl+Shift+H)",
+    "open": "Open Subquest"
+  },
+  "select": {
+    "area": "Mark the new area",
+    "style": "Mark a phrase in this style",
+    "howTo": "Drag over the game. Right click cancels.",
+    "cancel": "Cancel"
   }
 }

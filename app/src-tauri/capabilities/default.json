@@ -1,12 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window and the overlay",
+  "description": "Permissions for the main window, the overlay and the in-game toolbar",
   "windows": [
     "main",
-    "overlay"
+    "overlay",
+    "toolbar"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-start-dragging"
   ]
 }

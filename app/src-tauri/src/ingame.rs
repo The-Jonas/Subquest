@@ -1,0 +1,272 @@
+//! Controls used from inside the game, without going back to Subquest's window:
+//! a small floating toolbar (like MORT's) and global shortcuts.
+//!
+//!   Ctrl+Shift+A  mark a new area: drag a rectangle right over the game
+//!   Ctrl+Shift+S  take a style print: drag over a phrase, then pick its font
+//!   Ctrl+Shift+T  pause / resume translating
+//!   Ctrl+Shift+H  hide / show the translations
+//!
+//! Marking happens on the overlay: it starts taking the mouse, shows a dimmed
+//! layer and reports the rectangle in window pixels.
+
+use std::sync::atomic::Ordering;
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
+
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+
+use crate::error::AppError;
+use crate::settings::GameArea;
+use crate::styles::Rgba;
+use crate::{overlay, AppState};
+
+pub const TOOLBAR: &str = "toolbar";
+const GRAB_WAIT: Duration = Duration::from_secs(2); // the first full-size frame usually comes in ~100 ms
+
+/// What a rectangle drawn over the game is for.
+#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Purpose {
+    Area,  // a new area to read
+    Style, // a print of a phrase, to pick its font
+}
+
+/// Shortcuts in the order of the list above.
+fn shortcuts() -> [Shortcut; 4] {
+    let mods = Some(Modifiers::CONTROL | Modifiers::SHIFT);
+    [
+        Shortcut::new(mods, Code::KeyA),
+        Shortcut::new(mods, Code::KeyS),
+        Shortcut::new(mods, Code::KeyT),
+        Shortcut::new(mods, Code::KeyH),
+    ]
+}
+
+/// Runs a shortcut (only during a session; it is only registered then anyway).
+pub fn on_shortcut(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
+    if state != ShortcutState::Pressed {
+        return;
+    }
+    let [area, style, pause, hide] = shortcuts();
+    let result = if shortcut == &area {
+        begin_selection(app, Purpose::Area)
+    } else if shortcut == &style {
+        begin_selection(app, Purpose::Style)
+    } else if shortcut == &pause {
+        toggle_pause(app).map(|_| ())
+    } else if shortcut == &hide {
+        toggle_hidden(app);
+        Ok(())
+    } else {
+        Ok(())
+    };
+    if let Err(e) = result {
+        eprintln!("[subquest] shortcut: {}", e.detail);
+    }
+}
+
+/// Session started: registers the shortcuts and shows the toolbar near the
+/// game's top-right corner.
+pub fn on_session_start(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) {
+    let state = app.state::<AppState>();
+    state.paused.store(false, Ordering::SeqCst);
+    state.overlay_hidden.store(false, Ordering::SeqCst);
+    let keys = app.global_shortcut();
+    let _ = keys.unregister_all();
+    for shortcut in shortcuts() {
+        if let Err(e) = keys.register(shortcut) {
+            eprintln!("[subquest] shortcut taken by another app: {e}"); // the toolbar still works
+        }
+    }
+    if let Err(e) = show_toolbar(app, game_bounds) {
+        eprintln!("[subquest] toolbar: {}", e.detail);
+    }
+}
+
+/// Session ended: frees the shortcuts and hides the toolbar.
+pub fn on_session_end(app: &AppHandle) {
+    let _ = app.global_shortcut().unregister_all();
+    if let Some(toolbar) = app.get_webview_window(TOOLBAR) {
+        let _ = toolbar.hide();
+    }
+    if let Some(overlay) = app.get_webview_window(overlay::LABEL) {
+        let _ = overlay.set_ignore_cursor_events(true);
+    }
+}
+
+/// Creates (once) and shows the toolbar. `game_bounds` = (x, y, width) of the
+/// game window in screen pixels, to place it at its top-right corner.
+fn show_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
+    let toolbar = match app.get_webview_window(TOOLBAR) {
+        Some(existing) => existing,
+        None => WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
+            .title("Subquest")
+            .inner_size(268.0, 48.0)
+            .transparent(true)
+            .decorations(false)
+            .shadow(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focusable(false) // clicking it never takes the focus from the game
+            .resizable(false)
+            .visible(false)
+            .additional_browser_args(overlay::BROWSER_ARGS)
+            .build()
+            .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?,
+    };
+    if let Some((x, y, width)) = game_bounds {
+        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(268);
+        let _ = toolbar.set_position(tauri::PhysicalPosition::new(x + width - size - 24, y + 24));
+    }
+    toolbar.show().map_err(|e| AppError::other(e.to_string()))
+}
+
+/// Starts marking a rectangle over the game: the overlay takes the mouse.
+pub fn begin_selection(app: &AppHandle, purpose: Purpose) -> Result<(), AppError> {
+    let state = app.state::<AppState>();
+    if state.session_window.lock().unwrap().is_none() {
+        return Ok(()); // nothing to mark without a game
+    }
+    let overlay = app
+        .get_webview_window(overlay::LABEL)
+        .ok_or_else(|| AppError::other("overlay not open"))?;
+    state.overlay_hidden.store(false, Ordering::SeqCst);
+    overlay
+        .set_ignore_cursor_events(false)
+        .map_err(|e| AppError::other(e.to_string()))?;
+    let _ = overlay.show();
+    let _ = app.emit("select-region", purpose);
+    Ok(())
+}
+
+/// The rectangle drawn over the game (window pixels), or None when cancelled.
+/// An area is added to the game's profile and read right away; a style print
+/// is saved and Subquest opens on the Styles screen to pick its font.
+pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i32; 4]>) -> Result<(), AppError> {
+    if let Some(overlay) = app.get_webview_window(overlay::LABEL) {
+        let _ = overlay.set_ignore_cursor_events(true);
+    }
+    let Some(rect) = rect.filter(|r| r[2] >= 8 && r[3] >= 8) else {
+        return Ok(());
+    };
+    let state = app.state::<AppState>();
+    let Some(key) = state.active_profile.lock().unwrap().clone() else {
+        return Ok(());
+    };
+    match purpose {
+        Purpose::Area => {
+            let settings = {
+                let mut settings = state.settings.lock().unwrap();
+                let profile = settings.profiles.entry(key).or_default();
+                profile.areas.push(GameArea {
+                    region: Some(rect),
+                    ..GameArea::default()
+                });
+                crate::settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
+                settings.clone()
+            };
+            let _ = app.emit("settings-changed", settings);
+            crate::restart_reading(&app)
+        }
+        Purpose::Style => {
+            let Some(handle) = *state.session_window.lock().unwrap() else {
+                return Ok(());
+            };
+            // The capture waits for a frame: off the async threads.
+            let grabber = app.clone();
+            let frame = tauri::async_runtime::spawn_blocking(move || grab_window(&grabber, handle))
+                .await
+                .map_err(|e| AppError::other(e.to_string()))??;
+            let print = frame.crop(rect).ok_or_else(|| AppError::other("the rectangle is outside the game"))?;
+            let id = state.styles.add_from_print(&key, &print)?;
+            let _ = app.emit("styles-changed", ());
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.unminimize();
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+            let _ = app.emit("style-captured", id);
+            Ok(())
+        }
+    }
+}
+
+/// Pauses or resumes reading the game; returns true when now paused.
+pub fn toggle_pause(app: &AppHandle) -> Result<bool, AppError> {
+    let state = app.state::<AppState>();
+    let paused = !state.paused.load(Ordering::SeqCst);
+    if paused {
+        crate::stop_core(&state)?;
+    } else {
+        crate::restart_reading(app)?;
+    }
+    state.paused.store(paused, Ordering::SeqCst);
+    let _ = app.emit("session-paused", paused);
+    Ok(paused)
+}
+
+/// Hides or shows the translations (the overlay follow loop applies it).
+pub fn toggle_hidden(app: &AppHandle) -> bool {
+    let state = app.state::<AppState>();
+    let hidden = !state.overlay_hidden.load(Ordering::SeqCst);
+    state.overlay_hidden.store(hidden, Ordering::SeqCst);
+    let _ = app.emit("overlay-hidden", hidden);
+    hidden
+}
+
+/// Where the core's preview callback leaves the first full-size frame.
+#[derive(Default)]
+struct GrabSlot {
+    frame: Mutex<Option<Rgba>>,
+    ready: Condvar,
+}
+
+/// Preview callback for `grab_window`: keeps the first frame that is not downscaled.
+unsafe extern "C" fn on_grab_frame(
+    rgba: *const u8,
+    width: i32,
+    height: i32,
+    source_width: i32,
+    source_height: i32,
+    user: *mut std::ffi::c_void,
+) {
+    if width != source_width || height != source_height {
+        return;
+    }
+    let slot = &*(user as *const GrabSlot);
+    let mut frame = slot.frame.lock().unwrap();
+    if frame.is_none() {
+        let len = width as usize * height as usize * 4;
+        *frame = Some(Rgba {
+            pixels: std::slice::from_raw_parts(rgba, len).to_vec(),
+            width,
+            height,
+        });
+        slot.ready.notify_all();
+    }
+}
+
+/// One full-size picture of the game window, through a short preview capture
+/// (the in-app preview, if open, stops: only one preview runs at a time).
+pub fn grab_window(app: &AppHandle, window_handle: u64) -> Result<Rgba, AppError> {
+    let state = app.state::<AppState>();
+    let core = crate::core(&state)?;
+    let mut preview = state.preview_user_data.lock().unwrap();
+    crate::release_preview(core, &mut preview);
+
+    let slot = Box::new(GrabSlot::default());
+    let user = &*slot as *const GrabSlot as *mut std::ffi::c_void;
+    core.preview_start(window_handle, 16384, on_grab_frame, user)?;
+    let frame = {
+        let guard = slot.frame.lock().unwrap();
+        let (mut guard, _) = slot
+            .ready
+            .wait_timeout_while(guard, GRAB_WAIT, |frame| frame.is_none())
+            .unwrap();
+        guard.take()
+    };
+    let _ = core.preview_stop(); // after this the callback is never called again, so `slot` may go
+    drop(slot);
+    frame.ok_or_else(|| AppError::other("no picture of the game came in time"))
+}
