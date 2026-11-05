@@ -7,7 +7,7 @@
   import DialogueBox from "../components/DialogueBox.svelte";
   import { t } from "../i18n/index.svelte";
   import { app } from "../stores/app.svelte";
-  import { listWindows, startSession, stopSession, onOcrText, type GameWindow, type OcrTextEvent } from "../api";
+  import { inTauri, listWindows, startSession, stopSession, onOcrText, type GameWindow, type OcrTextEvent } from "../api";
 
   type Step = 0 | 1 | 2;
   type AreaMode = "dialogue" | "screen";
@@ -25,12 +25,16 @@
   const stepKeys = ["game", "area", "start"] as const;
   const areaModes: AreaMode[] = ["dialogue", "screen"];
 
+  // No app de verdade, sem a DLL do núcleo não há o que listar nem traduzir.
+  const coreMissing = $derived(inTauri && !app.core.loaded);
+
   const question = $derived(
     running ? t("play.start.running", { game: game?.title ?? "" }) : t(`play.${stepKeys[step]}.question`),
   );
 
   // Busca as janelas abertas; mantém a lista anterior se der erro.
   async function refresh() {
+    if (coreMissing) return;
     loading = true;
     error = null;
     try {
@@ -89,6 +93,11 @@
       </div>
       <div class="actions">
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
+      </div>
+    {:else if step === 0 && coreMissing}
+      <div class="notice" role="status">
+        <strong>{t("core.missing")}</strong>
+        <p>{t("core.missingHelp")}</p>
       </div>
     {:else if step === 0}
       <p class="muted">{t("play.game.hint")}</p>
@@ -165,6 +174,21 @@
 
   .muted {
     color: var(--ink-dim);
+  }
+
+  /* Aviso de núcleo ausente: borda de alerta, sem despejar o erro técnico na tela */
+  .notice {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--danger);
+    border-radius: var(--radius-control);
+    background: var(--night-deep);
+    color: var(--ink-dim);
+  }
+  .notice strong {
+    color: var(--ink);
   }
 
   .windows {
