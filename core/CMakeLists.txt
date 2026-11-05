@@ -10,6 +10,7 @@ option(SUBQUEST_BUILD_TESTS "Compila os testes do núcleo" ON)
 # --- Partes portáveis (compilam em qualquer SO; é o que os testes usam) ---
 add_library(subquest_portable STATIC
     src/vision/change_detector.cpp
+    src/vision/image_ops.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
 
@@ -17,6 +18,7 @@ target_include_directories(subquest_portable PUBLIC src)
 add_library(subquest_core SHARED
     src/core_api.cpp
     src/pipeline/pipeline.cpp
+    src/pipeline/preview_stream.cpp
     src/capture/wgc_capture.cpp
     src/capture/window_list.cpp
     src/ocr/win_ocr_engine.cpp
@@ -56,4 +58,8 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(change_detector_test tests/change_detector_test.cpp)
     target_link_libraries(change_detector_test PRIVATE subquest_portable)
     add_test(NAME change_detector COMMAND change_detector_test)
+
+    add_executable(image_ops_test tests/image_ops_test.cpp)
+    target_link_libraries(image_ops_test PRIVATE subquest_portable)
+    add_test(NAME image_ops COMMAND image_ops_test)
 endif()

@@ -1,7 +1,7 @@
 //! Ponte com a `subquest_core.dll` (C++), carregada em tempo de execução.
 //!
 //! Por que carregar dinamicamente (libloading) em vez de linkar?
-//! - O app abre mesmo sem a DLL e mostra um erro amigável em vez de não iniciar.
+//! - O app abre mesmo sem a DLL e mostra um aviso amigável em vez de não iniciar.
 //! - Dá para trocar a DLL em dev sem recompilar o Rust.
 //!
 //! As assinaturas abaixo DEVEM bater com `core/include/subquest/core_api.h`.
@@ -11,8 +11,10 @@ use std::path::{Path, PathBuf};
 
 use libloading::Library;
 
+use crate::error::AppError;
+
 /// Versão da ABI que este código espera (`SQ_API_VERSION` no header).
-pub const EXPECTED_API_VERSION: u32 = 1;
+pub const EXPECTED_API_VERSION: u32 = 2;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -34,11 +36,14 @@ pub struct SqSessionConfig {
 
 pub type SqTextCallback = unsafe extern "C" fn(*const c_char, u64, f64, *mut c_void);
 pub type SqWindowCallback = unsafe extern "C" fn(u64, *const c_char, *const c_char, *mut c_void);
+pub type SqPreviewCallback = unsafe extern "C" fn(*const u8, i32, i32, i32, i32, *mut c_void);
 
 type FnApiVersion = unsafe extern "C" fn() -> u32;
 type FnListWindows = unsafe extern "C" fn(SqWindowCallback, *mut c_void) -> i32;
 type FnStart = unsafe extern "C" fn(*const SqSessionConfig, SqTextCallback, *mut c_void) -> i32;
 type FnStop = unsafe extern "C" fn() -> i32;
+type FnPreviewStart = unsafe extern "C" fn(u64, i32, SqPreviewCallback, *mut c_void) -> i32;
+type FnPreviewStop = unsafe extern "C" fn() -> i32;
 type FnSetText = unsafe extern "C" fn(*const c_char) -> i32;
 type FnSetVisible = unsafe extern "C" fn(i32) -> i32;
 type FnLastError = unsafe extern "C" fn() -> *const c_char;
@@ -59,6 +64,8 @@ pub struct Core {
     list_windows: FnListWindows,
     start: FnStart,
     stop: FnStop,
+    preview_start: FnPreviewStart,
+    preview_stop: FnPreviewStop,
     overlay_set_text: FnSetText,
     overlay_set_visible: FnSetVisible,
     last_error: FnLastError,
@@ -78,23 +85,27 @@ impl Core {
         unsafe {
             let lib = Library::new(path)
                 .map_err(|e| format!("não consegui abrir {}: {e}", path.display()))?;
-            let core = Core {
-                api_version: symbol(&lib, "sq_api_version")?,
+            // A versão é conferida antes dos outros símbolos: uma DLL antiga
+            // não teria as funções novas e o erro de "símbolo" confundiria.
+            let api_version: FnApiVersion = symbol(&lib, "sq_api_version")?;
+            let version = api_version();
+            if version != EXPECTED_API_VERSION {
+                return Err(format!(
+                    "versão da ABI incompatível: DLL {version}, app {EXPECTED_API_VERSION} (recompile a pasta core)"
+                ));
+            }
+            Ok(Core {
+                api_version,
                 list_windows: symbol(&lib, "sq_list_windows")?,
                 start: symbol(&lib, "sq_start")?,
                 stop: symbol(&lib, "sq_stop")?,
+                preview_start: symbol(&lib, "sq_preview_start")?,
+                preview_stop: symbol(&lib, "sq_preview_stop")?,
                 overlay_set_text: symbol(&lib, "sq_overlay_set_text")?,
                 overlay_set_visible: symbol(&lib, "sq_overlay_set_visible")?,
                 last_error: symbol(&lib, "sq_last_error")?,
                 _lib: lib,
-            };
-            let version = (core.api_version)();
-            if version != EXPECTED_API_VERSION {
-                return Err(format!(
-                    "versão da ABI incompatível: DLL {version}, app {EXPECTED_API_VERSION}"
-                ));
-            }
-            Ok(core)
+            })
         }
     }
 
@@ -104,7 +115,7 @@ impl Core {
     }
 
     /// Lista as janelas capturáveis, na ordem em que estão na tela (a da frente primeiro).
-    pub fn list_windows(&self) -> Result<Vec<WindowEntry>, String> {
+    pub fn list_windows(&self) -> Result<Vec<WindowEntry>, AppError> {
         // Callback em C que empurra cada janela no Vec recebido via user_data.
         unsafe extern "C" fn collect(
             handle: u64,
@@ -133,8 +144,8 @@ impl Core {
         ocr_language: &str,
         callback: SqTextCallback,
         user_data: *mut c_void,
-    ) -> Result<(), String> {
-        let lang = CString::new(ocr_language).map_err(|e| e.to_string())?;
+    ) -> Result<(), AppError> {
+        let lang = CString::new(ocr_language).map_err(|e| AppError::other(e.to_string()))?;
         let config = SqSessionConfig {
             window_handle,
             region,
@@ -147,33 +158,51 @@ impl Core {
     }
 
     /// Para a sessão ativa.
-    pub fn stop(&self) -> Result<(), String> {
+    pub fn stop(&self) -> Result<(), AppError> {
         let status = unsafe { (self.stop)() };
         self.check(status)
     }
 
+    /// Liga a miniatura ao vivo. `user_data` chega intacto em cada chamada do callback.
+    pub fn preview_start(
+        &self,
+        window_handle: u64,
+        max_width: i32,
+        callback: SqPreviewCallback,
+        user_data: *mut c_void,
+    ) -> Result<(), AppError> {
+        let status = unsafe { (self.preview_start)(window_handle, max_width, callback, user_data) };
+        self.check(status)
+    }
+
+    /// Desliga a miniatura; ao retornar, o callback não é mais chamado.
+    pub fn preview_stop(&self) -> Result<(), AppError> {
+        let status = unsafe { (self.preview_stop)() };
+        self.check(status)
+    }
+
     /// Mostra a tradução no overlay.
-    pub fn overlay_set_text(&self, text: &str) -> Result<(), String> {
-        let text = CString::new(text).map_err(|e| e.to_string())?;
+    pub fn overlay_set_text(&self, text: &str) -> Result<(), AppError> {
+        let text = CString::new(text).map_err(|e| AppError::other(e.to_string()))?;
         let status = unsafe { (self.overlay_set_text)(text.as_ptr()) };
         self.check(status)
     }
 
     /// Mostra ou esconde o overlay.
-    pub fn overlay_set_visible(&self, visible: bool) -> Result<(), String> {
+    pub fn overlay_set_visible(&self, visible: bool) -> Result<(), AppError> {
         let status = unsafe { (self.overlay_set_visible)(visible as i32) };
         self.check(status)
     }
 
-    /// Converte um SqStatus em Result, anexando a mensagem de sq_last_error.
-    fn check(&self, status: i32) -> Result<(), String> {
+    /// Converte um SqStatus em Result, anexando a mensagem de sq_last_error como detalhe.
+    fn check(&self, status: i32) -> Result<(), AppError> {
         if status == 0 {
             return Ok(());
         }
         let message = unsafe { CStr::from_ptr((self.last_error)()) }
             .to_string_lossy()
             .into_owned();
-        Err(format!("núcleo retornou {status}: {message}"))
+        Err(AppError::from_status(status, message))
     }
 }
 

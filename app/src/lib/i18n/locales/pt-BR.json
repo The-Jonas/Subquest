@@ -1,5 +1,10 @@
 {
-  "nav": { "play": "Jogar", "profiles": "Perfis", "settings": "Ajustes", "tutorial": "Tutorial" },
+  "nav": {
+    "play": "Jogar",
+    "profiles": "Perfis",
+    "settings": "Ajustes",
+    "tutorial": "Tutorial"
+  },
   "core": {
     "ok": "Núcleo pronto",
     "missing": "Núcleo não encontrado",
@@ -7,7 +12,11 @@
   },
   "play": {
     "speaker": "Subquest",
-    "steps": { "game": "Jogo", "area": "Área", "start": "Começar" },
+    "steps": {
+      "game": "Jogo",
+      "area": "Área",
+      "start": "Começar"
+    },
     "game": {
       "question": "Qual jogo vamos traduzir?",
       "hint": "Abra o jogo em modo janela ou janela sem borda. Ele aparece aqui.",
@@ -23,7 +32,9 @@
       "screenHelp": "Menus, itens e placas. Mais lento: o texto é procurado na janela inteira.",
       "mark": "Marcar a área",
       "marked": "Área marcada",
-      "notYet": "Marcar a área chega junto com a captura (fase 1). Por enquanto, a janela inteira será usada."
+      "notYet": "Marcar a área chega no próximo passo. Por enquanto, a janela inteira será usada.",
+      "previewLabel": "Imagem ao vivo da janela do jogo",
+      "previewWaiting": "Conectando à janela do jogo…"
     },
     "start": {
       "question": "Tudo pronto.",
@@ -73,11 +84,26 @@
     "next": "Próximo",
     "done": "Bora jogar",
     "pages": [
-      { "title": "Deixe o jogo em janela", "text": "O Subquest lê a tela do jogo. Use o modo janela ou janela sem borda (borderless) nas opções de vídeo do jogo; a tela cheia exclusiva bloqueia a captura." },
-      { "title": "Escolha o jogo", "text": "Em Jogar, escolha a janela do jogo na lista. Se ele não aparecer, confira se não está minimizado e atualize a lista." },
-      { "title": "Mostre onde ficam as falas", "text": "Se o jogo usa caixa de diálogo, marque só essa área: o Subquest fica mais rápido e erra menos. Para menus e placas, use a tela inteira." },
-      { "title": "Escolha quem traduz", "text": "Em Ajustes, escolha o serviço. Um modelo local pelo Ollama é grátis e funciona offline; serviços na nuvem pedem uma chave de API e costumam traduzir melhor." },
-      { "title": "Jogue", "text": "A tradução aparece por cima do jogo, sem roubar o foco. Cada jogo ganha um perfil com a área e o glossário dele, para a próxima vez já começar pronto." }
+      {
+        "title": "Deixe o jogo em janela",
+        "text": "O Subquest lê a tela do jogo. Use o modo janela ou janela sem borda (borderless) nas opções de vídeo do jogo; a tela cheia exclusiva bloqueia a captura."
+      },
+      {
+        "title": "Escolha o jogo",
+        "text": "Em Jogar, escolha a janela do jogo na lista. Se ele não aparecer, confira se não está minimizado e atualize a lista."
+      },
+      {
+        "title": "Mostre onde ficam as falas",
+        "text": "Se o jogo usa caixa de diálogo, marque só essa área: o Subquest fica mais rápido e erra menos. Para menus e placas, use a tela inteira."
+      },
+      {
+        "title": "Escolha quem traduz",
+        "text": "Em Ajustes, escolha o serviço. Um modelo local pelo Ollama é grátis e funciona offline; serviços na nuvem pedem uma chave de API e costumam traduzir melhor."
+      },
+      {
+        "title": "Jogue",
+        "text": "A tradução aparece por cima do jogo, sem roubar o foco. Cada jogo ganha um perfil com a área e o glossário dele, para a próxima vez já começar pronto."
+      }
     ]
   },
   "languages": {
@@ -87,5 +113,14 @@
     "ko": "Coreano",
     "pt-BR": "Português (Brasil)",
     "es": "Espanhol"
+  },
+  "errors": {
+    "coreMissing": "Núcleo não encontrado. Compile a pasta core e reabra o Subquest.",
+    "invalidArg": "Algo foi enviado errado para o núcleo. Tente de novo; se repetir, reporte o problema.",
+    "alreadyRunning": "Já existe uma tradução em andamento. Pare a atual antes de começar outra.",
+    "notRunning": "Não há nenhuma tradução em andamento.",
+    "platform": "O Windows recusou a captura dessa janela. Confira se o jogo está aberto, em janela ou sem borda, e não minimizado.",
+    "notImplemented": "Essa parte ainda está em construção. Ela chega nos próximos passos da fase 1.",
+    "unknown": "Algo deu errado. Os detalhes estão no console (F12)."
   }
 }

@@ -32,7 +32,9 @@
       "screenHelp": "Menus, items and signs. Slower: text is searched across the whole window.",
       "mark": "Mark the area",
       "marked": "Area marked",
-      "notYet": "Area marking arrives with capture (phase 1). For now, the whole window is used."
+      "notYet": "Area marking arrives in the next step. For now, the whole window is used.",
+      "previewLabel": "Live image of the game window",
+      "previewWaiting": "Connecting to the game window…"
     },
     "start": {
       "question": "All set.",
@@ -111,5 +113,14 @@
     "ko": "Korean",
     "pt-BR": "Portuguese (Brazil)",
     "es": "Spanish"
+  },
+  "errors": {
+    "coreMissing": "Core not found. Build the core folder and reopen Subquest.",
+    "invalidArg": "Something wrong was sent to the core. Try again; if it repeats, report the issue.",
+    "alreadyRunning": "A translation is already running. Stop it before starting another.",
+    "notRunning": "No translation is running.",
+    "platform": "Windows refused to capture this window. Make sure the game is open, windowed or borderless, and not minimized.",
+    "notImplemented": "This part is still being built. It arrives in the next steps of phase 1.",
+    "unknown": "Something went wrong. Details are in the console (F12)."
   }
 }

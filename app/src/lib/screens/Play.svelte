@@ -5,9 +5,19 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import DialogueBox from "../components/DialogueBox.svelte";
+  import GamePreview from "../components/GamePreview.svelte";
   import { t } from "../i18n/index.svelte";
   import { app } from "../stores/app.svelte";
-  import { inTauri, listWindows, startSession, stopSession, onOcrText, type GameWindow, type OcrTextEvent } from "../api";
+  import {
+    inTauri,
+    listWindows,
+    startSession,
+    stopSession,
+    onOcrText,
+    errorKind,
+    type GameWindow,
+    type OcrTextEvent,
+  } from "../api";
 
   type Step = 0 | 1 | 2;
   type AreaMode = "dialogue" | "screen";
@@ -40,7 +50,7 @@
     try {
       windows = await listWindows();
     } catch (e) {
-      error = String(e);
+      error = t(`errors.${errorKind(e)}`);
     } finally {
       loading = false;
     }
@@ -49,6 +59,7 @@
   // Escolhe o jogo e avança para a área.
   function pick(w: GameWindow) {
     game = w;
+    error = null;
     step = 1;
   }
 
@@ -62,7 +73,7 @@
       running = true;
     } catch (e) {
       unlisten?.();
-      error = String(e);
+      error = t(`errors.${errorKind(e)}`);
     }
   }
 
@@ -117,6 +128,9 @@
         <button class="btn btn-ghost" onclick={refresh} disabled={loading}>{t("play.game.refresh")}</button>
       </div>
     {:else if step === 1}
+      {#if game}
+        <GamePreview windowHandle={game.handle} />
+      {/if}
       <div class="choices" role="radiogroup">
         {#each areaModes as mode (mode)}
           <label class="choice" class:selected={areaMode === mode}>

@@ -11,9 +11,9 @@ Pipeline::~Pipeline() { stop(); }
 
 // Carrega o OCR, sobe a thread de OCR e só então liga a captura.
 // A ordem importa: a captura não pode entregar quadros para ninguém.
-bool Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
-    if (running_) return false;
-    if (!ocr_->load(config.ocr_language)) return false;
+StartError Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
+    if (running_) return StartError::AlreadyRunning;
+    if (!ocr_->load(config.ocr_language)) return StartError::Ocr;
 
     detector_ = ChangeDetector(config.detector);
     ocr_slot_.reset();
@@ -24,8 +24,11 @@ bool Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
 
     const bool ok = capture_->start(config.window_handle, config.region,
                                     [this](Frame&& f) { on_frame(std::move(f)); });
-    if (!ok) stop();
-    return ok;
+    if (!ok) {
+        stop();
+        return StartError::Capture;
+    }
+    return StartError::None;
 }
 
 // Desliga a captura primeiro (para de produzir), depois fecha a vaga e espera o OCR.

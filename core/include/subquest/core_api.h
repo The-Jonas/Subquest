@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 1u /* incrementar sempre que a ABI mudar */
+#define SQ_API_VERSION 2u /* incrementar sempre que a ABI mudar */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -36,7 +36,7 @@ typedef enum SqStatus {
 } SqStatus;
 
 typedef struct SqRect {
-    int32_t x;      /* relativo ao canto superior esquerdo da área cliente da janela */
+    int32_t x;      /* em pixels da imagem capturada (a mesma da miniatura, antes de reduzir) */
     int32_t y;
     int32_t width;
     int32_t height;
@@ -53,6 +53,11 @@ typedef struct SqSessionConfig {
 /* Chamado na thread de OCR quando um texto NOVO é reconhecido. */
 typedef void (*SqTextCallback)(const char* utf8_text, uint64_t frame_id, double ocr_ms, void* user_data);
 
+/* Chamado a cada quadro da miniatura: RGBA contíguo, width * height * 4 bytes.
+ * source_width/height = tamanho real da captura, para converter coordenadas. */
+typedef void (*SqPreviewCallback)(const uint8_t* rgba, int32_t width, int32_t height,
+                                  int32_t source_width, int32_t source_height, void* user_data);
+
 /* Chamado uma vez por janela visível durante sq_list_windows. */
 typedef void (*SqWindowCallback)(uint64_t window_handle, const char* utf8_title, const char* utf8_process, void* user_data);
 
@@ -60,6 +65,9 @@ SQ_API uint32_t sq_api_version(void);                                    /* vers
 SQ_API SqStatus sq_list_windows(SqWindowCallback callback, void* user_data); /* enumera janelas de nível superior visíveis */
 SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data); /* inicia captura + OCR */
 SQ_API SqStatus sq_stop(void);                                            /* para a sessão e espera as threads terminarem */
+SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_width,
+                                 SqPreviewCallback callback, void* user_data); /* miniatura ao vivo (~8 fps) */
+SQ_API SqStatus sq_preview_stop(void);                                    /* para a miniatura e espera a captura encerrar */
 SQ_API SqStatus sq_overlay_set_text(const char* utf8_text);               /* troca o texto exibido no overlay */
 SQ_API SqStatus sq_overlay_set_visible(int32_t visible);                  /* mostra (1) ou esconde (0) o overlay */
 SQ_API const char* sq_last_error(void);                                   /* mensagem do último erro (válida até a próxima chamada) */

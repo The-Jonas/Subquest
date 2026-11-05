@@ -4,6 +4,7 @@
 // TODO(fase 1): remover os allow(dead_code) quando overlay e tradução forem ligados ao fluxo.
 #[allow(dead_code)]
 mod core_ffi;
+mod error;
 mod settings;
 #[allow(dead_code)]
 mod translate;
@@ -13,10 +14,15 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::Serialize;
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use core_ffi::{Core, SqRect, WindowEntry};
+use error::AppError;
 use settings::Settings;
+
+/// Canal por onde a miniatura chega à interface, como bytes crus (sem JSON).
+type PreviewChannel = Channel<InvokeResponseBody>;
 
 /// Estado compartilhado entre os comandos.
 struct AppState {
@@ -24,9 +30,11 @@ struct AppState {
     settings: Mutex<Settings>,
     config_dir: PathBuf,
     session_user_data: Mutex<Option<*mut AppHandle>>, // AppHandle emprestado ao núcleo durante a sessão
+    preview_user_data: Mutex<Option<*mut PreviewChannel>>, // canal emprestado ao núcleo durante a miniatura
 }
 
-// SAFETY: o ponteiro só é criado/liberado com o Mutex travado, e o AppHandle é Send + Sync.
+// SAFETY: os ponteiros só são criados/liberados com o Mutex travado, e
+// AppHandle e Channel são Send + Sync.
 unsafe impl Send for AppState {}
 unsafe impl Sync for AppState {}
 
@@ -48,9 +56,12 @@ struct OcrTextEvent {
     ocr_ms: f64,
 }
 
-/// Retorna o núcleo carregado ou a mensagem de por que não carregou.
-fn core(state: &AppState) -> Result<&Core, String> {
-    state.core.as_ref().map_err(Clone::clone)
+/// Retorna o núcleo carregado ou o erro `coreMissing`.
+fn core(state: &AppState) -> Result<&Core, AppError> {
+    state
+        .core
+        .as_ref()
+        .map_err(|e| AppError::core_missing(e.clone()))
 }
 
 /// Informa se a DLL do núcleo foi carregada.
@@ -72,7 +83,7 @@ fn core_status(state: State<'_, AppState>) -> CoreStatus {
 
 /// Lista as janelas abertas para o usuário escolher o jogo.
 #[tauri::command]
-fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, String> {
+fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, AppError> {
     core(&state)?.list_windows()
 }
 
@@ -98,12 +109,12 @@ unsafe extern "C" fn on_ocr_text(
 
 /// Começa a traduzir a janela escolhida, na região escolhida.
 #[tauri::command]
-fn start_session(
+async fn start_session(
     app: AppHandle,
     state: State<'_, AppState>,
     window_handle: u64,
     region: Option<(i32, i32, i32, i32)>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let core = core(&state)?;
     let language = state.settings.lock().unwrap().source_language.clone();
     let (x, y, width, height) = region.unwrap_or_default();
@@ -132,13 +143,86 @@ fn start_session(
 
 /// Para a sessão e devolve o AppHandle emprestado ao núcleo.
 #[tauri::command]
-fn stop_session(state: State<'_, AppState>) -> Result<(), String> {
+async fn stop_session(state: State<'_, AppState>) -> Result<(), AppError> {
     let result = core(&state)?.stop();
     if let Some(user) = state.session_user_data.lock().unwrap().take() {
         // SAFETY: sq_stop já esperou a thread de OCR terminar; ninguém mais usa o ponteiro.
         drop(unsafe { Box::from_raw(user) });
     }
     result
+}
+
+/// Callback da miniatura (thread de captura): empacota [largura, altura,
+/// largura real, altura real] como u32 little-endian + os pixels RGBA e envia
+/// pelo canal. O JS lê isso direto num ImageData, sem passar por JSON.
+unsafe extern "C" fn on_preview_frame(
+    rgba: *const u8,
+    width: i32,
+    height: i32,
+    source_width: i32,
+    source_height: i32,
+    user: *mut c_void,
+) {
+    let channel = &*(user as *const PreviewChannel);
+    let len = width as usize * height as usize * 4;
+    let mut payload = Vec::with_capacity(16 + len);
+    for value in [width, height, source_width, source_height] {
+        payload.extend_from_slice(&(value as u32).to_le_bytes());
+    }
+    payload.extend_from_slice(std::slice::from_raw_parts(rgba, len));
+    let _ = channel.send(InvokeResponseBody::Raw(payload));
+}
+
+/// Desliga a miniatura (se houver) e libera o canal emprestado ao núcleo.
+fn release_preview(core: &Core, slot: &mut Option<*mut PreviewChannel>) {
+    if let Some(user) = slot.take() {
+        let _ = core.preview_stop();
+        // SAFETY: sq_preview_stop esperou a captura terminar; ninguém mais usa o ponteiro.
+        drop(unsafe { Box::from_raw(user) });
+    }
+}
+
+// Os comandos de sessão e miniatura são `async` de propósito: assim rodam numa
+// thread do runtime, e não na thread principal (a da janela). Parar a captura
+// espera threads terminarem, e isso não pode congelar a interface.
+
+/// Começa a enviar a miniatura ao vivo da janela pelo canal recebido.
+#[tauri::command]
+async fn start_preview(
+    state: State<'_, AppState>,
+    window_handle: u64,
+    max_width: i32,
+    channel: PreviewChannel,
+) -> Result<(), AppError> {
+    let core = core(&state)?;
+    let mut slot = state.preview_user_data.lock().unwrap();
+    release_preview(core, &mut slot); // só uma miniatura por vez
+
+    let user = Box::into_raw(Box::new(channel));
+    match core.preview_start(
+        window_handle,
+        max_width,
+        on_preview_frame,
+        user as *mut c_void,
+    ) {
+        Ok(()) => {
+            *slot = Some(user);
+            Ok(())
+        }
+        Err(e) => {
+            // SAFETY: o núcleo recusou, então não guardou o ponteiro.
+            drop(unsafe { Box::from_raw(user) });
+            Err(e)
+        }
+    }
+}
+
+/// Para a miniatura ao vivo.
+#[tauri::command]
+async fn stop_preview(state: State<'_, AppState>) -> Result<(), AppError> {
+    let core = core(&state)?;
+    release_preview(core, &mut state.preview_user_data.lock().unwrap());
+    Ok(())
 }
 
 /// Devolve as configurações atuais.
@@ -149,8 +233,8 @@ fn get_settings(state: State<'_, AppState>) -> Settings {
 
 /// Substitui e grava as configurações.
 #[tauri::command]
-fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<(), String> {
-    settings::save(&state.config_dir, &settings)?;
+fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<(), AppError> {
+    settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
     *state.settings.lock().unwrap() = settings;
     Ok(())
 }
@@ -181,6 +265,7 @@ pub fn run() {
                 settings: Mutex::new(settings::load(&config_dir)),
                 config_dir,
                 session_user_data: Mutex::new(None),
+                preview_user_data: Mutex::new(None),
             });
             Ok(())
         })
@@ -189,6 +274,8 @@ pub fn run() {
             list_windows,
             start_session,
             stop_session,
+            start_preview,
+            stop_preview,
             get_settings,
             save_settings
         ])

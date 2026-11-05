@@ -1,5 +1,10 @@
 {
-  "nav": { "play": "Jugar", "profiles": "Perfiles", "settings": "Ajustes", "tutorial": "Tutorial" },
+  "nav": {
+    "play": "Jugar",
+    "profiles": "Perfiles",
+    "settings": "Ajustes",
+    "tutorial": "Tutorial"
+  },
   "core": {
     "ok": "Núcleo listo",
     "missing": "Núcleo no encontrado",
@@ -7,7 +12,11 @@
   },
   "play": {
     "speaker": "Subquest",
-    "steps": { "game": "Juego", "area": "Área", "start": "Empezar" },
+    "steps": {
+      "game": "Juego",
+      "area": "Área",
+      "start": "Empezar"
+    },
     "game": {
       "question": "¿Qué juego vamos a traducir?",
       "hint": "Abre el juego en modo ventana o ventana sin bordes. Aparecerá aquí.",
@@ -23,7 +32,9 @@
       "screenHelp": "Menús, objetos y carteles. Más lento: el texto se busca en toda la ventana.",
       "mark": "Marcar el área",
       "marked": "Área marcada",
-      "notYet": "Marcar el área llega junto con la captura (fase 1). Por ahora se usa toda la ventana."
+      "notYet": "Marcar el área llega en el próximo paso. Por ahora se usa toda la ventana.",
+      "previewLabel": "Imagen en vivo de la ventana del juego",
+      "previewWaiting": "Conectando con la ventana del juego…"
     },
     "start": {
       "question": "Todo listo.",
@@ -73,11 +84,26 @@
     "next": "Siguiente",
     "done": "A jugar",
     "pages": [
-      { "title": "Pon el juego en ventana", "text": "Subquest lee la pantalla del juego. Usa el modo ventana o sin bordes en las opciones de video; la pantalla completa exclusiva bloquea la captura." },
-      { "title": "Elige el juego", "text": "En Jugar, elige la ventana del juego en la lista. Si no aparece, revisa que no esté minimizado y actualiza la lista." },
-      { "title": "Muestra dónde están los diálogos", "text": "Si el juego usa cuadro de diálogo, marca solo esa área: Subquest va más rápido y se equivoca menos. Para menús y carteles, usa toda la pantalla." },
-      { "title": "Elige quién traduce", "text": "En Ajustes, elige el servicio. Un modelo local con Ollama es gratis y funciona sin internet; los servicios en la nube piden una clave de API y suelen traducir mejor." },
-      { "title": "Juega", "text": "La traducción aparece sobre el juego sin quitarle el foco. Cada juego recibe un perfil con su área y glosario, para que la próxima vez empiece listo." }
+      {
+        "title": "Pon el juego en ventana",
+        "text": "Subquest lee la pantalla del juego. Usa el modo ventana o sin bordes en las opciones de video; la pantalla completa exclusiva bloquea la captura."
+      },
+      {
+        "title": "Elige el juego",
+        "text": "En Jugar, elige la ventana del juego en la lista. Si no aparece, revisa que no esté minimizado y actualiza la lista."
+      },
+      {
+        "title": "Muestra dónde están los diálogos",
+        "text": "Si el juego usa cuadro de diálogo, marca solo esa área: Subquest va más rápido y se equivoca menos. Para menús y carteles, usa toda la pantalla."
+      },
+      {
+        "title": "Elige quién traduce",
+        "text": "En Ajustes, elige el servicio. Un modelo local con Ollama es gratis y funciona sin internet; los servicios en la nube piden una clave de API y suelen traducir mejor."
+      },
+      {
+        "title": "Juega",
+        "text": "La traducción aparece sobre el juego sin quitarle el foco. Cada juego recibe un perfil con su área y glosario, para que la próxima vez empiece listo."
+      }
     ]
   },
   "languages": {
@@ -87,5 +113,14 @@
     "ko": "Coreano",
     "pt-BR": "Portugués (Brasil)",
     "es": "Español"
+  },
+  "errors": {
+    "coreMissing": "Núcleo no encontrado. Compila la carpeta core y vuelve a abrir Subquest.",
+    "invalidArg": "Se envió algo incorrecto al núcleo. Inténtalo de nuevo; si se repite, reporta el problema.",
+    "alreadyRunning": "Ya hay una traducción en curso. Detenla antes de empezar otra.",
+    "notRunning": "No hay ninguna traducción en curso.",
+    "platform": "Windows rechazó la captura de esta ventana. Verifica que el juego esté abierto, en ventana o sin bordes, y no minimizado.",
+    "notImplemented": "Esta parte todavía está en construcción. Llega en los próximos pasos de la fase 1.",
+    "unknown": "Algo salió mal. Los detalles están en la consola (F12)."
   }
 }

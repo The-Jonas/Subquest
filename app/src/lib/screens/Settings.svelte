@@ -2,6 +2,7 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
+  import { errorKind } from "../api";
 
   const gameLanguages = ["en", "ja", "zh-Hans", "ko"];
   const targetLanguages = ["pt-BR", "en", "es"];
@@ -17,7 +18,7 @@
       saved = true;
       setTimeout(() => (saved = false), 2400);
     } catch (e) {
-      error = String(e);
+      error = t(`errors.${errorKind(e)}`);
     }
   }
 </script>
