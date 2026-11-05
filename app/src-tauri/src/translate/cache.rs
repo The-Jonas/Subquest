@@ -49,6 +49,7 @@ impl TranslationCache {
     }
 
     /// Number of stored translations.
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.entries.len()
     }

@@ -36,6 +36,14 @@ impl AppError {
         }
     }
 
+    /// Maps a translation failure to its UI kind, keeping the message as detail.
+    pub fn from_translate(error: crate::translate::TranslateError) -> Self {
+        Self {
+            kind: error.kind(),
+            detail: error.to_string(),
+        }
+    }
+
     /// Any other failure on the Rust side (file, text conversion...).
     pub fn other(detail: impl Into<String>) -> Self {
         Self {

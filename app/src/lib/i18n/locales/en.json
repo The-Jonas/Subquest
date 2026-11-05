@@ -46,7 +46,9 @@
       "running": "Translating {game}",
       "waiting": "Waiting for the first line to appear in the game…",
       "change": "Change game",
-      "timing": "OCR in {ocr} ms, {total} ms since capture"
+      "timing": "OCR in {ocr} ms, {total} ms since capture",
+      "translated": "Translated in {ms} ms",
+      "cached": "Repeated line, from cache in {ms} ms"
     },
     "back": "Back",
     "next": "Continue"
@@ -66,10 +68,7 @@
     "targetLanguage": "Translate to",
     "translation": "Translation",
     "service": "Service",
-    "serviceLlm": "Language model (OpenAI, Gemini, Ollama…)",
-    "serviceDeepl": "DeepL",
     "baseUrl": "API address",
-    "baseUrlHelp": "The default points to Ollama on your PC: free and keyless.",
     "model": "Model",
     "apiKey": "API key",
     "apiKeyHelp": "Stays on your computer only. Leave empty for local models.",
@@ -81,7 +80,22 @@
     "previewOriginal": "橋が落ちている。別の道を探すしかない。",
     "previewText": "The bridge is out. You'll have to find another way across.",
     "save": "Save settings",
-    "saved": "Settings saved"
+    "saved": "Settings saved",
+    "presets": {
+      "gemini": "Google Gemini",
+      "openai": "OpenAI",
+      "openrouter": "OpenRouter",
+      "ollama": "Ollama (on your PC)",
+      "custom": "Other compatible service"
+    },
+    "apiKeyGemini": "Create a free key at aistudio.google.com/apikey. It stays on your computer only.",
+    "fetchModels": "Fetch models",
+    "fetchModelsError": "Couldn't fetch the models. Check the address and the key.",
+    "modelsFound": "{count} text models available. Pick one from the list.",
+    "modelHelp": "For dialogue, prefer a fast model (the \"flash\" ones, for example).",
+    "test": "Test translation",
+    "testing": "Testing…",
+    "testTime": "in {ms} ms"
   },
   "tutorial": {
     "title": "How to use",
@@ -128,6 +142,10 @@
     "platform": "Windows refused to capture this window. Make sure the game is open, windowed or borderless, and not minimized.",
     "notImplemented": "This part is still being built. It arrives in the next steps of phase 1.",
     "unknown": "Something went wrong. Details are in the console (F12).",
-    "ocrLanguage": "Windows doesn't have text recognition (OCR) for the game's language. In Settings > Time & language > Language & region, add the game's language (for example, English (United States)); OCR comes with it. Then reopen Subquest."
+    "ocrLanguage": "Windows doesn't have text recognition (OCR) for the game's language. In Settings > Time & language > Language & region, add the game's language (for example, English (United States)); OCR comes with it. Then reopen Subquest.",
+    "translatorNotConfigured": "The translator isn't set up yet: check the model and address in Settings.",
+    "translatorNetwork": "Couldn't reach the translation service. Check your internet and the address in Settings.",
+    "translatorProvider": "The translation service refused the request. Check the key and model in Settings; if it is a usage limit, wait a bit.",
+    "translatorBusy": "The model is overloaded right now (high demand). Try again in a few seconds or pick another model in Settings; the \"flash-lite\" ones are usually free."
   }
 }

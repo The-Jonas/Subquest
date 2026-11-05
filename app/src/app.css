@@ -125,7 +125,8 @@ select {
   display: grid;
   gap: 6px;
 }
-.field > span {
+.field > span,
+.field > label {
   font-weight: 600;
 }
 .field small {

@@ -69,7 +69,7 @@ export const defaultSettings: Settings = {
   sourceLanguage: "en",
   targetLanguage: "pt-BR",
   ocrEngine: "windows",
-  translator: { kind: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "", apiKey: "" },
+  translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", apiKey: "" },
   overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
   tutorialDone: false,
   profiles: {},
@@ -85,6 +85,12 @@ const mockWindows: GameWindow[] = [
   { handle: 2, title: "OMORI", process: "OMORI.exe" },
   { handle: 3, title: "Discord", process: "Discord.exe" },
 ];
+
+// Technical detail of an error (the API's own message), for screens where the user is configuring things.
+export function errorDetail(e: unknown): string {
+  if (e && typeof e === "object" && "detail" in e) return String((e as AppError).detail);
+  return String(e);
+}
 
 // Extracts the `kind` from any error (from Rust or not) and logs the detail to the console.
 export function errorKind(e: unknown): string {
@@ -183,6 +189,81 @@ export async function startPreview(
   };
 }
 
+// Translation progress for one OCR line (streamed: several events, the last with done = true).
+export interface TranslationEvent {
+  frameId: number;
+  text: string;
+  done: boolean;
+  cached: boolean;
+  elapsedMs: number; // since the OCR text arrived
+  errorKind: string | null;
+}
+
+// Ready-made addresses for the services people actually use. All of them speak
+// the OpenAI chat format, so only the address changes.
+export const translatorPresets = [
+  { id: "gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", needsKey: true },
+  { id: "openai", baseUrl: "https://api.openai.com/v1", needsKey: true },
+  { id: "openrouter", baseUrl: "https://openrouter.ai/api/v1", needsKey: true },
+  { id: "ollama", baseUrl: "http://localhost:11434/v1", needsKey: false },
+] as const;
+
+export type TranslatorSettings = Settings["translator"];
+
+// Translates a sample line with the given settings; resolves with the text and the time it took.
+export async function testTranslator(
+  translator: TranslatorSettings,
+  sourceLanguage: string,
+  targetLanguage: string,
+): Promise<{ text: string; elapsedMs: number }> {
+  if (!inTauri) {
+    await new Promise((r) => setTimeout(r, 600));
+    return { text: "A ponte caiu. Você vai ter que achar outro jeito de atravessar.", elapsedMs: 612 };
+  }
+  return invoke("test_translator", { translator, sourceLanguage, targetLanguage });
+}
+
+// Model ids offered by the configured service.
+export async function listModels(translator: TranslatorSettings): Promise<string[]> {
+  if (!inTauri) return ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest"];
+  return invoke("list_models", { translator });
+}
+
+// Listens for translation progress; returns the function that stops listening.
+export async function onTranslation(handler: (e: TranslationEvent) => void): Promise<UnlistenFn> {
+  if (!inTauri) {
+    fakeTranslationHandler = handler;
+    return () => (fakeTranslationHandler = null);
+  }
+  return listen<TranslationEvent>("translation", (event) => handler(event.payload));
+}
+
+// Browser mode: the fake OCR feed below also "translates", word by word.
+let fakeTranslationHandler: ((e: TranslationEvent) => void) | null = null;
+const fakeTranslations: Record<string, string> = {
+  "Mmmm, mmmmrrnnnn...": "Hmmm, hmmmrrnnnn...",
+  "You came back. Of course you did.": "Você voltou. É claro que voltou.",
+  "The Crossroads are quiet tonight, Princess.": "As Encruzilhadas estão quietas esta noite, Princesa.",
+};
+
+// Streams a fake translation word by word, like the real backend does.
+function fakeTranslate(frameId: number, source: string) {
+  const words = (fakeTranslations[source] ?? source).split(" ");
+  words.forEach((_, i) =>
+    setTimeout(() => {
+      const done = i === words.length - 1;
+      fakeTranslationHandler?.({
+        frameId,
+        text: words.slice(0, i + 1).join(" "),
+        done,
+        cached: false,
+        elapsedMs: 180 + i * 90,
+        errorKind: null,
+      });
+    }, 180 + i * 90),
+  );
+}
+
 // Browser mode: emits a few sample lines so the running screen can be designed.
 function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
   const samples = [
@@ -194,7 +275,8 @@ function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
   const timer = setInterval(() => {
     const text = samples[frameId % samples.length];
     frameId += 1;
-    handler({ text, frameId, ocrMs: 30 + Math.random() * 25, totalMs: 120 + Math.random() * 60 });
+    handler({ text, frameId, ocrMs: 9 + Math.random() * 6, totalMs: 11 + Math.random() * 8 });
+    fakeTranslate(frameId, text);
   }, 1800);
   return () => clearInterval(timer);
 }

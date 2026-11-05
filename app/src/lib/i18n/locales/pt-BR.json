@@ -46,7 +46,9 @@
       "running": "Traduzindo {game}",
       "waiting": "Esperando a primeira fala aparecer no jogo…",
       "change": "Trocar jogo",
-      "timing": "OCR em {ocr} ms, {total} ms desde a captura"
+      "timing": "OCR em {ocr} ms, {total} ms desde a captura",
+      "translated": "Traduzido em {ms} ms",
+      "cached": "Repetida, veio do cache em {ms} ms"
     },
     "back": "Voltar",
     "next": "Continuar"
@@ -66,10 +68,7 @@
     "targetLanguage": "Traduzir para",
     "translation": "Tradução",
     "service": "Serviço",
-    "serviceLlm": "Modelo de linguagem (OpenAI, Gemini, Ollama…)",
-    "serviceDeepl": "DeepL",
     "baseUrl": "Endereço da API",
-    "baseUrlHelp": "O padrão aponta para o Ollama no seu PC: grátis e sem chave.",
     "model": "Modelo",
     "apiKey": "Chave da API",
     "apiKeyHelp": "Fica só no seu computador. Deixe vazio para modelos locais.",
@@ -81,7 +80,22 @@
     "previewOriginal": "The bridge is out. You'll have to find another way across.",
     "previewText": "A ponte caiu. Você vai ter que achar outro jeito de atravessar.",
     "save": "Salvar ajustes",
-    "saved": "Ajustes salvos"
+    "saved": "Ajustes salvos",
+    "presets": {
+      "gemini": "Google Gemini",
+      "openai": "OpenAI",
+      "openrouter": "OpenRouter",
+      "ollama": "Ollama (no seu PC)",
+      "custom": "Outro serviço compatível"
+    },
+    "apiKeyGemini": "Crie uma chave grátis em aistudio.google.com/apikey. Ela fica só no seu computador.",
+    "fetchModels": "Buscar modelos",
+    "fetchModelsError": "Não consegui buscar os modelos. Confira o endereço e a chave.",
+    "modelsFound": "{count} modelos de texto disponíveis. Escolha na lista.",
+    "modelHelp": "Para traduzir falas, prefira um modelo rápido (os \"flash\", por exemplo).",
+    "test": "Testar tradução",
+    "testing": "Testando…",
+    "testTime": "em {ms} ms"
   },
   "tutorial": {
     "title": "Como usar",
@@ -128,6 +142,10 @@
     "platform": "O Windows recusou a captura dessa janela. Confira se o jogo está aberto, em janela ou sem borda, e não minimizado.",
     "notImplemented": "Essa parte ainda está em construção. Ela chega nos próximos passos da fase 1.",
     "unknown": "Algo deu errado. Os detalhes estão no console (F12).",
-    "ocrLanguage": "O Windows não tem o reconhecimento de texto (OCR) do idioma do jogo. Em Configurações > Hora e idioma > Idioma e região, adicione o idioma do jogo (por exemplo, English (United States)); o OCR vem junto. Depois reabra o Subquest."
+    "ocrLanguage": "O Windows não tem o reconhecimento de texto (OCR) do idioma do jogo. Em Configurações > Hora e idioma > Idioma e região, adicione o idioma do jogo (por exemplo, English (United States)); o OCR vem junto. Depois reabra o Subquest.",
+    "translatorNotConfigured": "Falta configurar o tradutor: confira o modelo e o endereço em Ajustes.",
+    "translatorNetwork": "Não consegui falar com o serviço de tradução. Confira a internet e o endereço em Ajustes.",
+    "translatorProvider": "O serviço de tradução recusou o pedido. Confira a chave e o modelo em Ajustes; se for limite de uso, espere um pouco.",
+    "translatorBusy": "O modelo está sobrecarregado agora (muita gente usando). Tente de novo em alguns segundos ou escolha outro modelo em Ajustes; os \"flash-lite\" costumam estar livres."
   }
 }

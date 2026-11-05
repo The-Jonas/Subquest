@@ -1,10 +1,13 @@
-//! Translation: common interface + backends + cache.
+//! Translation: request types, the streaming backend, the cache and the
+//! per-session state (context of previous lines).
 //!
-//! Every backend implements `Translator`. The rest of the app doesn't know whether
-//! the translation comes from DeepL, a cloud LLM API or a local model.
+//! There is a single backend for now (OpenAI-compatible, which covers Gemini,
+//! OpenAI, OpenRouter, Ollama and LM Studio). When a second one arrives
+//! (e.g. DeepL), an enum over the backends goes here.
 
 pub mod cache;
 pub mod openai_compat;
+pub mod sse;
 
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +33,21 @@ pub enum TranslateError {
     NotConfigured(String), // missing key, URL or model
     Network(String),       // connection failure / timeout
     Provider(String),      // the API answered with an error
-    NotImplemented,        // backend is still a stub
+    Busy(String),          // overloaded (503) or rate-limited (429), even after retrying
+    Cancelled,             // a newer line arrived; this one is no longer worth finishing
+}
+
+impl TranslateError {
+    /// Stable key for the UI (`errors.<kind>` in the locale files).
+    pub fn kind(&self) -> &'static str {
+        match self {
+            TranslateError::NotConfigured(_) => "translatorNotConfigured",
+            TranslateError::Network(_) => "translatorNetwork",
+            TranslateError::Provider(_) => "translatorProvider",
+            TranslateError::Busy(_) => "translatorBusy",
+            TranslateError::Cancelled => "cancelled",
+        }
+    }
 }
 
 impl std::fmt::Display for TranslateError {
@@ -40,13 +57,22 @@ impl std::fmt::Display for TranslateError {
             TranslateError::NotConfigured(what) => write!(f, "not configured: {what}"),
             TranslateError::Network(e) => write!(f, "connection error: {e}"),
             TranslateError::Provider(e) => write!(f, "the translation service refused: {e}"),
-            TranslateError::NotImplemented => write!(f, "translator not implemented yet"),
+            TranslateError::Busy(e) => write!(f, "the translation service is busy: {e}"),
+            TranslateError::Cancelled => write!(f, "cancelled by a newer line"),
         }
     }
 }
 
-/// Contract for any translation backend.
-pub trait Translator: Send + Sync {
-    fn id(&self) -> &'static str; // stable identifier, used by the cache and settings
-    fn translate(&self, request: &TranslationRequest) -> Result<String, TranslateError>; // translates one line
+/// English name of a language tag, so the prompt says "Brazilian Portuguese"
+/// instead of a bare "pt-BR" (models follow plain names more reliably).
+pub fn language_name(tag: &str) -> &str {
+    match tag {
+        "en" => "English",
+        "ja" => "Japanese",
+        "zh-Hans" => "Simplified Chinese",
+        "ko" => "Korean",
+        "pt-BR" => "Brazilian Portuguese",
+        "es" => "Spanish",
+        other => other,
+    }
 }

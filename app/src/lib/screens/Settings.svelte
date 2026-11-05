@@ -2,13 +2,68 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
-  import { errorKind } from "../api";
+  import { errorDetail, errorKind, listModels, testTranslator, translatorPresets } from "../api";
 
   const gameLanguages = ["en", "ja", "zh-Hans", "ko"];
   const targetLanguages = ["pt-BR", "en", "es"];
 
   let saved = $state(false);
   let error = $state<string | null>(null);
+
+  // Which preset the current address belongs to ("custom" when typed by hand).
+  const preset = $derived(
+    translatorPresets.find((p) => p.baseUrl === app.settings.translator.baseUrl)?.id ?? "custom",
+  );
+  let models = $state<string[]>([]);
+  let modelsState = $state<"idle" | "loading" | "error">("idle");
+  let test = $state<{ status: "idle" | "running" | "ok" | "error"; text: string; ms: number; detail: string }>({
+    status: "idle",
+    text: "",
+    ms: 0,
+    detail: "",
+  });
+
+  // Picking a service fills in its address; "custom" keeps whatever is typed.
+  function choosePreset(id: string) {
+    const found = translatorPresets.find((p) => p.id === id);
+    if (found) app.settings.translator.baseUrl = found.baseUrl;
+    models = [];
+    test.status = "idle";
+  }
+
+  // Models that can't translate text (speech, images, video, embeddings) only add noise to the list.
+  const NOT_FOR_TEXT = /(embedding|tts|audio|image|imagen|veo|aqa|live|robotics|computer-use)/i;
+
+  // Asks the service which models it has, so the user picks a real name.
+  async function fetchModels() {
+    modelsState = "loading";
+    try {
+      const all = await listModels($state.snapshot(app.settings.translator));
+      models = all.filter((m) => !NOT_FOR_TEXT.test(m)).sort((a, b) => b.localeCompare(a)); // newest versions first
+      modelsState = "idle";
+      if (!app.settings.translator.model && models.length) {
+        app.settings.translator.model = models.find((m) => m.includes("flash")) ?? models[0];
+      }
+    } catch (e) {
+      errorKind(e);
+      modelsState = "error";
+    }
+  }
+
+  // Translates a sample line with the settings on screen (saved or not).
+  async function runTest() {
+    test = { status: "running", text: "", ms: 0, detail: "" };
+    try {
+      const result = await testTranslator(
+        $state.snapshot(app.settings.translator),
+        app.settings.sourceLanguage,
+        app.settings.targetLanguage,
+      );
+      test = { status: "ok", text: result.text, ms: Math.round(result.elapsedMs), detail: "" };
+    } catch (e) {
+      test = { status: "error", text: t(`errors.${errorKind(e)}`), ms: 0, detail: errorDetail(e) };
+    }
+  }
 
   // Saves and shows the confirmation for a few seconds.
   async function save() {
@@ -47,29 +102,66 @@
   <section>
     <h2>{t("settings.translation")}</h2>
     <div class="grid">
-      <label class="field wide">
+      <label class="field">
         <span>{t("settings.service")}</span>
-        <select class="input" bind:value={app.settings.translator.kind}>
-          <option value="openai-compatible">{t("settings.serviceLlm")}</option>
-          <option value="deepl">{t("settings.serviceDeepl")}</option>
+        <select class="input" value={preset} onchange={(e) => choosePreset(e.currentTarget.value)}>
+          {#each translatorPresets as p (p.id)}
+            <option value={p.id}>{t(`settings.presets.${p.id}`)}</option>
+          {/each}
+          <option value="custom">{t("settings.presets.custom")}</option>
         </select>
       </label>
-      {#if app.settings.translator.kind === "openai-compatible"}
-        <label class="field">
-          <span>{t("settings.baseUrl")}</span>
-          <input class="input" bind:value={app.settings.translator.baseUrl} spellcheck="false" />
-          <small>{t("settings.baseUrlHelp")}</small>
-        </label>
-        <label class="field">
-          <span>{t("settings.model")}</span>
-          <input class="input" bind:value={app.settings.translator.model} placeholder="qwen2.5:7b" spellcheck="false" />
-        </label>
-      {/if}
+      <label class="field">
+        <span>{t("settings.baseUrl")}</span>
+        <input class="input" bind:value={app.settings.translator.baseUrl} spellcheck="false" />
+      </label>
       <label class="field wide">
         <span>{t("settings.apiKey")}</span>
         <input class="input" type="password" bind:value={app.settings.translator.apiKey} autocomplete="off" />
-        <small>{t("settings.apiKeyHelp")}</small>
+        <small>{t(preset === "gemini" ? "settings.apiKeyGemini" : "settings.apiKeyHelp")}</small>
       </label>
+      <div class="field wide">
+        <label for="model">{t("settings.model")}</label>
+        <div class="row">
+          {#if models.length}
+            <!-- A real list once we know the models (a datalist would filter by what's typed) -->
+            <select id="model" class="input" bind:value={app.settings.translator.model}>
+              {#if !models.includes(app.settings.translator.model)}
+                <option value={app.settings.translator.model}>{app.settings.translator.model}</option>
+              {/if}
+              {#each models as m (m)}<option value={m}>{m}</option>{/each}
+            </select>
+          {:else}
+            <input id="model" class="input" bind:value={app.settings.translator.model} spellcheck="false" />
+          {/if}
+          <button class="btn" onclick={fetchModels} disabled={modelsState === "loading"}>
+            {t("settings.fetchModels")}
+          </button>
+        </div>
+        <small class:bad={modelsState === "error"}>
+          {modelsState === "error"
+            ? t("settings.fetchModelsError")
+            : models.length
+              ? t("settings.modelsFound", { count: String(models.length) })
+              : t("settings.modelHelp")}
+        </small>
+      </div>
+    </div>
+
+    <!-- Test: one sample line through the real service, with the time it took -->
+    <div class="test">
+      <button class="btn" onclick={runTest} disabled={test.status === "running"}>
+        {test.status === "running" ? t("settings.testing") : t("settings.test")}
+      </button>
+      {#if test.status === "ok"}
+        <p class="ok">{test.text} <span class="ms">{t("settings.testTime", { ms: String(test.ms) })}</span></p>
+      {:else if test.status === "error"}
+        <div class="test-error">
+          <p class="bad">{test.text}</p>
+          <!-- The service's own words: usually says exactly what's wrong (model, quota, parameter) -->
+          <code>{test.detail}</code>
+        </div>
+      {/if}
     </div>
   </section>
 
@@ -139,6 +231,44 @@
   }
   .wide {
     grid-column: 1 / -1;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  .row .input {
+    flex: 1;
+  }
+  .bad {
+    color: var(--danger);
+  }
+
+  .test {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .test p {
+    margin: 0;
+  }
+  .test-error {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .test-error code {
+    font-size: 12px;
+    color: var(--ink-faint);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 7.5em;
+    overflow-y: auto;
+  }
+  .ms {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
+    margin-left: 6px;
   }
 
   output {

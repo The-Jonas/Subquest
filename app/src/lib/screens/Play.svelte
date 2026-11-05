@@ -14,12 +14,14 @@
     startSession,
     stopSession,
     onOcrText,
+    onTranslation,
     errorKind,
     profileKey,
     type AreaMode,
     type GameWindow,
     type OcrTextEvent,
     type Region,
+    type TranslationEvent,
   } from "../api";
 
   type Step = 0 | 1 | 2;
@@ -33,7 +35,8 @@
   let running = $state(false);
   let error = $state<string | null>(null);
   let lines = $state<OcrTextEvent[]>([]);
-  let unlisten: (() => void) | null = null;
+  let translations = $state<Record<number, TranslationEvent>>({}); // by frame id
+  let unlisteners: (() => void)[] = [];
 
   const stepKeys = ["game", "area", "start"] as const;
   const areaModes: AreaMode[] = ["dialogue", "screen"];
@@ -84,16 +87,25 @@
     step = 2;
   }
 
-  // Starts the core session and begins listening for recognized lines.
+  // Stops listening to OCR and translation events.
+  function unlistenAll() {
+    unlisteners.forEach((fn) => fn());
+    unlisteners = [];
+  }
+
+  // Starts the core session and begins listening for recognized lines and their translations.
   async function start() {
     if (!game) return;
     error = null;
+    lines = [];
+    translations = {};
     try {
-      unlisten = await onOcrText((e) => (lines = [e, ...lines].slice(0, 6)));
+      unlisteners.push(await onOcrText((e) => (lines = [e, ...lines].slice(0, 6))));
+      unlisteners.push(await onTranslation((e) => (translations[e.frameId] = e)));
       await startSession(game.handle, areaMode === "dialogue" ? region : null);
       running = true;
     } catch (e) {
-      unlisten?.();
+      unlistenAll();
       error = t(`errors.${errorKind(e)}`);
     }
   }
@@ -103,16 +115,23 @@
     try {
       await stopSession();
     } finally {
-      unlisten?.();
-      unlisten = null;
+      unlistenAll();
       running = false;
     }
+  }
+
+  // Timing line for a line: OCR always, translation once it is done.
+  function timing(line: OcrTextEvent, tr: TranslationEvent | undefined): string {
+    const ocr = t("play.start.timing", { ocr: String(Math.round(line.ocrMs)), total: String(Math.round(line.totalMs)) });
+    if (!tr?.done || tr.errorKind) return ocr;
+    const key = tr.cached ? "play.start.cached" : "play.start.translated";
+    return `${ocr}. ${t(key, { ms: String(Math.round(tr.elapsedMs)) })}`;
   }
 
   // Leaving the Play screen ends the session, so nothing keeps capturing in the background.
   onDestroy(() => {
     if (running) stopSession().catch(errorKind);
-    unlisten?.();
+    unlistenAll();
   });
   refresh();
 </script>
@@ -123,11 +142,18 @@
     {#if running}
       <ol class="feed" aria-live="polite">
         {#each lines as l (l.frameId)}
+          {@const tr = translations[l.frameId]}
           <li>
-            <p class="text">{l.text}</p>
-            <p class="timing">
-              {t("play.start.timing", { ocr: String(Math.round(l.ocrMs)), total: String(Math.round(l.totalMs)) })}
-            </p>
+            {#if tr?.errorKind}
+              <p class="text">{l.text}</p>
+              <p class="tr-error">{t(`errors.${tr.errorKind}`)}</p>
+            {:else if tr?.text}
+              <p class="text" class:streaming={!tr.done}>{tr.text}</p>
+              <p class="original">{l.text}</p>
+            {:else}
+              <p class="text pending">{l.text}</p>
+            {/if}
+            <p class="timing">{timing(l, tr)}</p>
           </li>
         {:else}
           <li class="muted live">{t("play.start.waiting")}</li>
@@ -351,6 +377,26 @@
   }
   .feed li:first-child .text {
     font-size: var(--text-lg);
+  }
+  /* Original under the translation, quieter: it's there to check the OCR */
+  .original {
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+    white-space: pre-line;
+  }
+  /* Untranslated line waiting for the service */
+  .pending {
+    color: var(--ink-dim);
+  }
+  /* While the translation is still arriving, a gold caret follows the text */
+  .streaming::after {
+    content: "▍";
+    margin-left: 2px;
+    color: var(--gold);
+  }
+  .tr-error {
+    color: var(--danger);
+    font-size: var(--text-sm);
   }
   .timing {
     color: var(--ink-faint);

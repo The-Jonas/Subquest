@@ -10,6 +10,9 @@ each under its own license. Keep this file updated whenever a dependency is adde
 | [Vite](https://github.com/vitejs/vite) | Frontend build | MIT |
 | [libloading](https://github.com/nagisa/rust_libloading) | Loading `subquest_core.dll` | ISC |
 | [serde](https://github.com/serde-rs/serde) | Config (de)serialization | MIT / Apache-2.0 |
+| [reqwest](https://github.com/seanmonstar/reqwest) | Translation HTTP requests (streaming) | MIT / Apache-2.0 |
+| [futures-util](https://github.com/rust-lang/futures-rs) | Reading the response stream | MIT / Apache-2.0 |
+| [tokio](https://github.com/tokio-rs/tokio) | Pauses between retries | MIT |
 | [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) | UI typeface | SIL OFL 1.1 |
 | [Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont/) | UI typeface | SIL OFL 1.1 |
 
@@ -19,4 +22,3 @@ Planned (not yet included):
 |---|---|---|
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Running OCR models on GPU (DirectML) | MIT |
 | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) models | Japanese / Chinese / Korean OCR | Apache-2.0 |
-| [reqwest](https://github.com/seanmonstar/reqwest) | Translation HTTP requests | MIT / Apache-2.0 |

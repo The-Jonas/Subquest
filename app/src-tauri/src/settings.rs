@@ -63,11 +63,12 @@ impl Default for Settings {
 }
 
 impl Default for TranslatorSettings {
-    /// Starts pointing at a local Ollama: works with no key at all.
+    /// Starts pointing at Gemini: a free API key from Google AI Studio is the
+    /// easiest way for most players to get good translations.
     fn default() -> Self {
         Self {
             kind: "openai-compatible".into(),
-            base_url: "http://localhost:11434/v1".into(),
+            base_url: "https://generativelanguage.googleapis.com/v1beta/openai/".into(),
             model: String::new(),
             api_key: String::new(),
         }

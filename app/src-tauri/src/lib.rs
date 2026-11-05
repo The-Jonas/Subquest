@@ -6,12 +6,13 @@
 mod core_ffi;
 mod error;
 mod settings;
-#[allow(dead_code)]
 mod translate;
+mod translation;
 
 use std::ffi::{c_char, c_void, CStr};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
 
 use serde::Serialize;
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -19,7 +20,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use core_ffi::{Core, SqRect, WindowEntry};
 use error::AppError;
-use settings::Settings;
+use settings::{Settings, TranslatorSettings};
+use translation::TranslationState;
 
 /// Channel the preview reaches the UI through, as raw bytes (no JSON).
 type PreviewChannel = Channel<InvokeResponseBody>;
@@ -31,6 +33,7 @@ struct AppState {
     config_dir: PathBuf,
     session_user_data: Mutex<Option<*mut AppHandle>>, // AppHandle lent to the core during a session
     preview_user_data: Mutex<Option<*mut PreviewChannel>>, // channel lent to the core during the preview
+    translation: TranslationState,
 }
 
 // SAFETY: the pointers are only created/freed while the Mutex is held, and
@@ -88,8 +91,9 @@ fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, AppError
     core(&state)?.list_windows()
 }
 
-/// Callback called by the core (OCR thread): forwards the text to the UI.
-/// TODO(phase 1): translation goes here (cache -> translator -> sq_overlay_set_text).
+/// Callback called by the core (OCR thread): forwards the text to the UI and
+/// hands it to the translator on the async runtime, so the OCR thread never waits
+/// on the network. TODO(phase 1): also send the translation to the overlay.
 unsafe extern "C" fn on_ocr_text(
     text: *const c_char,
     frame_id: u64,
@@ -102,12 +106,14 @@ unsafe extern "C" fn on_ocr_text(
     let _ = app.emit(
         "ocr-text",
         OcrTextEvent {
-            text,
+            text: text.clone(),
             frame_id,
             ocr_ms,
             total_ms,
         },
     );
+    let app = app.clone();
+    tauri::async_runtime::spawn(translation::translate_line(app, text, frame_id));
 }
 
 /// Starts translating the chosen window, in the chosen region.
@@ -120,6 +126,7 @@ async fn start_session(
 ) -> Result<(), AppError> {
     let core = core(&state)?;
     let language = state.settings.lock().unwrap().source_language.clone();
+    state.translation.reset_context();
     let (x, y, width, height) = region.unwrap_or_default();
 
     let mut slot = state.session_user_data.lock().unwrap();
@@ -228,6 +235,53 @@ async fn stop_preview(state: State<'_, AppState>) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Result of the "Test" button in Settings.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TranslatorTest {
+    text: String,
+    elapsed_ms: f64,
+}
+
+/// Translates a fixed sample line with the given (possibly unsaved) settings,
+/// so the user can check the key, model and latency before playing.
+#[tauri::command]
+async fn test_translator(
+    state: State<'_, AppState>,
+    translator: TranslatorSettings,
+    source_language: String,
+    target_language: String,
+) -> Result<TranslatorTest, AppError> {
+    let request = translate::TranslationRequest {
+        text: "The bridge is out. You'll have to find another way across.".into(),
+        source_lang: source_language,
+        target_lang: target_language,
+        context: Vec::new(),
+        glossary: Vec::new(),
+    };
+    let started = Instant::now();
+    let text = translation::backend(&state.translation.http, &translator)
+        .translate(&request, |_| true)
+        .await
+        .map_err(AppError::from_translate)?;
+    Ok(TranslatorTest {
+        text,
+        elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
+    })
+}
+
+/// Lists the models the configured service offers.
+#[tauri::command]
+async fn list_models(
+    state: State<'_, AppState>,
+    translator: TranslatorSettings,
+) -> Result<Vec<String>, AppError> {
+    translation::backend(&state.translation.http, &translator)
+        .list_models()
+        .await
+        .map_err(AppError::from_translate)
+}
+
 /// Returns the current settings.
 #[tauri::command]
 fn get_settings(state: State<'_, AppState>) -> Settings {
@@ -269,6 +323,7 @@ pub fn run() {
                 config_dir,
                 session_user_data: Mutex::new(None),
                 preview_user_data: Mutex::new(None),
+                translation: TranslationState::new(),
             });
             Ok(())
         })
@@ -279,6 +334,8 @@ pub fn run() {
             stop_session,
             start_preview,
             stop_preview,
+            test_translator,
+            list_models,
             get_settings,
             save_settings
         ])
