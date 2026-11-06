@@ -232,7 +232,9 @@
     "missedBadge": "Falas que passaram antes da tradução ficar pronta",
     "clear": "Limpar",
     "cached": "Do cache",
-    "glossary": "Glossário: {terms}"
+    "glossary": "Glossário: {terms}",
+    "reread": "Relida {n}×",
+    "rereadHelp": "O OCR leu esta fala de novo (às vezes com uma letra diferente) e a mesma tradução foi usada."
   },
   "styles": {
     "title": "Estilos do jogo",
@@ -271,7 +273,8 @@
     "open": "Abrir o Subquest",
     "close": "Esconder a barrinha · volta com {keys}",
     "edit": "Editar as áreas no jogo",
-    "closeNoKey": "Esconder a barrinha · volta pelo Subquest"
+    "closeNoKey": "Esconder a barrinha · volta pelo Subquest",
+    "term": "Escolher uma palavra para o glossário"
   },
   "select": {
     "area": "Marque a nova área",
@@ -316,6 +319,10 @@
       "edit": {
         "name": "Editar áreas",
         "help": "Mova, redimensione, renomeie ou remova as áreas direto no jogo."
+      },
+      "term": {
+        "name": "Palavra para o glossário",
+        "help": "Clique numa palavra do jogo e diga se ela deve ser traduzida, e como."
       }
     }
   },
@@ -407,6 +414,23 @@
     "remove": "Tirar do glossário",
     "empty": "Nenhum termo ainda.",
     "quickNote": "A tradução rápida (Google ou DeepL) não segue o glossário: ela aparece primeiro e a tradução principal, que segue, toma o lugar dela quando fica pronta.",
-    "saved": "Salvo"
+    "saved": "Salvo",
+    "pick": {
+      "title": "Clique numa palavra do jogo",
+      "howTo": "Arraste para pegar várias palavras seguidas. Botão direito ou Esc cancela.",
+      "nothing": "Nenhum texto lido na tela agora. Espere uma fala aparecer e tente de novo.",
+      "cancel": "Cancelar",
+      "term": "Termo",
+      "translate": "Traduzir",
+      "keep": "Não traduzir",
+      "keepHelp": "Fica como está no jogo (nomes próprios)",
+      "targetPlaceholder": "Como deve sair na tradução",
+      "save": "Salvar no glossário",
+      "saving": "Salvando…",
+      "inGlossary": "já no glossário",
+      "keptShort": "igual no jogo e na tradução",
+      "keysSave": "salva",
+      "keysCancel": "fecha"
+    }
   }
 }

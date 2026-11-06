@@ -61,6 +61,7 @@ pub struct ShortcutSettings {
     pub hide: String,    // hide / show the translations
     pub toolbar: String, // show / hide the in-game toolbar
     pub edit: String,    // edit the marked areas (move, resize, rename, remove)
+    pub term: String,    // click a word in the game to add it to the glossary
 }
 
 impl Default for ShortcutSettings {
@@ -73,6 +74,7 @@ impl Default for ShortcutSettings {
             hide: "Ctrl+Shift+H".into(),
             toolbar: "Ctrl+Shift+B".into(),
             edit: "Ctrl+Shift+E".into(),
+            term: "Ctrl+Shift+G".into(),
         }
     }
 }

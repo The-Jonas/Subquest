@@ -118,6 +118,10 @@ void Pipeline::ocr_loop() {
                 line.text_rgb = c.text;
                 line.box.x += frame.origin_x; // from the crop to the window
                 line.box.y += frame.origin_y;
+                for (OcrWord& word : line.words) {
+                    word.box.x += frame.origin_x;
+                    word.box.y += frame.origin_y;
+                }
             }
         }
         result.frame_id = g_next_event_id++; // areas share frames, so frame ids aren't unique per result

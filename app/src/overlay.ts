@@ -1,5 +1,6 @@
 // Overlay window entry point: a separate page, so it loads only what it needs.
 import "@fontsource-variable/atkinson-hyperlegible-next";
+import "@fontsource-variable/archivo/wdth.css"; // the glossary box shows the picked term in the app's title font
 // Fonts offered for the overlay (see lib/fonts.ts)
 import "@fontsource-variable/cinzel";
 import "@fontsource-variable/crimson-pro";

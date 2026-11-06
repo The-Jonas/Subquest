@@ -41,6 +41,7 @@
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
+  import TermPicker from "./TermPicker.svelte";
   import { layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
@@ -427,7 +428,7 @@
     document.fonts.ready.then(() => (fontReady += 1));
     // overlay.html?select=area|style shows the selection mode, to design it.
     const select = new URLSearchParams(location.search).get("select");
-    if (select === "area" || select === "style" || select === "edit") selecting = select;
+    if (select === "area" || select === "style" || select === "edit" || select === "term") selecting = select;
   }
 
   setup();
@@ -448,6 +449,17 @@
       ondone={(list) => {
         selecting = null;
         void finishAreaEdit(list);
+      }}
+    />
+  {:else if selecting === "term" && profileKey}
+    <!-- Picking a word of the game for the glossary -->
+    <TermPicker
+      events={Object.values(views).flatMap((v) => (v.current ? [v.current] : []))}
+      {viewWidth}
+      gameKey={profileKey}
+      ondone={() => {
+        selecting = null;
+        void finishSelection("term", null);
       }}
     />
   {:else if selecting}

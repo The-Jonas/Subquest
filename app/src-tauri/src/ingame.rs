@@ -4,6 +4,7 @@
 //! Default keys (all can be changed in the Shortcuts screen):
 //!   Ctrl+Shift+A  mark a new area: drag a rectangle right over the game
 //!   Ctrl+Shift+S  take a style print: drag over a phrase, then pick its font
+//!   Ctrl+Shift+G  glossary: click a word in the game, say how to translate it
 //!   Ctrl+Shift+T  pause / resume translating
 //!   Ctrl+Shift+H  hide / show the translations
 //!   Ctrl+Shift+B  show / hide the toolbar (hidden until asked for, so it
@@ -35,6 +36,7 @@ pub enum Purpose {
     Area,  // a new area to read
     Style, // a print of a phrase, to pick its font
     Edit,  // move, resize, rename or remove the areas already marked
+    Term,  // click a word in the game to add it to the glossary
 }
 
 /// Something a shortcut does.
@@ -46,6 +48,7 @@ enum Action {
     Hide,
     Toolbar,
     Edit,
+    Term,
 }
 
 /// The configured shortcuts that parse, with their action. A key written in
@@ -59,6 +62,7 @@ fn shortcuts(app: &AppHandle) -> Vec<(Shortcut, Action)> {
         (keys.hide, Action::Hide),
         (keys.toolbar, Action::Toolbar),
         (keys.edit, Action::Edit),
+        (keys.term, Action::Term),
     ]
     .into_iter()
     .filter(|(text, _)| !text.trim().is_empty())
@@ -90,6 +94,7 @@ pub fn on_shortcut(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
         }
         Action::Toolbar => toggle_toolbar(app).map(|_| ()),
         Action::Edit => begin_selection(app, Purpose::Edit),
+        Action::Term => begin_selection(app, Purpose::Term),
     };
     if let Err(e) = result {
         eprintln!("[subquest] shortcut: {}", e.detail);
@@ -158,7 +163,7 @@ pub fn on_session_end(app: &AppHandle) {
 fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
     let toolbar = WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
         .title("Subquest")
-        .inner_size(352.0, 84.0) // the bar, plus room below it for the button labels
+        .inner_size(392.0, 84.0) // the bar, plus room below it for the button labels
         .transparent(true)
         .decorations(false)
         .shadow(false)
@@ -171,7 +176,7 @@ fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Resu
         .build()
         .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?;
     if let Some((x, y, width)) = game_bounds {
-        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(352);
+        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(392);
         let _ = toolbar.set_position(tauri::PhysicalPosition::new(x + width - size - 24, y + 24));
     }
     Ok(())
@@ -191,8 +196,9 @@ pub fn begin_selection(app: &AppHandle, purpose: Purpose) -> Result<(), AppError
         .set_ignore_cursor_events(false)
         .map_err(|e| AppError::other(e.to_string()))?;
     let _ = overlay.show();
-    if purpose == Purpose::Edit {
-        // Renaming needs the keyboard: the overlay may take the focus until done.
+    if matches!(purpose, Purpose::Edit | Purpose::Term) {
+        // Renaming an area or typing a term's translation needs the keyboard:
+        // the overlay may take the focus until done.
         let _ = overlay.set_focusable(true);
         let _ = overlay.set_focus();
     }
@@ -227,6 +233,16 @@ pub fn finish_area_edit(app: &AppHandle, areas: Option<Vec<GameArea>>) -> Result
 pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i32; 4]>) -> Result<(), AppError> {
     if let Some(overlay) = app.get_webview_window(overlay::LABEL) {
         let _ = overlay.set_ignore_cursor_events(true);
+        if purpose == Purpose::Term {
+            let _ = overlay.set_focusable(false);
+        }
+    }
+    if purpose == Purpose::Term {
+        // The overlay saved the term itself (save_glossary): the game gets the keyboard back.
+        if let Some(game) = *app.state::<AppState>().session_window.lock().unwrap() {
+            overlay::focus_game(game);
+        }
+        return Ok(());
     }
     let Some(rect) = rect.filter(|r| r[2] >= 8 && r[3] >= 8) else {
         return Ok(());
@@ -236,7 +252,7 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
         return Ok(());
     };
     match purpose {
-        Purpose::Edit => Ok(()), // edits end through finish_area_edit
+        Purpose::Edit | Purpose::Term => Ok(()), // edits end through finish_area_edit; terms returned above
         Purpose::Area => {
             state.profiles.update(&key, |profile| {
                 // A game is read through marked areas or as a whole window, never

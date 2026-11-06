@@ -27,6 +27,7 @@
     show: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4z",
     open: "M11 3.5h5.5V9M16.5 3.5L9 11M14 12.5v4H3.5V6h4",
     edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
+    term: "M3 4.5h5a2 2 0 0 1 2 1.5a2 2 0 0 1 2-1.5h5v11h-5a2 2 0 0 0-2 1.5a2 2 0 0 0-2-1.5H3zM10 6v10.5", // open book: the glossary
     tuck: "M5 8l5 5 5-5M4 16.5h12", // arrow down into a line: put the bar away
   };
 
@@ -131,6 +132,7 @@
     {@render tool(t("toolbar.area") + keyHint(keys.area), ICONS.area, () => beginSelection("area"))}
     {@render tool(t("toolbar.edit") + keyHint(keys.edit), ICONS.edit, () => beginSelection("edit"))}
     {@render tool(t("toolbar.style") + keyHint(keys.style), ICONS.style, () => beginSelection("style"))}
+    {@render tool(t("toolbar.term") + keyHint(keys.term), ICONS.term, () => beginSelection("term"))}
     {@render tool(
       (paused ? t("toolbar.resume") : t("toolbar.pause")) + keyHint(keys.pause),
       paused ? ICONS.play : ICONS.pause,

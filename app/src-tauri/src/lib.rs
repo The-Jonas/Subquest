@@ -101,6 +101,29 @@ struct OcrLineEvent {
     box_color: String,
     text_color: String,
     style: Option<String>, // id of the game's text style this line belongs to
+    words: Vec<OcrWordEvent>, // so a word can be picked over the game (glossary)
+}
+
+/// One word of a recognized line.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OcrWordEvent {
+    text: String,
+    rect: [i32; 4], // [x, y, width, height] in window pixels
+}
+
+/// The words of a line, copied out of the core's memory.
+unsafe fn line_words(line: &core_ffi::SqLine) -> Vec<OcrWordEvent> {
+    if line.words.is_null() || line.word_count == 0 {
+        return Vec::new();
+    }
+    std::slice::from_raw_parts(line.words, line.word_count as usize)
+        .iter()
+        .map(|w| OcrWordEvent {
+            text: owned(w.utf8_text),
+            rect: [w.rect.x, w.rect.y, w.rect.width, w.rect.height],
+        })
+        .collect()
 }
 
 /// Tells the UI the styles changed, and restyles the lines on screen now
@@ -337,6 +360,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             box_color: css_color(l.background_rgb),
             text_color: css_color(l.text_rgb),
             style: style_ids.get(i).cloned().flatten(),
+            words: line_words(l),
         })
         .collect();
     if !meaningful {
@@ -870,15 +894,24 @@ fn get_glossary(state: State<'_, AppState>, profile_key: String) -> Vec<glossary
     state.profiles.glossary(&profile_key)
 }
 
-/// Saves a game's glossary. The next lines use it right away; lines already
-/// translated with other terms are translated again when they come back.
+/// Saves a game's glossary. When that game is being translated, what is on
+/// screen now is read and translated again with it (a term picked in the game
+/// fixes the line right away); other lines use it when they come back.
 #[tauri::command]
 fn save_glossary(
+    app: AppHandle,
     state: State<'_, AppState>,
     profile_key: String,
     entries: Vec<glossary::GlossaryEntry>,
 ) -> Result<(), AppError> {
-    state.profiles.save_glossary(&profile_key, entries)
+    state.profiles.save_glossary(&profile_key, entries)?;
+    let _ = app.emit("glossary-changed", profile_key.clone());
+    let translating = state.active_profile.lock().unwrap().as_deref() == Some(profile_key.as_str());
+    if translating && !state.paused.load(Ordering::SeqCst) {
+        state.translation.forget_recent();
+        restart_reading(&app)?;
+    }
+    Ok(())
 }
 
 /// Forgets a game: its profile, glossary, styles and prints.

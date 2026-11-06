@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 10;
+pub const EXPECTED_API_VERSION: u32 = 11;
 pub const MAX_AREAS: usize = 16; // SQ_MAX_AREAS
 
 #[repr(C)]
@@ -44,6 +44,16 @@ pub struct SqLine {
     pub rect: SqRect,
     pub background_rgb: u32,
     pub text_rgb: u32,
+    pub words: *const SqWord, // the line's words (valid only during the callback)
+    pub word_count: u32,
+}
+
+/// One word of a line, so a word can be picked over the game.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SqWord {
+    pub utf8_text: *const c_char,
+    pub rect: SqRect,
 }
 
 #[repr(C)]

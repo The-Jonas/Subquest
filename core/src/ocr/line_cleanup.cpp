@@ -198,6 +198,24 @@ bool tidy_line(OcrLine& line) {
     const bool untouched = first == 0 && last == line.words.size() && front == 0 && back == 0;
     if (!untouched || line.text.empty()) line.text = trimmed_text(line, first, last, front, back);
     line.box = box;
+
+    // The words follow the cleaned line: only the kept ones, without the marks
+    // (their boxes lose the same share as the line's), so picking a word over
+    // the game never picks a stray "(".
+    std::vector<OcrWord> words(line.words.begin() + first, line.words.begin() + last);
+    if (front > 0) {
+        OcrWord& w = words.front();
+        const int32_t cut = int32_t(int64_t(w.box.width) * int64_t(front) / int64_t(kept.front().size()));
+        w.box.x += cut;
+        w.box.width -= cut;
+        w.text.erase(0, std::min(front, w.text.size()));
+    }
+    if (back > 0) {
+        OcrWord& w = words.back();
+        w.box.width -= int32_t(int64_t(w.box.width) * int64_t(back) / int64_t(kept.back().size()));
+        w.text.erase(w.text.size() - std::min(back, w.text.size()));
+    }
+    line.words = std::move(words);
     return true;
 }
 

@@ -6,7 +6,8 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { t } from "../i18n/index.svelte";
-  import { errorKind, getGlossary, saveGlossary, type GlossaryEntry } from "../api";
+  import { listen } from "@tauri-apps/api/event";
+  import { errorKind, getGlossary, inTauri, saveGlossary, type GlossaryEntry } from "../api";
 
   interface Props {
     gameKey: string; // profile key of the game
@@ -17,15 +18,31 @@
   let savedAt = $state(0); // last save, for the short "Saved" note
   let list: HTMLUListElement | undefined = $state();
 
+  // Reads the game's glossary (rows still being typed here are kept).
+  function load(key: string) {
+    getGlossary(key)
+      .then((loaded) => {
+        if (key !== gameKey) return;
+        const typing = entries.filter((e) => !e.source.trim());
+        entries = [...loaded, ...typing];
+      })
+      .catch(errorKind);
+  }
+
   // Loads the game's glossary whenever the game changes.
   $effect(() => {
     const key = gameKey;
     entries = [];
-    getGlossary(key)
-      .then((loaded) => {
-        if (key === gameKey) entries = loaded;
-      })
-      .catch(errorKind);
+    load(key);
+  });
+
+  // A term picked over the game (or saved elsewhere) shows up here right away.
+  $effect(() => {
+    if (!inTauri) return;
+    const stop = listen<string>("glossary-changed", (e) => {
+      if (e.payload === gameKey) load(gameKey);
+    });
+    return () => void stop.then((fn) => fn());
   });
 
   // Saves every entry that has a term (rows still being typed are kept on screen).

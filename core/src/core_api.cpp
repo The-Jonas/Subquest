@@ -88,11 +88,15 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
         // Plain C view of the result; the strings stay owned by `r` during the call.
+        std::vector<std::vector<SqWord>> words(r.lines.size());
         std::vector<SqLine> lines;
         lines.reserve(r.lines.size());
-        for (const OcrLine& l : r.lines) {
+        for (size_t i = 0; i < r.lines.size(); ++i) {
+            const OcrLine& l = r.lines[i];
+            for (const OcrWord& w : l.words)
+                words[i].push_back({w.text.c_str(), {w.box.x, w.box.y, w.box.width, w.box.height}});
             lines.push_back({l.text.c_str(), {l.box.x, l.box.y, l.box.width, l.box.height}, l.background_rgb,
-                             l.text_rgb});
+                             l.text_rgb, words[i].data(), uint32_t(words[i].size())});
         }
         const SqOcrEvent event{r.full_text.c_str(), lines.data(), uint32_t(lines.size()), r.frame_id,
                                r.area_index, r.elapsed_ms, r.total_ms, r.frame_width, r.frame_height,

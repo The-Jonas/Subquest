@@ -232,7 +232,9 @@
     "missedBadge": "Líneas que pasaron antes de que la traducción estuviera lista",
     "clear": "Limpiar",
     "cached": "De la caché",
-    "glossary": "Glosario: {terms}"
+    "glossary": "Glosario: {terms}",
+    "reread": "Releída {n}×",
+    "rereadHelp": "El OCR volvió a leer esta línea (a veces con una letra distinta) y se usó la misma traducción."
   },
   "styles": {
     "title": "Estilos del juego",
@@ -271,7 +273,8 @@
     "open": "Abrir Subquest",
     "close": "Ocultar la barra · vuelve con {keys}",
     "edit": "Editar las áreas en el juego",
-    "closeNoKey": "Ocultar la barra · vuelve desde Subquest"
+    "closeNoKey": "Ocultar la barra · vuelve desde Subquest",
+    "term": "Elegir una palabra para el glosario"
   },
   "select": {
     "area": "Marca la nueva área",
@@ -316,6 +319,10 @@
       "edit": {
         "name": "Editar áreas",
         "help": "Mueve, redimensiona, renombra o quita las áreas directo en el juego."
+      },
+      "term": {
+        "name": "Palabra para el glosario",
+        "help": "Haz clic en una palabra del juego y di si se debe traducir, y cómo."
       }
     }
   },
@@ -407,6 +414,23 @@
     "remove": "Quitar del glosario",
     "empty": "Ningún término todavía.",
     "quickNote": "La traducción rápida (Google o DeepL) no sigue el glosario: aparece primero y la traducción principal, que sí lo sigue, ocupa su lugar cuando está lista.",
-    "saved": "Guardado"
+    "saved": "Guardado",
+    "pick": {
+      "title": "Haz clic en una palabra del juego",
+      "howTo": "Arrastra para tomar varias palabras seguidas. Clic derecho o Esc cancela.",
+      "nothing": "No hay texto leído en pantalla ahora. Espera a que aparezca una línea e inténtalo de nuevo.",
+      "cancel": "Cancelar",
+      "term": "Término",
+      "translate": "Traducir",
+      "keep": "No traducir",
+      "keepHelp": "Queda como lo escribe el juego (nombres propios)",
+      "targetPlaceholder": "Cómo debe salir en la traducción",
+      "save": "Guardar en el glosario",
+      "saving": "Guardando…",
+      "inGlossary": "ya en el glosario",
+      "keptShort": "igual en el juego y en la traducción",
+      "keysSave": "guarda",
+      "keysCancel": "cierra"
+    }
   }
 }

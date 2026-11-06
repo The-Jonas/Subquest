@@ -122,6 +122,8 @@ int main() {
         check(menu.full_text == "PLAY", "the engine's lines are tidied (the stray '(' goes)");
         check(menu.lines.size() == 1 && menu.lines[0].box.x == 130 && menu.lines[0].box.y == 405,
               "line boxes leave in window pixels (area origin added), without the stray mark");
+        check(menu.lines[0].words.size() == 1 && menu.lines[0].words[0].box.x == 130,
+              "word boxes too, so a word can be picked over the game");
 
         screen->show(120);
         screen->show(120);

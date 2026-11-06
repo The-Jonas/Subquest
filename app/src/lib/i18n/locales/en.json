@@ -232,7 +232,9 @@
     "missedBadge": "Lines that passed before their translation was ready",
     "clear": "Clear",
     "cached": "From cache",
-    "glossary": "Glossary: {terms}"
+    "glossary": "Glossary: {terms}",
+    "reread": "Read {n}× more",
+    "rereadHelp": "OCR read this line again (sometimes with a letter changed) and the same translation was used."
   },
   "styles": {
     "title": "Game styles",
@@ -271,7 +273,8 @@
     "open": "Open Subquest",
     "close": "Hide the bar · {keys} brings it back",
     "edit": "Edit the areas in the game",
-    "closeNoKey": "Hide the bar · Subquest brings it back"
+    "closeNoKey": "Hide the bar · Subquest brings it back",
+    "term": "Pick a word for the glossary"
   },
   "select": {
     "area": "Mark the new area",
@@ -316,6 +319,10 @@
       "edit": {
         "name": "Edit areas",
         "help": "Move, resize, rename or remove the areas right in the game."
+      },
+      "term": {
+        "name": "Word for the glossary",
+        "help": "Click a word in the game and say whether it should be translated, and how."
       }
     }
   },
@@ -407,6 +414,23 @@
     "remove": "Remove from the glossary",
     "empty": "No terms yet.",
     "quickNote": "The quick translation (Google or DeepL) doesn't follow the glossary: it shows first, and the main translation, which does, takes its place when ready.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "pick": {
+      "title": "Click a word in the game",
+      "howTo": "Drag to pick several words in a row. Right click or Esc cancels.",
+      "nothing": "No text read on screen right now. Wait for a line to show up and try again.",
+      "cancel": "Cancel",
+      "term": "Term",
+      "translate": "Translate",
+      "keep": "Don't translate",
+      "keepHelp": "Kept as the game writes it (proper names)",
+      "targetPlaceholder": "How it should come out in the translation",
+      "save": "Save to the glossary",
+      "saving": "Saving…",
+      "inGlossary": "already in the glossary",
+      "keptShort": "same in the game and the translation",
+      "keysSave": "saves",
+      "keysCancel": "closes"
+    }
   }
 }

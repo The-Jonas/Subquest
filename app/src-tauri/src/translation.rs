@@ -118,6 +118,13 @@ impl TranslationState {
         self.recent.lock().unwrap().clear();
     }
 
+    /// Forgets the newest line of every area, so the next reading of the same
+    /// text is translated again instead of reusing the old translation (the
+    /// glossary changed).
+    pub fn forget_recent(&self) {
+        self.recent.lock().unwrap().clear();
+    }
+
     /// Decides whether a line needs its own translation or is the newest line
     /// of the same area read again with small OCR differences. Runs on the OCR
     /// thread, so it's quick.

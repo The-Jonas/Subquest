@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 10u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 11u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -56,6 +56,12 @@ typedef struct SqSessionConfig {
     float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
 } SqSessionConfig;
 
+/* One word of a line, so a word can be picked over the game (glossary). */
+typedef struct SqWord {
+    const char* utf8_text;
+    SqRect box;              /* in window capture pixels, like the line */
+} SqWord;
+
 /* One recognized line: where it is and what it looks like, so the overlay can
  * draw its translation in the same place, size and colors. */
 typedef struct SqLine {
@@ -63,6 +69,8 @@ typedef struct SqLine {
     SqRect box;              /* in window capture pixels (the whole window, not the area) */
     uint32_t background_rgb; /* color right around the line (0xRRGGBB) */
     uint32_t text_rgb;       /* color of the line's letters (0xRRGGBB) */
+    const SqWord* words;     /* the line's words, in reading order (boxes estimated when the engine has none) */
+    uint32_t word_count;
 } SqLine;
 
 /* Everything about one piece of NEW text. Pointers are valid only during the callback. */

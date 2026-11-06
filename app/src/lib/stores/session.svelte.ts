@@ -35,6 +35,7 @@ export interface HistoryEntry {
   quick: boolean; // the translation on screen came from the quick layer
   cached: boolean; // came straight from the cache (seen before)
   terms: string[]; // glossary terms found in the line
+  rereads: number; // times OCR read this line again (the same translation was used)
   done: boolean;
   failed: boolean;
   missed: boolean; // the game moved on before any translation was ready
@@ -62,11 +63,16 @@ function moveOn(area: number, frameId: number) {
   }
 }
 
-// A line from OCR: feeds the Play screen and the history (re-readings of the
-// same line are not new lines, so they are left out of both).
+// A line from OCR: feeds the Play screen and the history. Re-readings of the
+// same line are not new lines: they only count on the line they repeat.
 function onLine(e: OcrTextEvent) {
   moveOn(e.area, e.frameId);
-  if (!e.text || e.sameAs != null) return;
+  if (e.text && e.sameAs != null) {
+    const original = session.history.find((h) => h.frameId === e.sameAs);
+    if (original) original.rereads += 1;
+    return;
+  }
+  if (!e.text) return;
   session.lines = [e, ...session.lines].slice(0, FEED_SIZE);
   // Translations are only kept for the lines still in the feed (History keeps
   // its own copy): a long session must not grow this map forever.
@@ -84,6 +90,7 @@ function onLine(e: OcrTextEvent) {
     quick: false,
     cached: false,
     terms: [],
+    rereads: 0,
     done: false,
     failed: false,
     missed: false,

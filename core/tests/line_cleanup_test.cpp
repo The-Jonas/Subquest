@@ -34,11 +34,14 @@ int main() {
         OcrLine line{"( PLAY", {}, {}, {}, {{"(", {100, 10, 10, 20}}, {"PLAY", {120, 10, 60, 20}}}};
         check(tidy_line(line) && line.text == "PLAY", "a lone '(' before a menu item leaves the text...");
         check(line.box.x == 120 && line.box.width == 60, "...and the box");
+        check(line.words.size() == 1 && line.words[0].text == "PLAY", "...and the word list");
     }
     {
         OcrLine line{"(PLAY", {}, {}, {}, {{"(PLAY", {100, 10, 50, 20}}}};
         check(tidy_line(line) && line.text == "PLAY", "a '(' glued to the word is cut from the text...");
         check(line.box.x == 110 && line.box.width == 40, "...and its share of the word's width from the box");
+        check(line.words.size() == 1 && line.words[0].text == "PLAY" && line.words[0].box.x == 110,
+              "...and from the word, so it can't be picked over the game");
     }
     {
         // Japanese: no spaces between words; the engine's text is kept, not rebuilt with spaces.

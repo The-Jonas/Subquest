@@ -107,6 +107,13 @@ export interface OcrLine {
   boxColor: string; // color right around the line
   textColor: string; // color of the line's letters
   style?: string | null; // id of the game's text style this line belongs to
+  words?: OcrWord[]; // the line's words, so one can be picked over the game
+}
+
+// One word of a recognized line.
+export interface OcrWord {
+  text: string;
+  rect: Region; // [x, y, width, height] in window pixels
 }
 
 // One way a game writes text, from a print the user took (mirrors TextStyle in styles.rs).
@@ -164,7 +171,7 @@ export async function updateStyle(
 }
 
 // What a rectangle drawn over the game is for.
-export type SelectionPurpose = "area" | "style" | "edit";
+export type SelectionPurpose = "area" | "style" | "edit" | "term";
 
 // Saved translations: [count, file size in bytes].
 export async function cacheUsage(): Promise<[number, number]> {

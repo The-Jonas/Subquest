@@ -24,7 +24,7 @@ std::pair<size_t, size_t> kept_words(const std::vector<std::wstring>& words); //
 std::pair<size_t, size_t> stray_marks(const std::vector<std::wstring>& words); // characters to cut from the front of the first word and the back of the last one
 
 std::vector<OcrWord> split_words(const std::string& text, Rect box); // words of a line read without word boxes, each given its share of the box
-bool tidy_line(OcrLine& line);    // cleans one line; false when nothing but symbols was left
+bool tidy_line(OcrLine& line);    // cleans one line and its words; false when nothing but symbols was left
 void tidy_lines(OcrResult& result); // cleans every line, drops empty ones and rebuilds full_text
 
 } // namespace subquest

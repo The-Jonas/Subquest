@@ -69,6 +69,7 @@
             {#if h.missed}<span class="tag missed-tag">{t("history.missed")}</span>{/if}
             {#if h.quick && h.done}<span class="tag">{t("history.quick")}</span>{/if}
             {#if h.cached && h.done}<span class="tag">{t("history.cached")}</span>{/if}
+            {#if h.rereads > 0}<span class="tag" title={t("history.rereadHelp")}>{t("history.reread", { n: String(h.rereads) })}</span>{/if}
             {#if h.terms.length}<span class="tag glossary-tag">{t("history.glossary", { terms: h.terms.join(", ") })}</span>{/if}
           </div>
           <LinePair
