@@ -8,7 +8,7 @@
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
   import { t } from "../i18n/index.svelte";
-  import { app, persistSettings } from "../stores/app.svelte";
+  import { app } from "../stores/app.svelte";
   import { session, startTranslating, stopTranslating, applyAreas } from "../stores/session.svelte";
   import {
     inTauri,
@@ -19,6 +19,7 @@
     errorKind,
     profileKey,
     newArea,
+    saveProfile,
     type GameArea,
     type GameWindow,
     type OcrTextEvent,
@@ -98,7 +99,7 @@
   // Loads a game's saved areas (or one new area) into the editor. Older profiles
   // could mix a whole-window area with marked ones: the marked ones win.
   function loadAreas(w: GameWindow) {
-    const saved = $state.snapshot(app.settings.profiles[profileKey(w)]?.areas ?? []);
+    const saved = $state.snapshot(app.profiles[profileKey(w)]?.areas ?? []);
     const marked = saved.filter((a) => a.mode !== "screen");
     areas = marked.length ? marked : saved.length ? [saved[0]] : [newArea()];
     selected = 0;
@@ -111,7 +112,7 @@
     if (mode === "screen") {
       areas = [{ ...newArea(), mode: "screen" }];
     } else {
-      const saved = game ? (app.settings.profiles[profileKey(game)]?.areas ?? []) : [];
+      const saved = game ? (app.profiles[profileKey(game)]?.areas ?? []) : [];
       const marked = $state.snapshot(saved).filter((a) => a.mode !== "screen");
       areas = marked.length ? marked : [newArea()];
     }
@@ -169,8 +170,9 @@
   // Writes the edited areas into the game's profile (the session reads them from there).
   async function saveAreas() {
     if (!game) return;
-    app.settings.profiles[profileKey(game)] = { title: game.title, areas: $state.snapshot(areas) };
-    await persistSettings();
+    const profile = { title: game.title, areas: $state.snapshot(areas) };
+    app.profiles[profileKey(game)] = profile;
+    await saveProfile(profileKey(game), profile);
   }
 
   // Saves the areas and moves on to the summary.

@@ -72,7 +72,7 @@ function onLine(e: OcrTextEvent) {
   for (const id of Object.keys(session.translations)) {
     if (!shown.has(Number(id))) delete session.translations[Number(id)];
   }
-  const profile = session.game ? app.settings.profiles[profileKey(session.game)] : undefined;
+  const profile = session.game ? app.profiles[profileKey(session.game)] : undefined;
   session.history.unshift({
     frameId: e.frameId,
     area: e.area,

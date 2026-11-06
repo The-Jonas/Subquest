@@ -1,5 +1,5 @@
 //! Fonts imported by the user, kept in the app's own data folder
-//! (`%APPDATA%\io.github.the-jonas.subquest\fonts`). Nothing is installed in
+//! (`%APPDATA%\Subquest\fonts`). Nothing is installed in
 //! Windows, so no admin rights are needed and removing the app removes them.
 
 use std::path::{Path, PathBuf};

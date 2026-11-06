@@ -25,7 +25,7 @@ export type AreaMode = "dialogue" | "screen";
 
 export type AreaStyle = "inPlace" | "classic";
 
-// One area of the game screen (mirrors GameArea in settings.rs). Games use
+// One area of the game screen (mirrors GameArea in profiles.rs). Games use
 // different fonts and colors for dialogue, songs, names..., so the look lives here.
 export interface GameArea {
   name: string;
@@ -41,11 +41,14 @@ export interface GameArea {
 // in the game" (the case measured on the print) and "none" keeps it as written.
 export type LetterCase = "" | "none" | "upper" | "smallCaps";
 
-// What Subquest remembers about each game (mirrors GameProfile in settings.rs).
+// What Subquest remembers about each game (mirrors GameProfile in profiles.rs).
 export interface GameProfile {
   title: string;
-  areas: GameArea[]; // the UI uses the first one for now
+  areas: GameArea[]; // marked rectangles, or one "screen" area for the whole window
 }
+
+// Every game's profile, by game key (lowercase executable name).
+export type Profiles = Record<string, GameProfile>;
 
 // A new area with the most common setup: dialogue box, game colors, default font.
 export function newArea(): GameArea {
@@ -65,7 +68,6 @@ export interface Settings {
   shortcuts: Shortcuts; // in-game keys, like "Ctrl+Shift+A" ("" = none)
   overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean; look: AreaStyle };
   tutorialDone: boolean;
-  profiles: Record<string, GameProfile>; // key: lowercase executable name
 }
 
 // Quick translator shown while the main one answers ("" = off).
@@ -115,12 +117,11 @@ export interface TextStyle {
   font: string; // chosen font ("" = not chosen yet)
   caps: LetterCase;
   seenCase?: string | null; // case measured on the print: "", "upper" or "smallCaps"
-  manual: boolean;
 }
 
 // Browser mode: one made-up style, with its print drawn on the fly.
 const browserStyles: TextStyle[] = [
-  { id: "s1", name: "", textRgb: 0x3de8a0, font: "", caps: "", seenCase: "smallCaps", manual: true },
+  { id: "s1", name: "", textRgb: 0x3de8a0, font: "", caps: "", seenCase: "smallCaps" },
 ];
 
 // A game's text styles, in the order they were taken.
@@ -297,10 +298,31 @@ export async function showMain(screen?: string) {
   await invoke("show_main", { screen: screen ?? null });
 }
 
-// Forgets all of a game's styles and prints (used when its profile is forgotten).
-export async function forgetStyles(profileKey: string) {
-  if (!inTauri) return;
-  await invoke("forget_styles", { profileKey });
+// Browser mode: profiles kept in memory only.
+const browserProfiles: Profiles = {};
+
+// Every game's profile, by game key.
+export async function listProfiles(): Promise<Profiles> {
+  if (!inTauri) return structuredClone(browserProfiles);
+  return invoke("list_profiles");
+}
+
+// Saves a game's profile (the running session picks it up with applyAreas).
+export async function saveProfile(profileKey: string, profile: GameProfile) {
+  if (!inTauri) {
+    browserProfiles[profileKey] = structuredClone(profile);
+    return;
+  }
+  await invoke("save_profile", { profileKey, profile });
+}
+
+// Forgets a game: its profile, styles and prints.
+export async function forgetProfile(profileKey: string) {
+  if (!inTauri) {
+    delete browserProfiles[profileKey];
+    return;
+  }
+  await invoke("forget_profile", { profileKey });
 }
 
 // Forgets a style and its print.
@@ -324,7 +346,6 @@ export const defaultSettings: Settings = {
   shortcuts: { ...defaultShortcuts },
   overlay: { fontSize: 0, backgroundOpacity: 0.78, showOriginal: false, look: "inPlace" },
   tutorialDone: false,
-  profiles: {},
 };
 
 // Profile key for a window: the executable name survives restarts, the HWND doesn't.

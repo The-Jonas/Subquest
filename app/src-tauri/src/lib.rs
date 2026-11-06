@@ -7,14 +7,17 @@ mod font_detect;
 mod fonts;
 mod ingame;
 mod overlay;
+mod profiles;
 mod settings;
 mod shape;
 mod styles;
 mod translate;
 mod translation;
+mod versioned;
 
+use std::collections::BTreeMap;
 use std::ffi::{c_char, c_void, CStr};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -50,6 +53,7 @@ struct AppState {
     overlay_running: Mutex<Option<Arc<AtomicBool>>>, // stops the loop that follows the game window
     active_profile: Mutex<Option<String>>, // profile key of the game being translated (the overlay styles itself from it)
     font_finder: font_detect::FontFinder,   // fonts suggested for a game, waiting for the user's choice
+    profiles: profiles::ProfileStore,       // what Subquest remembers about each game (its areas)
     styles: styles::StyleStore,             // text styles taken by the user, with their prints
     paused: AtomicBool,                     // session paused from the toolbar (core stopped)
     overlay_hidden: AtomicBool,             // translations hidden from the toolbar
@@ -368,7 +372,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
 
 /// Screen areas of a profile as the core wants them: a marked rectangle, or an
 /// empty one for "whole window". No profile (or no areas) = the whole window.
-fn session_areas(profile: Option<&settings::GameProfile>) -> Vec<SqRect> {
+fn session_areas(profile: Option<&profiles::GameProfile>) -> Vec<SqRect> {
     let mut areas: Vec<SqRect> = profile
         .map(|p| p.areas.as_slice())
         .unwrap_or_default()
@@ -394,11 +398,8 @@ fn session_areas(profile: Option<&settings::GameProfile>) -> Vec<SqRect> {
 /// the overlay and the translation context are left as they are.
 fn start_core(app: &AppHandle, state: &AppState, window_handle: u64, profile_key: &str) -> Result<(), AppError> {
     let core = core(state)?;
-    let (language, areas) = {
-        let settings = state.settings.lock().unwrap();
-        let areas = session_areas(settings.profiles.get(profile_key));
-        (settings.source_language.clone(), areas)
-    };
+    let language = state.settings.lock().unwrap().source_language.clone();
+    let areas = session_areas(state.profiles.get(profile_key).as_ref());
     let mut slot = state.session_user_data.lock().unwrap();
     let user = Box::into_raw(Box::new(app.clone()));
     let result = core.start(
@@ -506,7 +507,7 @@ fn clear_translation_cache(state: State<'_, AppState>) {
 
 /// Ends editing the areas over the game: the new list, or None to cancel.
 #[tauri::command]
-fn finish_area_edit(app: AppHandle, areas: Option<Vec<settings::GameArea>>) -> Result<(), AppError> {
+fn finish_area_edit(app: AppHandle, areas: Option<Vec<profiles::GameArea>>) -> Result<(), AppError> {
     ingame::finish_area_edit(&app, areas)
 }
 
@@ -839,11 +840,37 @@ fn remove_style(app: AppHandle, state: State<'_, AppState>, profile_key: String,
     Ok(())
 }
 
-/// Deletes all of a game's styles and prints (its profile was forgotten).
+/// Every game's profile, by game key.
 #[tauri::command]
-fn forget_styles(app: AppHandle, state: State<'_, AppState>, profile_key: String) {
+fn list_profiles(state: State<'_, AppState>) -> BTreeMap<String, profiles::GameProfile> {
+    state.profiles.all()
+}
+
+/// Saves a game's profile (edited in the UI).
+#[tauri::command]
+fn save_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile_key: String,
+    profile: profiles::GameProfile,
+) -> Result<(), AppError> {
+    state.profiles.save(&profile_key, profile)?;
+    profiles_changed(&app);
+    Ok(())
+}
+
+/// Forgets a game: its profile, styles and prints.
+#[tauri::command]
+fn forget_profile(app: AppHandle, state: State<'_, AppState>, profile_key: String) {
     state.styles.forget(&profile_key);
+    state.profiles.forget(&profile_key);
+    profiles_changed(&app);
     styles_changed(&app);
+}
+
+/// Tells every window the profiles changed (the overlay redraws with the new areas).
+pub(crate) fn profiles_changed(app: &AppHandle) {
+    let _ = app.emit("profiles-changed", app.state::<AppState>().profiles.all());
 }
 
 /// Decodes "%20"-style escapes (enough for file names sent by encodeURIComponent).
@@ -912,6 +939,18 @@ fn save_settings(
     Ok(())
 }
 
+/// The folder to use: `new`, after moving `old` there the first time. If the
+/// move fails (a file in use), `old` keeps being used, so nothing is lost.
+fn own_dir(old: &Path, new: &Path) -> PathBuf {
+    if new.exists() || !old.exists() {
+        return new.to_path_buf();
+    }
+    match std::fs::rename(old, new) {
+        Ok(()) => new.to_path_buf(),
+        Err(_) => old.to_path_buf(),
+    }
+}
+
 /// Builds and runs the app: loads the core and settings and registers the commands.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -932,8 +971,11 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            let config_dir = app.path().app_config_dir()?;
-            let data_dir = app.path().app_data_dir()?;
+            // Subquest's own folders (`%APPDATA%\Subquest` on Windows), easy to
+            // find. Tauri would name them after the identifier
+            // (io.github.the-jonas.subquest): those older folders move here once.
+            let config_dir = own_dir(&app.path().app_config_dir()?, &app.path().config_dir()?.join("Subquest"));
+            let data_dir = own_dir(&app.path().app_data_dir()?, &app.path().data_dir()?.join("Subquest"));
             log_panics(&data_dir);
             let resource_dir = app.path().resource_dir().ok();
 
@@ -950,9 +992,21 @@ pub fn run() {
             }
             let core = loaded.ok_or_else(|| errors.join("\n"));
 
+            // Game profiles used to live in settings.json and styles/: they move
+            // into their game folders once, and settings.json is saved without them.
+            let mut settings = settings::load(&config_dir);
+            if !settings.old_profiles.is_empty() || data_dir.join("styles").exists() {
+                let moved = profiles::move_old_data(&data_dir, &settings.old_profiles);
+                if moved && !settings.old_profiles.is_empty() {
+                    settings.old_profiles.clear();
+                    let _ = settings::save(&config_dir, &settings);
+                }
+            }
+
             app.manage(AppState {
                 core,
-                settings: Mutex::new(settings::load(&config_dir)),
+                settings: Mutex::new(settings),
+                profiles: profiles::ProfileStore::load(&data_dir),
                 config_dir,
                 data_dir: data_dir.clone(),
                 session_user_data: Mutex::new(None),
@@ -985,7 +1039,9 @@ pub fn run() {
             toggle_pause,
             toggle_hidden,
             toggle_toolbar,
-            forget_styles,
+            list_profiles,
+            save_profile,
+            forget_profile,
             window_thumbnail,
             ui_log,
             peek_window,
@@ -1044,10 +1100,10 @@ mod tests {
 
     #[test]
     fn profile_areas_become_core_areas() {
-        let mut profile = settings::GameProfile::default();
-        let mut dialogue = settings::GameArea::default();
+        let mut profile = profiles::GameProfile::default();
+        let mut dialogue = profiles::GameArea::default();
         dialogue.region = Some([10, 20, 300, 80]);
-        let mut menu = settings::GameArea::default();
+        let mut menu = profiles::GameArea::default();
         menu.mode = "screen".into();
         menu.region = Some([1, 2, 3, 4]); // ignored: screen mode reads the whole window
         profile.areas = vec![dialogue, menu];
@@ -1056,6 +1112,23 @@ mod tests {
         assert_eq!(areas.len(), 2);
         assert_eq!((areas[0].x, areas[0].width), (10, 300));
         assert_eq!(areas[1].width, 0);
+    }
+
+    #[test]
+    fn the_old_folder_moves_once() {
+        let root = versioned::tests::temp_dir("own-dir");
+        let (old, new) = (root.join("io.github.the-jonas.subquest"), root.join("Subquest"));
+        std::fs::create_dir_all(old.join("games")).unwrap();
+        std::fs::write(old.join("settings.json"), "{}").unwrap();
+
+        assert_eq!(own_dir(&old, &new), new);
+        assert!(new.join("settings.json").exists() && new.join("games").exists());
+        assert!(!old.exists());
+
+        // Later runs (or an old installed version recreating its folder) change nothing.
+        std::fs::create_dir_all(&old).unwrap();
+        assert_eq!(own_dir(&old, &new), new);
+        assert!(old.exists());
     }
 
     #[test]

@@ -23,6 +23,7 @@
   import {
     activeProfile,
     getSettings,
+    listProfiles,
     listStyles,
     type OcrLine,
     type TextStyle,
@@ -32,6 +33,7 @@
     newArea,
     type GameArea,
     type Settings,
+    type Profiles,
     type TranslationEvent,
     type OcrTextEvent,
   } from "../api";
@@ -63,6 +65,7 @@
   }
 
   let settings = $state<Settings>(structuredClone(defaultSettings));
+  let profiles = $state<Profiles>({}); // every game's profile (the running one gives the areas)
   // How translations are drawn (Settings > Look), the same for every area.
   const classic = $derived(settings.overlay.look === "classic");
   let profileKey = $state<string | null>(null);
@@ -116,7 +119,7 @@
   const unlisteners: (() => void)[] = [];
 
   // Areas of the game being translated (at least one, for old profiles).
-  const areas = $derived<GameArea[]>((profileKey && settings.profiles[profileKey]?.areas) || [newArea()]);
+  const areas = $derived<GameArea[]>((profileKey && profiles[profileKey]?.areas) || [newArea()]);
 
   // Look of an area, with the default look for an unknown index.
   function areaAt(i: number): GameArea {
@@ -381,6 +384,7 @@
   async function setup() {
     if (!inTauri) return demo();
     settings = await getSettings();
+    profiles = await listProfiles();
     applyTheme(settings.uiTheme);
     setLocale(settings.uiLanguage as Locale);
     await useProfile(await activeProfile());
@@ -388,6 +392,7 @@
     unlisteners.push(await listen<OcrTextEvent>("ocr-text", (e) => onOcr(e.payload)));
     unlisteners.push(await listen<TranslationEvent>("translation", (e) => onTranslation(e.payload)));
     unlisteners.push(await listen("styles-changed", () => loadStyles()));
+    unlisteners.push(await listen<Profiles>("profiles-changed", (e) => (profiles = e.payload)));
     unlisteners.push(await listen<[number, (string | null)[]][]>("line-styles", (e) => restyle(e.payload)));
     unlisteners.push(await listen<SelectionPurpose>("select-region", (e) => (selecting = e.payload)));
     unlisteners.push(

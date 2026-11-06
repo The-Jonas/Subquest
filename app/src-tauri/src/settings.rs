@@ -1,10 +1,13 @@
 //! User settings, saved as JSON in the app's config folder
-//! (`%APPDATA%\io.github.the-jonas.subquest\settings.json`). Never in the repository.
+//! (`%APPDATA%\Subquest\settings.json`). Never in the repository.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::versioned::{self, Migration};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
@@ -19,69 +22,11 @@ pub struct Settings {
     pub shortcuts: ShortcutSettings, // keys that work inside the game during a session
     pub overlay: OverlaySettings,
     pub tutorial_done: bool, // false => opens the tutorial on first run
-    pub profiles: BTreeMap<String, GameProfile>, // key: lowercase executable name
-}
 
-/// What Subquest remembers about each game, so it starts ready next time.
-/// A game can have several areas (dialogue, song lyrics, names...), each with
-/// its own look, because games use different fonts and colors for each.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-#[serde(default, rename_all = "camelCase")]
-pub struct GameProfile {
-    pub title: String,        // window title when it was saved, for display
-    pub areas: Vec<GameArea>, // the UI uses the first one for now
-
-    // Fields from the first profile format (one area, no look). Read only to
-    // migrate old settings.json files; never written back.
-    #[serde(skip_serializing)]
-    area_mode: Option<String>,
-    #[serde(skip_serializing)]
-    region: Option<[i32; 4]>,
-}
-
-/// One area of the game screen that Subquest reads and covers.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(default, rename_all = "camelCase")]
-pub struct GameArea {
-    pub name: String,             // shown in the UI, e.g. "Dialogue"
-    pub mode: String,             // "dialogue" (marked rectangle) | "screen" (whole window)
-    pub region: Option<[i32; 4]>, // [x, y, width, height] in capture pixels
-    pub font: String, // overlay font: a family name or "imported:<file>"; empty = default
-    pub style: String, // "inPlace" (each line redrawn where it is, in the game's colors) | "classic" (subtitle box)
-    pub caps: String,  // letter case the game uses: "" (as translated) | "upper" | "smallCaps"
-}
-
-impl Default for GameArea {
-    /// A dialogue area drawn in place, like part of the game: the most common case.
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            mode: "dialogue".into(),
-            region: None,
-            font: String::new(),
-            style: "inPlace".into(),
-            caps: String::new(),
-        }
-    }
-}
-
-impl GameProfile {
-    /// Upgrades older formats: the first one (area_mode + region at the top)
-    /// becomes one area, and the "game" style became "inPlace".
-    fn migrate(&mut self) {
-        for area in &mut self.areas {
-            if area.style == "game" {
-                area.style = "inPlace".into();
-            }
-        }
-        if self.areas.is_empty() && (self.area_mode.is_some() || self.region.is_some()) {
-            self.areas.push(GameArea {
-                mode: self.area_mode.take().unwrap_or_else(|| "dialogue".into()),
-                region: self.region.take(),
-                ..GameArea::default()
-            });
-        }
-    }
+    // Game profiles lived here before they got their own folders (profiles.rs).
+    // Read only to move them there; never written back.
+    #[serde(rename = "profiles", skip_serializing)]
+    pub old_profiles: BTreeMap<String, Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -165,7 +110,7 @@ impl Default for Settings {
             shortcuts: ShortcutSettings::default(),
             overlay: OverlaySettings::default(),
             tutorial_done: false,
-            profiles: BTreeMap::new(),
+            old_profiles: BTreeMap::new(),
         }
     }
 }
@@ -201,25 +146,21 @@ pub fn settings_path(config_dir: &Path) -> PathBuf {
     config_dir.join("settings.json")
 }
 
-/// Reads the settings; falls back to defaults if the file is missing or corrupt.
-/// Old profile formats are upgraded on the way in.
+// Format history of settings.json (see versioned.rs). No changes yet that
+// need more than serde's defaults for new fields; the file is versioned so
+// later ones can be migrated, and so it is protected from damage and from
+// being overwritten by an older Subquest.
+const SETTINGS_MIGRATIONS: &[Migration] = &[];
+
+/// Reads the settings; falls back to defaults if the file is missing or
+/// damaged (a damaged one is copied aside first).
 pub fn load(config_dir: &Path) -> Settings {
-    let mut settings: Settings = std::fs::read_to_string(settings_path(config_dir))
-        .ok()
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default();
-    settings
-        .profiles
-        .values_mut()
-        .for_each(GameProfile::migrate);
-    settings
+    versioned::read(&settings_path(config_dir), SETTINGS_MIGRATIONS).unwrap_or_default()
 }
 
 /// Writes the settings, creating the folder if needed.
 pub fn save(config_dir: &Path, settings: &Settings) -> Result<(), String> {
-    std::fs::create_dir_all(config_dir).map_err(|e| e.to_string())?;
-    let text = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    std::fs::write(settings_path(config_dir), text).map_err(|e| e.to_string())
+    versioned::write(&settings_path(config_dir), settings, SETTINGS_MIGRATIONS)
 }
 
 #[cfg(test)]
@@ -234,41 +175,13 @@ mod tests {
         assert_eq!(s.target_language, "pt-BR");
         assert_eq!(s.overlay.font_size, 0); // automatic
         assert_eq!(s.overlay.look, "inPlace");
-        assert!(s.profiles.is_empty());
     }
 
     #[test]
-    fn profiles_round_trip_through_json() {
-        let mut s = Settings::default();
-        s.profiles.insert(
-            "hades2.exe".into(),
-            GameProfile {
-                title: "Hades II".into(),
-                areas: vec![GameArea {
-                    name: "Dialogue".into(),
-                    region: Some([120, 840, 1680, 200]),
-                    font: "Cinzel Variable".into(),
-                    ..GameArea::default()
-                }],
-                ..GameProfile::default()
-            },
-        );
-        let json = serde_json::to_string(&s).unwrap();
-        assert!(json.contains("\"style\":\"inPlace\""));
-        let back: Settings = serde_json::from_str(&json).unwrap();
-        assert_eq!(back, s);
-    }
-
-    #[test]
-    fn first_format_profiles_become_one_area() {
-        let json = r#"{ "profiles": { "hades2.exe": {
-            "title": "Hades II", "areaMode": "dialogue", "region": [1, 2, 3, 4] } } }"#;
-        let mut s: Settings = serde_json::from_str(json).unwrap();
-        s.profiles.values_mut().for_each(GameProfile::migrate);
-        let p = &s.profiles["hades2.exe"];
-        assert_eq!(p.areas.len(), 1);
-        assert_eq!(p.areas[0].region, Some([1, 2, 3, 4]));
-        assert_eq!(p.areas[0].style, "inPlace");
-        assert!(!serde_json::to_string(p).unwrap().contains("areaMode"));
+    fn old_profiles_are_read_but_never_written() {
+        let json = r#"{ "profiles": { "hades2.exe": { "title": "Hades II" } } }"#;
+        let s: Settings = serde_json::from_str(json).unwrap();
+        assert_eq!(s.old_profiles["hades2.exe"]["title"], "Hades II");
+        assert!(!serde_json::to_string(&s).unwrap().contains("profiles"));
     }
 }

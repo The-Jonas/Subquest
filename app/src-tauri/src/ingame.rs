@@ -20,7 +20,7 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 use crate::error::AppError;
-use crate::settings::GameArea;
+use crate::profiles::GameArea;
 use crate::styles::Rgba;
 use crate::{overlay, AppState};
 
@@ -216,13 +216,8 @@ pub fn finish_area_edit(app: &AppHandle, areas: Option<Vec<GameArea>>) -> Result
     let (Some(areas), Some(key)) = (areas, state.active_profile.lock().unwrap().clone()) else {
         return Ok(());
     };
-    let settings = {
-        let mut settings = state.settings.lock().unwrap();
-        settings.profiles.entry(key).or_default().areas = areas;
-        crate::settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
-        settings.clone()
-    };
-    let _ = app.emit("settings-changed", settings);
+    state.profiles.update(&key, |p| p.areas = areas)?;
+    crate::profiles_changed(app);
     crate::restart_reading(app)
 }
 
@@ -243,9 +238,7 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
     match purpose {
         Purpose::Edit => Ok(()), // edits end through finish_area_edit
         Purpose::Area => {
-            let settings = {
-                let mut settings = state.settings.lock().unwrap();
-                let profile = settings.profiles.entry(key).or_default();
+            state.profiles.update(&key, |profile| {
                 // A game is read through marked areas or as a whole window, never
                 // both: marking an area over a whole-window game switches it to areas.
                 profile.areas.retain(|a| a.mode != "screen");
@@ -253,10 +246,8 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
                     region: Some(rect),
                     ..GameArea::default()
                 });
-                crate::settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
-                settings.clone()
-            };
-            let _ = app.emit("settings-changed", settings);
+            })?;
+            crate::profiles_changed(&app);
             crate::restart_reading(&app)
         }
         Purpose::Style => {

@@ -9,15 +9,19 @@
 //! wording), and secondly by their color. Lines too small to measure fall back
 //! to the color alone.
 //!
-//! Files: `<app data>/styles/<game>.json` and `<app data>/styles/<game>/<id>.png`.
+//! Files, in the game's folder (see profiles.rs): `styles.json` and `prints/<id>.png`.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
+use serde_json::Value;
+
 use crate::error::AppError;
+use crate::profiles::{file_key, game_dir};
 use crate::shape::Shape;
+use crate::versioned::{self, Migration};
 
 pub const MAX_STYLES: usize = 24;
 const SAME_COLOR: f64 = 60.0; // color-only matching: RGB distance under which a line belongs to a style
@@ -35,7 +39,6 @@ pub struct TextStyle {
     pub seen_case: Option<String>, // letter case measured on the print ("", "upper", "smallCaps")
     pub font: String,   // chosen font ("" = not chosen yet)
     pub caps: String,   // letter case: "" = as in the game (seen_case), "none" = as translated, "upper", "smallCaps"
-    pub manual: bool,   // taken by the user (styles from the old automatic version are dropped)
 }
 
 /// All the styles of one game.
@@ -113,7 +116,6 @@ impl StyleBook {
             text_rgb,
             shape,
             seen_case: Some(seen_case.to_string()),
-            manual: true,
             ..Default::default()
         });
         (id, evicted)
@@ -299,9 +301,26 @@ impl Rgba {
     }
 }
 
+// --- Format history of styles.json ---
+// v0: `<app data>/styles/<game>.json`. Styles were first found automatically;
+//     the ones the user took were marked "manual": true.
+// v1: in the game's folder, with "version". Only styles the user took exist.
+
+/// v0 -> v1: drops the automatic styles (their fonts were guesses, often wrong).
+fn v0_only_manual(v: &mut Value) {
+    if let Some(styles) = v.get_mut("styles").and_then(Value::as_array_mut) {
+        styles.retain(|s| s.get("manual").and_then(Value::as_bool) == Some(true));
+        for style in styles.iter_mut().filter_map(Value::as_object_mut) {
+            style.remove("manual");
+        }
+    }
+}
+
+const STYLE_MIGRATIONS: &[Migration] = &[v0_only_manual];
+
 /// The style books on disk, with the game being translated kept in memory.
 pub struct StyleStore {
-    dir: PathBuf,
+    data_dir: PathBuf,
     open: Mutex<Option<(String, StyleBook)>>, // (game key, its book)
     // Last lines read in each area (event id, color and shape per line), so a
     // style change can restyle what is on screen now: a static menu is never
@@ -309,46 +328,32 @@ pub struct StyleStore {
     last: Mutex<std::collections::HashMap<u32, (u64, Vec<(u32, Option<Shape>)>)>>,
 }
 
-/// File-safe version of a game key ("hades2.exe" stays, odd characters become "_").
-fn file_key(key: &str) -> String {
-    key.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_') { c } else { '_' })
-        .collect()
-}
-
 impl StyleStore {
-    /// Store rooted at `<app data>/styles`.
+    /// Store over the game folders in `<app data>/games`.
     pub fn new(data_dir: &Path) -> Self {
         Self {
-            dir: data_dir.join("styles"),
+            data_dir: data_dir.to_path_buf(),
             open: Mutex::new(None),
             last: Mutex::new(std::collections::HashMap::new()),
         }
     }
 
     fn book_path(&self, key: &str) -> PathBuf {
-        self.dir.join(format!("{}.json", file_key(key)))
+        game_dir(&self.data_dir, key).join("styles.json")
     }
 
     /// Path of a style's print.
     pub fn print_path(&self, key: &str, id: &str) -> PathBuf {
-        self.dir.join(file_key(key)).join(format!("{}.png", file_key(id)))
+        game_dir(&self.data_dir, key).join("prints").join(format!("{}.png", file_key(id)))
     }
 
-    /// Reads a game's book, leaving out styles from the old automatic version.
+    /// Reads a game's book (older formats are upgraded on the way in).
     fn load(&self, key: &str) -> StyleBook {
-        let mut book: StyleBook = std::fs::read_to_string(self.book_path(key))
-            .ok()
-            .and_then(|text| serde_json::from_str(&text).ok())
-            .unwrap_or_default();
-        book.styles.retain(|s| s.manual);
-        book
+        versioned::read(&self.book_path(key), STYLE_MIGRATIONS).unwrap_or_default()
     }
 
     fn save(&self, key: &str, book: &StyleBook) -> Result<(), AppError> {
-        std::fs::create_dir_all(&self.dir).map_err(|e| AppError::other(e.to_string()))?;
-        let text = serde_json::to_string_pretty(book).map_err(|e| AppError::other(e.to_string()))?;
-        std::fs::write(self.book_path(key), text).map_err(|e| AppError::other(e.to_string()))
+        versioned::write(&self.book_path(key), book, STYLE_MIGRATIONS).map_err(AppError::other)
     }
 
     /// Runs `change` on a game's book (the open one, or loaded from disk) and saves it.
@@ -365,14 +370,13 @@ impl StyleStore {
         Ok(result)
     }
 
-    /// Deletes every style of a game, with their prints (the game's profile was forgotten).
+    /// Drops a game's styles from memory (its folder is being deleted, see
+    /// ProfileStore::forget): if it is still being translated, the next lines get no style.
     pub fn forget(&self, key: &str) {
         let mut open = self.open.lock().unwrap();
         if let Some((_, book)) = open.as_mut().filter(|(k, _)| k == key) {
-            book.styles.clear(); // still being translated: the next lines get no style
+            book.styles.clear();
         }
-        let _ = std::fs::remove_file(self.book_path(key));
-        let _ = std::fs::remove_dir_all(self.dir.join(file_key(key)));
     }
 
     /// A game's styles, in the order they were taken.
@@ -466,6 +470,29 @@ mod tests {
         let (id, _) = book.add(GREEN, None, "");
         book.styles.iter_mut().find(|s| s.id == id).unwrap().font = "imported:Cinzel-700.ttf".into();
         book
+    }
+
+    #[test]
+    fn old_books_keep_only_the_styles_the_user_took() {
+        let old = serde_json::json!({ "nextId": 3, "styles": [
+            { "id": "s1", "font": "Auto Guess", "manual": false },
+            { "id": "s2", "font": "Cinzel", "manual": true },
+            { "id": "s3" }
+        ] });
+        let book: StyleBook = serde_json::from_value(versioned::upgrade(old, STYLE_MIGRATIONS)).unwrap();
+        assert_eq!(book.styles.len(), 1);
+        assert_eq!(book.styles[0].id, "s2");
+        assert_eq!(book.next_id, 3);
+    }
+
+    #[test]
+    fn books_and_prints_live_in_the_game_folder() {
+        let dir = crate::versioned::tests::temp_dir("styles-folder");
+        let store = StyleStore::new(&dir);
+        store.update("hades2.exe", |b| b.add(0xffffff, None, "")).unwrap();
+        assert!(dir.join("games/hades2.exe/styles.json").exists());
+        assert_eq!(store.print_path("hades2.exe", "s1"), dir.join("games/hades2.exe/prints/s1.png"));
+        assert_eq!(store.list("hades2.exe").len(), 1);
     }
 
     #[test]

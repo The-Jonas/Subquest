@@ -6,12 +6,12 @@
 -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { app, persistSettings } from "../stores/app.svelte";
+  import { app } from "../stores/app.svelte";
   import { session } from "../stores/session.svelte";
   import { styles, showStyles } from "../stores/styles.svelte";
   import {
     beginSelection,
-    forgetStyles,
+    forgetProfile,
     profileKey,
     removeStyle,
     stylePrint,
@@ -34,12 +34,12 @@
 
   // Games that have a profile, the running one first, then by title.
   const games = $derived(
-    Object.entries(app.settings.profiles).sort(([a, pa], [b, pb]) => {
+    Object.entries(app.profiles).sort(([a, pa], [b, pb]) => {
       const running = session.game ? profileKey(session.game) : "";
       return (b === running ? 1 : 0) - (a === running ? 1 : 0) || pa.title.localeCompare(pb.title);
     }),
   );
-  const profile = $derived(styles.key ? app.settings.profiles[styles.key] : undefined);
+  const profile = $derived(styles.key ? app.profiles[styles.key] : undefined);
   const translatingThis = $derived(!!session.running && !!session.game && profileKey(session.game) === styles.key);
 
   // Name shown for an area: the user's, or "Area N".
@@ -88,9 +88,8 @@
     const key = styles.key;
     if (!key) return;
     try {
-      await forgetStyles(key);
-      delete app.settings.profiles[key];
-      await persistSettings();
+      await forgetProfile(key);
+      delete app.profiles[key];
     } catch (e) {
       errorKind(e);
     }
@@ -116,7 +115,7 @@
 
   // No game picked yet (or it was forgotten): show the first one.
   $effect(() => {
-    if ((!styles.key || !app.settings.profiles[styles.key]) && games.length) void showStyles(games[0][0]);
+    if ((!styles.key || !app.profiles[styles.key]) && games.length) void showStyles(games[0][0]);
   });
 
   loadAllImported()
