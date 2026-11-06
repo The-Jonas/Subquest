@@ -31,8 +31,8 @@ Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Jogos em japon�
 |---|---|
 | ![O menu principal do Wesnoth todo traduzido: a caixa de dica e os botões em português](docs/screenshots/in-game.jpg) | ![Antes e depois: a mesma dica em inglês e em português, na mesma caixa](docs/screenshots/before-after.jpg) |
 | **No jogo.** A dica e o menu traduzidos no lugar onde estavam. | **Antes e depois.** A tradução fica dentro da caixa, no tamanho e no espaçamento do jogo. |
-| ![Escolhendo o jogo: as janelas abertas como miniaturas ao vivo](docs/screenshots/play-list.jpg) | ![Marcando as áreas sobre a prévia ao vivo do jogo](docs/screenshots/areas.jpg) |
-| **Escolha o jogo** pela imagem. | **Marque as áreas** onde o texto aparece: mova, redimensione, renomeie. |
+| ![A tela Jogar durante a sessão: cada fala em português com o original em inglês e o tempo de cada etapa](docs/screenshots/play-feed.jpg) | ![Marcando as áreas sobre a prévia ao vivo do jogo](docs/screenshots/areas.jpg) |
+| **Acompanhe as falas:** tradução, original e quanto tempo cada etapa levou. | **Marque as áreas** onde o texto aparece: mova, redimensione, renomeie. |
 | ![A aba Jogos: áreas e um estilo de texto com a fonte dele](docs/screenshots/games-tab.jpg) | ![Ajustes, Aparência: quatro temas de cores e como a tradução é desenhada](docs/screenshots/themes.jpg) |
 | **Jogos:** áreas e estilos (um print do texto do jogo com a fonte que combina com ele). | **Temas** e a escolha entre desenhar no lugar ou legenda clássica. |
 

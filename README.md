@@ -31,8 +31,8 @@ Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or 
 |---|---|
 | ![The Wesnoth main menu fully translated: the tip box and the menu buttons in Portuguese](docs/screenshots/in-game.jpg) | ![Before and after: the same tip in English and in Portuguese, in the same box](docs/screenshots/before-after.jpg) |
 | **In the game.** The tip and the menu, translated where they were. | **Before and after.** The translation stays inside the box, in the game's size and spacing. |
-| ![Picking the game: open windows shown as live thumbnails](docs/screenshots/play-list.jpg) | ![Marking areas over a live preview of the game](docs/screenshots/areas.jpg) |
-| **Pick the game** by its picture. | **Mark the areas** where text appears: move, resize, rename. |
+| ![The Play screen during a session: each line in Portuguese with the English original and its timing](docs/screenshots/play-feed.jpg) | ![Marking areas over a live preview of the game](docs/screenshots/areas.jpg) |
+| **Follow the lines:** translation, original and how long each step took. | **Mark the areas** where text appears: move, resize, rename. |
 | ![The Games tab: areas and a text style with its font](docs/screenshots/games-tab.jpg) | ![Settings, Look: four color themes and how the translation is drawn](docs/screenshots/themes.jpg) |
 | **Games:** areas and styles (a print of the game's text and the font that matches it). | **Themes** and the choice between drawn-in-place or a classic subtitle. |
 
