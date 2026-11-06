@@ -1,20 +1,18 @@
-<!-- Sidebar — main navigation, language switch and core status. -->
+<!-- Sidebar — main navigation, the guided tour, language switch and core status. -->
 <script lang="ts">
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
   import { session } from "../stores/session.svelte";
+  import { startTour } from "../stores/tour.svelte";
 
   // Simple stroke icons, hand-drawn on the same 20px grid.
   const items: { id: Screen; icon: string }[] = [
     { id: "play", icon: "M6 4.5v11l9-5.5z" },
+    { id: "games", icon: "M6 6.5h8a3.5 3.5 0 0 1 3.4 4.3l-.8 3.3a1.6 1.6 0 0 1-2.7.7L12 13H8l-1.9 1.8a1.6 1.6 0 0 1-2.7-.7l-.8-3.3A3.5 3.5 0 0 1 6 6.5zM6.5 9v2.5M5.25 10.25h2.5M13 9.5h.01M14.5 11h.01" },
     { id: "history", icon: "M10 3.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 0 0 0-13zM10 6.5V10l2.5 1.6" },
-    { id: "styles", icon: "M3 15.5l3.5-11h1l3.5 11M4.6 11.5h4.8M15 10a2.5 2.5 0 1 0 0 5a2.5 2.5 0 0 0 0-5zM17.5 9.5v6" },
-    { id: "profiles", icon: "M5 3.5h10v13l-5-3.5-5 3.5z" },
-    { id: "fonts", icon: "M4 16L9 4h2l5 12M6.5 11h7" },
     { id: "settings", icon: "M3 6h9M15 6h2M3 14h2M8 14h9M12 4v4M5 12v4" },
-    { id: "shortcuts", icon: "M2.5 5.5h15v9h-15zM5.5 8.5h1M9.5 8.5h1M13.5 8.5h1M6.5 11.5h7" },
-    { id: "tutorial", icon: "M3 5l5-2 4 2 5-2v12l-5 2-4-2-5 2zM8 3v12M12 5v12" },
   ];
+  const TOUR_ICON = "M10 3.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 0 0 0-13zM8 8a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.5M10 13.5h.01";
 
   // Switches the UI language and saves the choice.
   async function changeLocale(event: Event) {
@@ -36,7 +34,12 @@
   <ul>
     {#each items as item (item.id)}
       <li>
-        <button class:active={app.screen === item.id} onclick={() => (app.screen = item.id)} aria-current={app.screen === item.id ? "page" : undefined}>
+        <button
+          class:active={app.screen === item.id}
+          onclick={() => (app.screen = item.id)}
+          aria-current={app.screen === item.id ? "page" : undefined}
+          data-tour="nav-{item.id}"
+        >
           <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
             <path d={item.icon} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" />
           </svg>
@@ -55,6 +58,13 @@
   </ul>
 
   <div class="foot">
+    <!-- The guided tour: opens each screen and points at what matters -->
+    <button class="tour-btn" onclick={startTour} data-tour="nav-tour">
+      <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+        <path d={TOUR_ICON} fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" />
+      </svg>
+      {t("nav.tour")}
+    </button>
     <label class="lang">
       <span class="sr-only">{t("settings.uiLanguage")}</span>
       <select class="input" value={app.settings.uiLanguage} onchange={changeLocale}>
@@ -126,6 +136,23 @@
     display: grid;
     gap: 12px;
     padding: 0 4px;
+  }
+
+  .tour-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    text-align: left;
+  }
+  .tour-btn:hover {
+    color: var(--ink);
+    border-color: var(--gold);
   }
 
   .lang select {

@@ -199,7 +199,7 @@
 </script>
 
 <!-- The area step gets a wider layout: a bigger preview makes marking precise -->
-<div class="play" class:wide={(step === 1 && !running) || editing}>
+<div class="play" class:wide={(step === 1 && !running) || editing} data-tour="play-box">
   <DialogueBox speaker={t("play.speaker")} line={question}>
     {#if showFeed}
       <ol class="feed" aria-live="polite">

@@ -1,5 +1,5 @@
 <!--
-  Shortcuts — the keys that work inside the game while it is translated.
+  Shortcuts (a part of Settings) — the keys that work inside the game while it is translated.
   Click a key, press the new combination; it is saved right away and, mid-game,
   works at once. Shortcuts only exist during a session, so the rest of the
   time these keys belong to other programs again.
@@ -75,11 +75,8 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="shortcuts">
-  <header>
-    <h1>{t("shortcuts.title")}</h1>
-    <p class="sub">{t("shortcuts.intro")}</p>
-  </header>
+<div class="shortcuts" data-tour="shortcuts">
+  <p class="sub">{t("shortcuts.intro")}</p>
 
   <ul class="list">
     {#each shortcutActions as action (action)}
@@ -122,9 +119,6 @@
     display: grid;
     gap: 20px;
     padding-bottom: 40px;
-  }
-  h1 {
-    margin: 0;
   }
   .sub {
     margin: 4px 0 0;

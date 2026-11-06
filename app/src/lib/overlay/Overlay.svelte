@@ -61,6 +61,8 @@
   }
 
   let settings = $state<Settings>(structuredClone(defaultSettings));
+  // How translations are drawn (Settings > Look), the same for every area.
+  const classic = $derived(settings.overlay.look === "classic");
   let profileKey = $state<string | null>(null);
   let views = $state<Record<number, AreaView>>({});
   let viewWidth = $state(0);
@@ -139,9 +141,12 @@
 
   // Font and letter case of a line: its text style's (the user's print it
   // looks like), else its area's, else the default.
+  // A line's font and letter case: its style's; or, for a line like none of
+  // them ("~id"), only the font of the nearest style; or the area's own.
   function lookFor(a: GameArea, styleId: string | null | undefined): { font: string; caps: LetterCase } {
-    const style = styleId ? gameStyles[styleId] : undefined;
-    if (style?.font) return { font: style.font, caps: styleCase(style) };
+    const nearest = !!styleId?.startsWith("~");
+    const style = styleId ? gameStyles[nearest ? styleId.slice(1) : styleId] : undefined;
+    if (style?.font) return { font: style.font, caps: nearest ? a.caps : styleCase(style) };
     return { font: a.font, caps: a.caps };
   }
 
@@ -169,7 +174,7 @@
     const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
-      if (a.style === "classic" || !v.current || !v.translation) continue;
+      if (classic || !v.current || !v.translation) continue;
       const placed = layout(
         pairLines(v.current.lines, v.translation),
         { width: v.current.frameWidth, height: v.current.frameHeight },
@@ -205,7 +210,7 @@
     const out: { area: GameArea; v: AreaView; style: string }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
-      if (a.style !== "classic" || !v.classicText) continue;
+      if (!classic || !v.classicText) continue;
       const frame = v.current; // window size, to place the area in the overlay
       let style = "left:15%;width:70%;bottom:4%;height:22%";
       if (a.mode !== "screen" && a.region && frame) {

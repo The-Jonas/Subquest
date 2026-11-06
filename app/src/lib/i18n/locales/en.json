@@ -1,13 +1,10 @@
 {
   "nav": {
     "play": "Play",
-    "profiles": "Profiles",
-    "settings": "Settings",
-    "tutorial": "Tutorial",
-    "fonts": "Fonts",
+    "games": "Games",
     "history": "History",
-    "styles": "Styles",
-    "shortcuts": "Shortcuts"
+    "settings": "Settings",
+    "tour": "Guided tour"
   },
   "core": {
     "ok": "Core ready",
@@ -74,20 +71,6 @@
     "apply": "Apply",
     "applyTimeout": "The areas were saved, but reading took too long to restart. Stop and start translating again."
   },
-  "profiles": {
-    "title": "Game profiles",
-    "intro": "What is saved for each game: where its text boxes are and the styles taken from prints. To change a style's font, click its print.",
-    "empty": "No profiles yet. When you translate a game, its areas and styles are saved here.",
-    "wholeScreen": "Whole screen",
-    "forget": "Forget this game (areas, styles and prints)",
-    "areas": "Areas",
-    "styles": "Styles",
-    "unmarked": "no rectangle",
-    "editStyle": "Open in Styles",
-    "unnamed": "Unnamed",
-    "noFont": "no font yet",
-    "noStyles": "No style prints yet. Take one from the in-game bar."
-  },
   "settings": {
     "title": "Settings",
     "languages": "Languages",
@@ -147,36 +130,22 @@
       "intro": "The line history is kept in memory only and is gone when Subquest closes. What stays on disk are the translations already made, so repeated lines show at once (20 thousand at most, a few MB).",
       "cache": "{count} saved translations ({size})",
       "clear": "Clear saved translations"
+    },
+    "tabs": {
+      "translation": "Translation",
+      "look": "Look",
+      "shortcuts": "Shortcuts",
+      "fonts": "Fonts",
+      "storage": "Storage"
+    },
+    "look": {
+      "title": "How the translation shows",
+      "inPlace": "Part of the game",
+      "inPlaceHelp": "Each translated line is drawn where the original was, with its colors, size and its style's font.",
+      "classic": "Classic subtitle",
+      "classicHelp": "A dark box with all the text, like a movie subtitle. Simpler, always readable.",
+      "inPlaceNote": "Each line's font comes from the game's styles (Games tab). Color and size are measured on screen."
     }
-  },
-  "tutorial": {
-    "title": "How to use",
-    "skip": "Skip tutorial",
-    "back": "Back",
-    "next": "Next",
-    "done": "Let's play",
-    "pages": [
-      {
-        "title": "Run the game in a window",
-        "text": "Subquest reads the game screen. Use windowed or borderless mode in the game's video options; exclusive fullscreen blocks capture."
-      },
-      {
-        "title": "Pick the game",
-        "text": "In Play, choose the game window from the list. If it isn't there, make sure it isn't minimized and refresh the list."
-      },
-      {
-        "title": "Show where the dialogue is",
-        "text": "If the game uses a dialogue box, mark just that area: Subquest gets faster and makes fewer mistakes. For menus and signs, use the whole screen."
-      },
-      {
-        "title": "Pick who translates",
-        "text": "In Settings, choose the service. A local model through Ollama is free and works offline; cloud services need an API key and usually translate better."
-      },
-      {
-        "title": "Play",
-        "text": "The translation shows up over the game without stealing focus. Each game gets a profile with its area and glossary, so next time it starts ready."
-      }
-    ]
   },
   "languages": {
     "en": "English",
@@ -347,5 +316,62 @@
     "ask": "Delete?",
     "yes": "Yes",
     "no": "No"
+  },
+  "games": {
+    "title": "Games",
+    "intro": "Everything saved for each game: where its text boxes are, and its styles. A style is a print of a phrase from the game with the font that matches it: every line with similar letters then uses that font.",
+    "empty": "No games yet. When you translate a game, its areas and styles show up here.",
+    "forget": "Forget this game (areas, styles and prints)",
+    "switch": "Switch game",
+    "live": "translating now",
+    "areas": "Areas",
+    "wholeScreen": "Whole screen",
+    "unmarked": "no rectangle",
+    "editAreas": "Edit in the game",
+    "areasHint": "To move, resize or add areas, use Play → Adjust areas, or the bar while playing.",
+    "styles": "Styles",
+    "closeSearch": "Close the search",
+    "fallback": "Lines that look like no style use the font of the closest one."
+  },
+  "tour": {
+    "count": "Step {n} of {total}",
+    "skip": "Skip tour",
+    "back": "Back",
+    "next": "Next",
+    "done": "Start using it",
+    "steps": {
+      "welcome": {
+        "title": "Welcome to Subquest",
+        "text": "It reads the game's text on screen and draws the translation over it, where the original was. First of all: run the game windowed or borderless. Exclusive fullscreen blocks the capture."
+      },
+      "translator": {
+        "title": "The main translator",
+        "text": "Put the API key of the translating service here (Gemini has a free key). It understands the conversation and fixes reading mistakes. Use \"Test translation\" to check everything works."
+      },
+      "quick": {
+        "title": "The quick layer",
+        "text": "While the main translator thinks, a quick translation shows first and is replaced by the good one as soon as it arrives. The subtitle never waits."
+      },
+      "game": {
+        "title": "Pick the game",
+        "text": "With the game open, pick its window here. Then mark where the text appears: only in marked areas (faster) or anywhere on screen."
+      },
+      "styles": {
+        "title": "Styles: the game's look",
+        "text": "While playing, take a print of a phrase (bar or shortcut) and pick its font here. Every line with similar letters then uses that font."
+      },
+      "toolbar": {
+        "title": "Shortcuts and the bar",
+        "text": "In the game, these keys mark areas, take style prints, pause and hide the translation. One of them shows the bar, which does all that with the mouse."
+      },
+      "history": {
+        "title": "History",
+        "text": "Lines that went by too fast stay here, with their translation. The number in the menu says how many you missed."
+      },
+      "done": {
+        "title": "All set!",
+        "text": "This button opens the tour again whenever you want. Have fun!"
+      }
+    }
   }
 }

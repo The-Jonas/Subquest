@@ -1,13 +1,10 @@
 {
   "nav": {
     "play": "Jugar",
-    "profiles": "Perfiles",
-    "settings": "Ajustes",
-    "tutorial": "Tutorial",
-    "fonts": "Fuentes",
+    "games": "Juegos",
     "history": "Historial",
-    "styles": "Estilos",
-    "shortcuts": "Atajos"
+    "settings": "Ajustes",
+    "tour": "Tour guiado"
   },
   "core": {
     "ok": "Núcleo listo",
@@ -74,20 +71,6 @@
     "apply": "Aplicar",
     "applyTimeout": "Las áreas se guardaron, pero la lectura tardó demasiado en reiniciar. Detén y vuelve a empezar la traducción."
   },
-  "profiles": {
-    "title": "Perfiles de juego",
-    "intro": "Lo que se guarda de cada juego: dónde están las cajas de texto y los estilos sacados de las capturas. Para cambiar la fuente de un estilo, haz clic en su captura.",
-    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, sus áreas y estilos se guardan aquí.",
-    "wholeScreen": "Pantalla completa",
-    "forget": "Olvidar este juego (áreas, estilos y capturas)",
-    "areas": "Áreas",
-    "styles": "Estilos",
-    "unmarked": "sin rectángulo",
-    "editStyle": "Abrir en Estilos",
-    "unnamed": "Sin nombre",
-    "noFont": "todavía sin fuente",
-    "noStyles": "Todavía no hay capturas de estilo. Saca una desde la barra en el juego."
-  },
   "settings": {
     "title": "Ajustes",
     "languages": "Idiomas",
@@ -147,36 +130,22 @@
       "intro": "El historial de líneas queda solo en memoria y desaparece al cerrar Subquest. Lo que se guarda en disco son las traducciones ya hechas, para que las líneas repetidas aparezcan al instante (como máximo 20 mil, pocos MB).",
       "cache": "{count} traducciones guardadas ({size})",
       "clear": "Borrar traducciones guardadas"
+    },
+    "tabs": {
+      "translation": "Traducción",
+      "look": "Apariencia",
+      "shortcuts": "Atajos",
+      "fonts": "Fuentes",
+      "storage": "Almacenamiento"
+    },
+    "look": {
+      "title": "Cómo aparece la traducción",
+      "inPlace": "Integrada al juego",
+      "inPlaceHelp": "Cada línea traducida se dibuja en el lugar de la original, con sus colores, tamaño y la fuente de su estilo.",
+      "classic": "Subtítulo clásico",
+      "classicHelp": "Una caja oscura con todo el texto, como subtítulo de película. Más simple, siempre legible.",
+      "inPlaceNote": "La fuente de cada línea viene de los estilos del juego (pestaña Juegos). El color y el tamaño se miden en pantalla."
     }
-  },
-  "tutorial": {
-    "title": "Cómo usarlo",
-    "skip": "Saltar tutorial",
-    "back": "Volver",
-    "next": "Siguiente",
-    "done": "A jugar",
-    "pages": [
-      {
-        "title": "Pon el juego en ventana",
-        "text": "Subquest lee la pantalla del juego. Usa el modo ventana o sin bordes en las opciones de video; la pantalla completa exclusiva bloquea la captura."
-      },
-      {
-        "title": "Elige el juego",
-        "text": "En Jugar, elige la ventana del juego en la lista. Si no aparece, revisa que no esté minimizado y actualiza la lista."
-      },
-      {
-        "title": "Muestra dónde están los diálogos",
-        "text": "Si el juego usa cuadro de diálogo, marca solo esa área: Subquest va más rápido y se equivoca menos. Para menús y carteles, usa toda la pantalla."
-      },
-      {
-        "title": "Elige quién traduce",
-        "text": "En Ajustes, elige el servicio. Un modelo local con Ollama es gratis y funciona sin internet; los servicios en la nube piden una clave de API y suelen traducir mejor."
-      },
-      {
-        "title": "Juega",
-        "text": "La traducción aparece sobre el juego sin quitarle el foco. Cada juego recibe un perfil con su área y glosario, para que la próxima vez empiece listo."
-      }
-    ]
   },
   "languages": {
     "en": "Inglés",
@@ -347,5 +316,62 @@
     "ask": "¿Borrar?",
     "yes": "Sí",
     "no": "No"
+  },
+  "games": {
+    "title": "Juegos",
+    "intro": "Todo lo que se guarda de cada juego: dónde están las cajas de texto y sus estilos. Un estilo es la captura de una frase del juego con la fuente que combina con ella: toda línea con letras parecidas usa esa fuente.",
+    "empty": "Todavía no hay juegos. Cuando traduzcas un juego, sus áreas y estilos aparecen aquí.",
+    "forget": "Olvidar este juego (áreas, estilos y capturas)",
+    "switch": "Cambiar de juego",
+    "live": "traduciendo ahora",
+    "areas": "Áreas",
+    "wholeScreen": "Pantalla completa",
+    "unmarked": "sin rectángulo",
+    "editAreas": "Editar en el juego",
+    "areasHint": "Para mover, redimensionar o crear áreas, usa Jugar → Ajustar áreas, o la barra durante el juego.",
+    "styles": "Estilos",
+    "closeSearch": "Cerrar la búsqueda",
+    "fallback": "Las líneas que no se parecen a ningún estilo usan la fuente del más parecido."
+  },
+  "tour": {
+    "count": "Paso {n} de {total}",
+    "skip": "Saltar tour",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "done": "Empezar a usarlo",
+    "steps": {
+      "welcome": {
+        "title": "Bienvenido a Subquest",
+        "text": "Lee el texto del juego en pantalla y dibuja la traducción encima, en el lugar del original. Antes que nada: pon el juego en ventana o ventana sin bordes. La pantalla completa exclusiva bloquea la captura."
+      },
+      "translator": {
+        "title": "El traductor principal",
+        "text": "Aquí va la clave de API del servicio que traduce (Gemini tiene clave gratis). Entiende el contexto de la conversación y corrige errores de lectura. Usa \"Probar traducción\" para comprobar que todo funciona."
+      },
+      "quick": {
+        "title": "La capa rápida",
+        "text": "Mientras el traductor principal piensa, aparece primero una traducción rápida, que se cambia por la buena en cuanto llega. El subtítulo nunca espera."
+      },
+      "game": {
+        "title": "Elige el juego",
+        "text": "Con el juego abierto, elige su ventana aquí. Después marca dónde aparecen los textos: solo en áreas marcadas (más rápido) o en toda la pantalla."
+      },
+      "styles": {
+        "title": "Estilos: la cara del juego",
+        "text": "Mientras juegas, saca una captura de una frase (barra o atajo) y elige su fuente aquí. Toda línea con letras parecidas usará esa fuente."
+      },
+      "toolbar": {
+        "title": "Atajos y la barra",
+        "text": "Dentro del juego, estos atajos marcan áreas, sacan capturas de estilo, pausan y ocultan la traducción. Uno de ellos muestra la barra, que hace todo eso con el ratón."
+      },
+      "history": {
+        "title": "Historial",
+        "text": "Las frases que pasaron demasiado rápido se quedan aquí, con su traducción. El número del menú dice cuántas te perdiste."
+      },
+      "done": {
+        "title": "¡Listo!",
+        "text": "Este botón vuelve a abrir el tour cuando quieras. ¡Buen juego!"
+      }
+    }
   }
 }

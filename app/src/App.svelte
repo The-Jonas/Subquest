@@ -3,12 +3,9 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import Play from "./lib/screens/Play.svelte";
   import History from "./lib/screens/History.svelte";
-  import Styles from "./lib/screens/Styles.svelte";
-  import Shortcuts from "./lib/screens/Shortcuts.svelte";
-  import Profiles from "./lib/screens/Profiles.svelte";
-  import Fonts from "./lib/screens/Fonts.svelte";
+  import Games from "./lib/screens/Games.svelte";
   import Settings from "./lib/screens/Settings.svelte";
-  import Tutorial from "./lib/screens/Tutorial.svelte";
+  import Tour from "./lib/components/Tour.svelte";
   import { app, boot } from "./lib/stores/app.svelte";
   import { watchSession } from "./lib/stores/session.svelte";
 
@@ -22,24 +19,17 @@
     {#if app.ready}
       {#if app.screen === "play"}
         <Play />
+      {:else if app.screen === "games"}
+        <Games />
       {:else if app.screen === "history"}
         <History />
-      {:else if app.screen === "styles"}
-        <Styles />
-      {:else if app.screen === "shortcuts"}
-        <Shortcuts />
-      {:else if app.screen === "profiles"}
-        <Profiles />
-      {:else if app.screen === "fonts"}
-        <Fonts />
-      {:else if app.screen === "settings"}
-        <Settings />
       {:else}
-        <Tutorial />
+        <Settings />
       {/if}
     {/if}
   </main>
 </div>
+<Tour />
 
 <style>
   .shell {

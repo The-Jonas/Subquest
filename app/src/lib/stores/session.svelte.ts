@@ -66,6 +66,12 @@ function onLine(e: OcrTextEvent) {
   moveOn(e.area, e.frameId);
   if (!e.text || e.sameAs != null) return;
   session.lines = [e, ...session.lines].slice(0, FEED_SIZE);
+  // Translations are only kept for the lines still in the feed (History keeps
+  // its own copy): a long session must not grow this map forever.
+  const shown = new Set(session.lines.map((l) => l.frameId));
+  for (const id of Object.keys(session.translations)) {
+    if (!shown.has(Number(id))) delete session.translations[Number(id)];
+  }
   const profile = session.game ? app.settings.profiles[profileKey(session.game)] : undefined;
   session.history.unshift({
     frameId: e.frameId,

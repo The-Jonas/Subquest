@@ -36,7 +36,7 @@ export async function watchStyles() {
   await listen<string>("style-captured", async (e) => {
     await refresh();
     styles.focus = e.payload;
-    app.screen = "styles";
+    app.screen = "games";
   });
   await listen<string>("navigate", (e) => (app.screen = e.payload as typeof app.screen));
 }

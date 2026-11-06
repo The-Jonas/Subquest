@@ -100,6 +100,7 @@ pub struct OverlaySettings {
     pub font_size: u32,
     pub background_opacity: f32, // 0..1
     pub show_original: bool,     // show the original text above the translation
+    pub look: String,            // "inPlace" (drawn over each original line) or "classic" (subtitle box)
 }
 
 /// Global shortcuts, written like "Ctrl+Shift+A" (empty = no shortcut).
@@ -188,6 +189,7 @@ impl Default for OverlaySettings {
             font_size: 22,
             background_opacity: 0.78,
             show_original: false,
+            look: "inPlace".into(),
         }
     }
 }

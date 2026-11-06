@@ -60,7 +60,7 @@ export interface Settings {
   translator: { kind: string; baseUrl: string; model: string; visionModel: string; apiKey: string };
   quick: { engine: QuickEngine; deeplKey: string }; // second translation layer
   shortcuts: Shortcuts; // in-game keys, like "Ctrl+Shift+A" ("" = none)
-  overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean };
+  overlay: { fontSize: number; backgroundOpacity: number; showOriginal: boolean; look: AreaStyle };
   tutorialDone: boolean;
   profiles: Record<string, GameProfile>; // key: lowercase executable name
 }
@@ -246,7 +246,7 @@ export const defaultSettings: Settings = {
   translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", visionModel: "", apiKey: "" },
   quick: { engine: "google", deeplKey: "" },
   shortcuts: { ...defaultShortcuts },
-  overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false },
+  overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false, look: "inPlace" },
   tutorialDone: false,
   profiles: {},
 };

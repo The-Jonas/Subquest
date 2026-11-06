@@ -32,6 +32,7 @@ use crate::translate::similar;
 use crate::translate::{ContextLine, TranslateError, TranslationRequest};
 use crate::AppState;
 
+const MAX_IN_FLIGHT: usize = 4; // lines translated at once (one per area is the usual case)
 const CONTEXT_LINES: usize = 6; // previous lines sent along: enough for tone, cheap on tokens
 const CACHE_CAPACITY: usize = 20_000; // a long game's worth of lines; ~2 MB on disk
 const HEDGE_AFTER: Duration = Duration::from_millis(1500); // no first word by now: ask again in parallel
@@ -63,6 +64,10 @@ pub struct TranslationState {
     cache_path: PathBuf, // where the cache is saved between runs
     pub context: Mutex<VecDeque<ContextLine>>, // reset when a session starts
     recent: Mutex<HashMap<u32, Recent>>,       // per area: newest line with its own translation
+    // Requests on the network at once. Text that changes nonstop (a video, a
+    // scrolling page) would otherwise start one request per reading and pile
+    // them up until the whole system slows down.
+    in_flight: tokio::sync::Semaphore,
 }
 
 impl TranslationState {
@@ -75,7 +80,14 @@ impl TranslationState {
             cache_path,
             context: Mutex::new(VecDeque::new()),
             recent: Mutex::new(HashMap::new()),
+            in_flight: tokio::sync::Semaphore::new(MAX_IN_FLIGHT),
         }
+    }
+
+    /// True while `frame_id` is still the newest line of its area: once a newer
+    /// line came, translating this one would only show something already gone.
+    fn is_latest(&self, frame_id: u64) -> bool {
+        self.recent.lock().unwrap().values().any(|r| r.frame_id == frame_id)
     }
 
     /// Saves the cache to disk (only if it changed). Failing is not serious: the
@@ -208,6 +220,15 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
         publish.send_replace(Some(cached.clone()));
         emit(&cached, true, true, false, None);
         remember(translation, text, cached);
+        return;
+    }
+
+    // Wait for a free slot; a line replaced in its area meanwhile is dropped
+    // (the History screen lists it as missed).
+    let Ok(_slot) = translation.in_flight.acquire().await else {
+        return;
+    };
+    if !translation.is_latest(frame_id) {
         return;
     }
 

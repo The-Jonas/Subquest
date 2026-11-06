@@ -1,13 +1,10 @@
 {
   "nav": {
     "play": "Jogar",
-    "profiles": "Perfis",
-    "settings": "Ajustes",
-    "tutorial": "Tutorial",
-    "fonts": "Fontes",
+    "games": "Jogos",
     "history": "Histórico",
-    "styles": "Estilos",
-    "shortcuts": "Atalhos"
+    "settings": "Ajustes",
+    "tour": "Tour guiado"
   },
   "core": {
     "ok": "Núcleo pronto",
@@ -74,20 +71,6 @@
     "apply": "Aplicar",
     "applyTimeout": "As áreas foram salvas, mas a leitura demorou demais para reiniciar. Pare e comece a tradução de novo."
   },
-  "profiles": {
-    "title": "Perfis de jogo",
-    "intro": "O que fica salvo de cada jogo: onde estão as caixas de texto e os estilos tirados dos prints. Para mudar a fonte de um estilo, clique no print dele.",
-    "empty": "Nenhum perfil ainda. Quando você traduzir um jogo, as áreas e os estilos dele ficam salvos aqui.",
-    "wholeScreen": "Tela inteira",
-    "forget": "Esquecer este jogo (áreas, estilos e prints)",
-    "areas": "Áreas",
-    "styles": "Estilos",
-    "unmarked": "sem retângulo",
-    "editStyle": "Abrir nos Estilos",
-    "unnamed": "Sem nome",
-    "noFont": "sem fonte ainda",
-    "noStyles": "Nenhum print de estilo ainda. Tire um pela barrinha no jogo."
-  },
   "settings": {
     "title": "Ajustes",
     "languages": "Idiomas",
@@ -147,36 +130,22 @@
       "intro": "O histórico de falas fica só na memória e some ao fechar o Subquest. O que fica guardado no disco são as traduções já feitas, para falas repetidas aparecerem na hora (no máximo 20 mil, uns poucos MB).",
       "cache": "{count} traduções guardadas ({size})",
       "clear": "Limpar traduções guardadas"
+    },
+    "tabs": {
+      "translation": "Tradução",
+      "look": "Aparência",
+      "shortcuts": "Atalhos",
+      "fonts": "Fontes",
+      "storage": "Armazenamento"
+    },
+    "look": {
+      "title": "Como a tradução aparece",
+      "inPlace": "Integrada ao jogo",
+      "inPlaceHelp": "Cada linha traduzida é desenhada no lugar da original, com as cores, o tamanho e a fonte do estilo dela.",
+      "classic": "Legenda clássica",
+      "classicHelp": "Uma caixa escura com o texto todo, como legenda de filme. Mais simples, sempre legível.",
+      "inPlaceNote": "A fonte de cada linha vem dos estilos do jogo (aba Jogos). Cor e tamanho são medidos na tela."
     }
-  },
-  "tutorial": {
-    "title": "Como usar",
-    "skip": "Pular tutorial",
-    "back": "Voltar",
-    "next": "Próximo",
-    "done": "Bora jogar",
-    "pages": [
-      {
-        "title": "Deixe o jogo em janela",
-        "text": "O Subquest lê a tela do jogo. Use o modo janela ou janela sem borda (borderless) nas opções de vídeo do jogo; a tela cheia exclusiva bloqueia a captura."
-      },
-      {
-        "title": "Escolha o jogo",
-        "text": "Em Jogar, escolha a janela do jogo na lista. Se ele não aparecer, confira se não está minimizado e atualize a lista."
-      },
-      {
-        "title": "Mostre onde ficam as falas",
-        "text": "Se o jogo usa caixa de diálogo, marque só essa área: o Subquest fica mais rápido e erra menos. Para menus e placas, use a tela inteira."
-      },
-      {
-        "title": "Escolha quem traduz",
-        "text": "Em Ajustes, escolha o serviço. Um modelo local pelo Ollama é grátis e funciona offline; serviços na nuvem pedem uma chave de API e costumam traduzir melhor."
-      },
-      {
-        "title": "Jogue",
-        "text": "A tradução aparece por cima do jogo, sem roubar o foco. Cada jogo ganha um perfil com a área e o glossário dele, para a próxima vez já começar pronto."
-      }
-    ]
   },
   "languages": {
     "en": "Inglês",
@@ -347,5 +316,62 @@
     "ask": "Apagar?",
     "yes": "Sim",
     "no": "Não"
+  },
+  "games": {
+    "title": "Jogos",
+    "intro": "Tudo que fica salvo de cada jogo: onde estão as caixas de texto e os estilos. Um estilo é o print de uma frase do jogo com a fonte que combina com ela: toda linha com letras parecidas passa a usar essa fonte.",
+    "empty": "Nenhum jogo ainda. Quando você traduzir um jogo, as áreas e os estilos dele aparecem aqui.",
+    "forget": "Esquecer este jogo (áreas, estilos e prints)",
+    "switch": "Trocar de jogo",
+    "live": "traduzindo agora",
+    "areas": "Áreas",
+    "wholeScreen": "Tela inteira",
+    "unmarked": "sem retângulo",
+    "editAreas": "Editar no jogo",
+    "areasHint": "Para mover, redimensionar ou criar áreas, use Jogar → Ajustar áreas, ou a barrinha durante o jogo.",
+    "styles": "Estilos",
+    "closeSearch": "Fechar a busca",
+    "fallback": "Linhas que não se parecem com nenhum estilo usam a fonte do estilo mais parecido."
+  },
+  "tour": {
+    "count": "Passo {n} de {total}",
+    "skip": "Pular tour",
+    "back": "Voltar",
+    "next": "Próximo",
+    "done": "Começar a usar",
+    "steps": {
+      "welcome": {
+        "title": "Bem-vindo ao Subquest",
+        "text": "Ele lê o texto do jogo na tela e desenha a tradução por cima, no lugar do original. Antes de tudo: deixe o jogo em modo janela ou janela sem borda. A tela cheia exclusiva bloqueia a captura."
+      },
+      "translator": {
+        "title": "O tradutor principal",
+        "text": "Aqui vai a chave da API do serviço que traduz (o Gemini tem chave grátis). Ele entende o contexto da conversa e corrige erros de leitura. Use \"Testar tradução\" para ver se está tudo certo."
+      },
+      "quick": {
+        "title": "A camada rápida",
+        "text": "Enquanto o tradutor principal pensa, uma tradução rápida aparece primeiro e é trocada pela boa assim que ela chega. Assim a legenda nunca fica esperando."
+      },
+      "game": {
+        "title": "Escolha o jogo",
+        "text": "Com o jogo aberto, escolha a janela dele aqui. Depois marque onde os textos aparecem: só nas áreas marcadas (mais rápido) ou na tela inteira."
+      },
+      "styles": {
+        "title": "Estilos: a cara do jogo",
+        "text": "Durante o jogo, tire um print de uma frase (pela barrinha ou pelo atalho) e escolha a fonte dela aqui. Toda linha com letras parecidas passa a usar essa fonte."
+      },
+      "toolbar": {
+        "title": "Atalhos e a barrinha",
+        "text": "Dentro do jogo, estes atalhos marcam áreas, tiram prints de estilo, pausam e escondem a tradução. Um deles mostra a barrinha, que faz tudo isso com o mouse."
+      },
+      "history": {
+        "title": "Histórico",
+        "text": "Falas que passaram rápido demais ficam aqui, com a tradução. O número no menu mostra quantas você perdeu."
+      },
+      "done": {
+        "title": "Pronto!",
+        "text": "Este botão abre o tour de novo quando quiser. Bom jogo!"
+      }
+    }
   }
 }

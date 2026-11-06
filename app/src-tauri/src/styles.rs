@@ -77,6 +77,26 @@ impl StyleBook {
             .map(|(s, _)| s)
     }
 
+    /// The style closest to a line, however far: the fallback for lines that
+    /// look like none of the styles, so they still get one of the game's own
+    /// fonts instead of the default one. Letter shape decides when both sides
+    /// have one, the color otherwise.
+    pub fn nearest(&self, text_rgb: u32, shape: Option<&Shape>) -> Option<&TextStyle> {
+        self.styles
+            .iter()
+            .filter(|s| !s.font.is_empty())
+            .map(|s| {
+                let color = (color_distance(s.text_rgb, text_rgb) / SAME_COLOR) as f32;
+                let d = match (shape, s.shape.as_ref()) {
+                    (Some(line), Some(style)) => line.distance(style) + COLOR_WEIGHT * color,
+                    _ => color,
+                };
+                (s, d)
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(s, _)| s)
+    }
+
     /// Adds a style for a print the user took; returns its id. A full book
     /// drops its oldest style without a font first.
     pub fn add(&mut self, text_rgb: u32, shape: Option<Shape>, seen_case: &str) -> (String, Option<String>) {
@@ -408,7 +428,9 @@ impl StyleStore {
         ids
     }
 
-    /// Style ids for lines, with the open book (all None without one).
+    /// Style ids for lines, with the open book (all None without one). A line
+    /// that matches no style gets the nearest one marked "~id": the overlay
+    /// takes only its font from it, not its letter case.
     fn ids_for(&self, lines: &[(u32, Option<Shape>)]) -> Vec<Option<String>> {
         let open = self.open.lock().unwrap();
         let Some((_, book)) = open.as_ref() else {
@@ -416,7 +438,11 @@ impl StyleStore {
         };
         lines
             .iter()
-            .map(|(color, shape)| book.style_for(*color, shape.as_ref()).map(|s| s.id.clone()))
+            .map(|(color, shape)| {
+                book.style_for(*color, shape.as_ref())
+                    .map(|s| s.id.clone())
+                    .or_else(|| book.nearest(*color, shape.as_ref()).map(|s| format!("~{}", s.id)))
+            })
             .collect()
     }
 
@@ -440,6 +466,14 @@ mod tests {
         let (id, _) = book.add(GREEN, None, "");
         book.styles.iter_mut().find(|s| s.id == id).unwrap().font = "imported:Cinzel-700.ttf".into();
         book
+    }
+
+    #[test]
+    fn a_line_like_no_style_still_gets_the_nearest_one() {
+        let book = book();
+        assert!(book.style_for(0xE9E4D6, None).is_none());
+        assert!(book.nearest(0xE9E4D6, None).is_some()); // its font beats the default one
+        assert!(StyleBook::default().nearest(GREEN, None).is_none()); // no styles: default font
     }
 
     #[test]

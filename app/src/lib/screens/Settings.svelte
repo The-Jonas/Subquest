@@ -1,7 +1,14 @@
-<!-- Settings — languages, translation service and subtitle look, with a live preview. -->
+<!--
+  Settings — in parts, one tab each: translation (languages and the two
+  translator layers), look of the translation, in-game shortcuts, fonts, and
+  what is kept on disk. Shortcuts and fonts save by themselves; the first two
+  parts save with the button at the bottom.
+-->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { app, persistSettings } from "../stores/app.svelte";
+  import { app, persistSettings, type SettingsTab } from "../stores/app.svelte";
+  import Shortcuts from "./Shortcuts.svelte";
+  import Fonts from "./Fonts.svelte";
   import {
     cacheUsage,
     clearTranslationCache,
@@ -15,6 +22,9 @@
   const gameLanguages = ["en", "ja", "zh-Hans", "ko"];
   const targetLanguages = ["pt-BR", "en", "es"];
   const quickEngines = ["google", "deepl", ""]; // "" = layer off
+  const tabs: SettingsTab[] = ["translation", "look", "shortcuts", "fonts", "storage"];
+  const looks = ["inPlace", "classic"] as const;
+  const withSave = $derived(app.settingsTab === "translation" || app.settingsTab === "look");
 
   // Saved translations [count, bytes], shown in the Storage section.
   let usage = $state<[number, number] | null>(null);
@@ -107,6 +117,21 @@
 <div class="settings">
   <h1>{t("settings.title")}</h1>
 
+  <!-- One part at a time: the screen stays short and each part easy to find -->
+  <div class="tabs" role="tablist">
+    {#each tabs as tab (tab)}
+      <button
+        role="tab"
+        class:active={app.settingsTab === tab}
+        aria-selected={app.settingsTab === tab}
+        onclick={() => (app.settingsTab = tab)}
+      >
+        {t(`settings.tabs.${tab}`)}
+      </button>
+    {/each}
+  </div>
+
+  {#if app.settingsTab === "translation"}
   <section>
     <h2>{t("settings.languages")}</h2>
     <div class="grid">
@@ -125,7 +150,7 @@
     </div>
   </section>
 
-  <section>
+  <section data-tour="translator">
     <h2><span class="layer">1</span>{t("settings.translation")}</h2>
     <p class="intro">{t("settings.translationIntro")}</p>
     <div class="grid">
@@ -215,7 +240,7 @@
   </section>
 
   <!-- Second layer: shown first, replaced by the main translation when it arrives -->
-  <section>
+  <section data-tour="quick">
     <h2><span class="layer">2</span>{t("settings.quick.title")}</h2>
     <p class="intro">{t("settings.quick.intro")}</p>
     <div class="engines" role="radiogroup">
@@ -236,6 +261,22 @@
     {/if}
   </section>
 
+  {:else if app.settingsTab === "look"}
+  <!-- How translations are drawn over the game -->
+  <section>
+    <h2>{t("settings.look.title")}</h2>
+    <div class="engines looks" role="radiogroup">
+      {#each looks as look (look)}
+        <label class="engine" class:selected={app.settings.overlay.look === look}>
+          <input type="radio" value={look} bind:group={app.settings.overlay.look} />
+          <strong>{t(`settings.look.${look}`)}</strong>
+          <span>{t(`settings.look.${look}Help`)}</span>
+        </label>
+      {/each}
+    </div>
+  </section>
+
+  {#if app.settings.overlay.look === "classic"}
   <section>
     <h2>{t("settings.overlay")}</h2>
     <div class="grid">
@@ -264,6 +305,15 @@
     </figure>
   </section>
 
+  {:else}
+    <p class="intro">{t("settings.look.inPlaceNote")}</p>
+  {/if}
+
+  {:else if app.settingsTab === "shortcuts"}
+    <Shortcuts />
+  {:else if app.settingsTab === "fonts"}
+    <Fonts />
+  {:else}
   <!-- What Subquest keeps on disk, and a way to free it -->
   <section>
     <h2>{t("settings.storage.title")}</h2>
@@ -280,16 +330,20 @@
     </div>
   </section>
 
+  {/if}
+
+  {#if withSave}
   <div class="bar">
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if saved}<p class="ok" role="status">{t("settings.saved")}</p>{/if}
     <button class="btn btn-primary" onclick={save}>{t("settings.save")}</button>
   </div>
+  {/if}
 </div>
 
 <style>
   .settings {
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
     display: grid;
     gap: 34px;
@@ -298,6 +352,33 @@
 
   h1 {
     font-size: var(--text-xl);
+    margin-bottom: -14px;
+  }
+
+  /* Tabs: a row of pills under the title; the open one is lit */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--panel-raised, var(--line));
+  }
+  .tabs button {
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    font: inherit;
+  }
+  .tabs button:hover {
+    color: var(--ink);
+  }
+  .tabs button.active {
+    background: var(--gold);
+    color: var(--gold-ink);
+    font-weight: 700;
   }
 
   section {
@@ -361,6 +442,9 @@
   .engine:has(input:focus-visible) {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
+  }
+  .looks {
+    grid-template-columns: 1fr 1fr;
   }
   .storage {
     display: flex;

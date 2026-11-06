@@ -156,3 +156,8 @@ select {
     transition: none !important;
   }
 }
+
+/* Guided tour: a part it scrolls to keeps a little room above it */
+[data-tour] {
+  scroll-margin: 16px;
+}

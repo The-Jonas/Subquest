@@ -1,5 +1,5 @@
 <!--
-  Fonts — import font files so the overlay can match a game's look. Files are
+  Fonts (a part of Settings) — import font files so the overlay can match a game's look. Files are
   copied into the app's own folder: nothing is installed in Windows.
 -->
 <script lang="ts">
@@ -53,7 +53,6 @@
 </script>
 
 <div class="fonts">
-  <h1>{t("fonts.title")}</h1>
   <p class="intro">{t("fonts.intro")}</p>
 
   <div
@@ -120,9 +119,6 @@
     display: grid;
     gap: 22px;
     padding-bottom: 32px;
-  }
-  h1 {
-    font-size: var(--text-xl);
   }
   h2 {
     font-size: var(--text-md);
