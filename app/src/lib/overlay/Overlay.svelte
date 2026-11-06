@@ -39,7 +39,7 @@
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
-  import { layout, pairLines, type Metrics, type Patch } from "./layout";
+  import { layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
   const AUTO_FALLBACK = 24; // automatic size before any line was measured
@@ -177,13 +177,15 @@
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
       if (classic || !v.current || !v.translation) continue;
-      const placed = layout(
-        pairLines(v.current.lines, v.translation),
-        { width: v.current.frameWidth, height: v.current.frameHeight },
-        { width: viewWidth, height: viewHeight },
-        (line: OcrLine) => measurer(lookFor(a, line.style)),
-        a.mode === "screen" ? "center" : "left",
-      );
+      const frame = { width: v.current.frameWidth, height: v.current.frameHeight };
+      const view = { width: viewWidth, height: viewHeight };
+      const measureFor = (line: OcrLine) => measurer(lookFor(a, line.style));
+      // A marked box keeps the translation inside it; loose text on the whole
+      // screen is placed line by line over the original.
+      const placed =
+        a.mode !== "screen" && a.region
+          ? layoutArea(v.current.lines, v.translation, a.region, frame, view, measureFor)
+          : layout(pairLines(v.current.lines, v.translation), frame, view, measureFor, "center");
       for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId });
     }
     return withoutOverlaps(out);
