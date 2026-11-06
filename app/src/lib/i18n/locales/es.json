@@ -38,6 +38,8 @@
       "drag": "Arrastra sobre la imagen para marcar dónde aparecen los diálogos.",
       "clear": "Marcar de nuevo",
       "wholeWindow": "Se leerá toda la ventana.",
+      "experimental": "Experimental",
+      "screenWarning": "Aún inestable: en pantallas con mucho texto la traducción puede quedar fuera de lugar, cortada o encimada. Para el mejor resultado, marca las áreas donde aparece el texto.",
       "add": "Nueva área",
       "defaultName": "Área {n}",
       "name": "Nombre del área",
@@ -287,7 +289,55 @@
     "close": "Ocultar la barra · vuelve con {keys}",
     "edit": "Editar las áreas en el juego",
     "closeNoKey": "Ocultar la barra · vuelve desde Subquest",
-    "term": "Elegir una palabra para el glosario"
+    "term": "Elegir una palabra para el glosario",
+    "help": "Cómo usar la barrita",
+    "guide": {
+      "title": "Cómo usar la barrita",
+      "count": "{n} de {total}",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "close": {
+        "title": "Guardar la barrita",
+        "text": "Oculta la barrita. Vuelve con su atajo o desde la app."
+      },
+      "tapHint": "Pulsa cualquier botón de la barrita para ver qué hace.",
+      "intro": {
+        "title": "La barrita",
+        "text": "Hace todo sin salir del juego. Mientras esta guía esté abierta, pulsar un botón solo explica lo que hace."
+      },
+      "move": {
+        "title": "Asa",
+        "text": "Arrastra desde aquí para llevar la barrita a otra esquina de la pantalla."
+      },
+      "area": {
+        "title": "Marcar área",
+        "text": "Arrastra un rectángulo sobre el juego donde aparece un texto (diálogo, letra de canción, nombres). La nueva área se lee al instante."
+      },
+      "edit": {
+        "title": "Editar áreas",
+        "text": "Muestra las áreas marcadas sobre el juego para moverlas, cambiarles el tamaño o borrarlas."
+      },
+      "style": {
+        "title": "Captura de estilo",
+        "text": "Marca una frase del juego para guardar su aspecto. Luego, en la pantalla Juegos, elige la fuente: toda línea parecida la usa."
+      },
+      "term": {
+        "title": "Glosario",
+        "text": "Señala una palabra en el juego y di cómo debe traducirse (o que se queda igual). Vale para este juego, y la pantalla se traduce de nuevo."
+      },
+      "pause": {
+        "title": "Pausar",
+        "text": "Deja de leer el juego; las traducciones en pantalla se quedan. Pulsa de nuevo para seguir."
+      },
+      "hide": {
+        "title": "Ocultar",
+        "text": "Oculta las traducciones para ver el juego original (incluso para tomar una captura de estilo). Pulsa de nuevo para mostrarlas."
+      },
+      "open": {
+        "title": "Abrir Subquest",
+        "text": "Trae la ventana de la app al frente: historial, glosario, ajustes."
+      }
+    }
   },
   "select": {
     "area": "Marca la nueva área",
@@ -390,15 +440,19 @@
       },
       "game": {
         "title": "Elige el juego",
-        "text": "Con el juego abierto, elige su ventana aquí. Después marca dónde aparecen los textos: solo en áreas marcadas (más rápido) o en toda la pantalla."
+        "text": "Con el juego abierto, elige su ventana aquí. Luego marca dónde aparecen los textos: solo en las áreas marcadas (más rápido y preciso) o en toda la pantalla (aún experimental)."
       },
       "styles": {
         "title": "Estilos: la cara del juego",
         "text": "Mientras juegas, saca una captura de una frase (barra o atajo) y elige su fuente aquí. Toda línea con letras parecidas usará esa fuente."
       },
+      "glossary": {
+        "title": "Glosario del juego",
+        "text": "Nombres y términos que siempre deben salir igual (Charon → Caronte). Escríbelos aquí, o marca la palabra directo en el juego: botón del libro en la barrita o Ctrl+Shift+G. Al guardar, la pantalla se traduce de nuevo."
+      },
       "toolbar": {
         "title": "Atajos y la barra",
-        "text": "Dentro del juego, estos atajos marcan áreas, sacan capturas de estilo, pausan y ocultan la traducción. Uno de ellos muestra la barra, que hace todo eso con el ratón."
+        "text": "Dentro del juego, estos atajos marcan áreas, toman capturas de estilo, eligen palabras para el glosario, pausan y ocultan la traducción. Uno de ellos muestra la barrita, que hace todo eso con el ratón; su botón \"?\" explica cada botón."
       },
       "history": {
         "title": "Historial",

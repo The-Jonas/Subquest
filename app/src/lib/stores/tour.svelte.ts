@@ -16,6 +16,7 @@ export const tourSteps: TourStep[] = [
   { key: "quick", screen: "settings", tab: "translation", target: "quick" },
   { key: "game", screen: "play", target: "play-box" },
   { key: "styles", screen: "games", target: "games-take" },
+  { key: "glossary", screen: "games", target: "glossary" },
   { key: "toolbar", screen: "settings", tab: "shortcuts", target: "shortcuts" },
   { key: "history", screen: "history", target: "nav-history" },
   { key: "done", screen: "play", target: "nav-tour" },

@@ -11,6 +11,7 @@
     "core:default",
     "core:window:allow-start-dragging",
     "core:window:allow-outer-position",
-    "core:window:allow-set-position"
+    "core:window:allow-set-position",
+    "core:window:allow-set-size"
   ]
 }

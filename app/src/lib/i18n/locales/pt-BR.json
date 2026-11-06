@@ -38,6 +38,8 @@
       "drag": "Arraste sobre a imagem para marcar onde as falas aparecem.",
       "clear": "Marcar de novo",
       "wholeWindow": "A janela inteira será lida.",
+      "experimental": "Experimental",
+      "screenWarning": "Ainda instável: em telas cheias de texto a tradução pode sair fora do lugar, cortada ou sobreposta. Para o melhor resultado, marque as áreas onde o texto aparece.",
       "add": "Nova área",
       "defaultName": "Área {n}",
       "name": "Nome da área",
@@ -287,7 +289,55 @@
     "close": "Esconder a barrinha · volta com {keys}",
     "edit": "Editar as áreas no jogo",
     "closeNoKey": "Esconder a barrinha · volta pelo Subquest",
-    "term": "Escolher uma palavra para o glossário"
+    "term": "Escolher uma palavra para o glossário",
+    "help": "Como usar a barrinha",
+    "guide": {
+      "title": "Como usar a barrinha",
+      "count": "{n} de {total}",
+      "back": "Voltar",
+      "next": "Próximo",
+      "close": {
+        "title": "Guardar a barrinha",
+        "text": "Esconde a barrinha. Ela volta pelo atalho ou pelo app."
+      },
+      "tapHint": "Aperte qualquer botão da barrinha para ver o que ele faz.",
+      "intro": {
+        "title": "A barrinha",
+        "text": "Faz tudo sem sair do jogo. Enquanto este guia estiver aberto, apertar um botão só explica o que ele faz."
+      },
+      "move": {
+        "title": "Alça",
+        "text": "Arraste por aqui para levar a barrinha a outro canto da tela."
+      },
+      "area": {
+        "title": "Marcar área",
+        "text": "Arraste um retângulo sobre o jogo onde um texto aparece (diálogo, letra da música, nomes). A área nova começa a ser lida na hora."
+      },
+      "edit": {
+        "title": "Editar áreas",
+        "text": "Mostra as áreas marcadas por cima do jogo para mover, redimensionar ou apagar."
+      },
+      "style": {
+        "title": "Print de estilo",
+        "text": "Marque uma frase do jogo para guardar a aparência dela. Depois, na tela Jogos, escolha a fonte: toda linha parecida passa a usar essa fonte."
+      },
+      "term": {
+        "title": "Glossário",
+        "text": "Aponte uma palavra no jogo e diga como ela deve ser traduzida (ou que não deve ser traduzida). Vale para este jogo, e a tela é traduzida de novo."
+      },
+      "pause": {
+        "title": "Pausar",
+        "text": "Para de ler o jogo; as traduções da tela ficam. Aperte de novo para voltar."
+      },
+      "hide": {
+        "title": "Esconder",
+        "text": "Esconde as traduções para ver o jogo original (até para tirar print de estilo). Aperte de novo para mostrar."
+      },
+      "open": {
+        "title": "Abrir o Subquest",
+        "text": "Traz a janela do app para a frente: histórico, glossário, ajustes."
+      }
+    }
   },
   "select": {
     "area": "Marque a nova área",
@@ -390,15 +440,19 @@
       },
       "game": {
         "title": "Escolha o jogo",
-        "text": "Com o jogo aberto, escolha a janela dele aqui. Depois marque onde os textos aparecem: só nas áreas marcadas (mais rápido) ou na tela inteira."
+        "text": "Com o jogo aberto, escolha a janela dele aqui. Depois marque onde os textos aparecem: só nas áreas marcadas (mais rápido e preciso) ou na tela inteira (ainda experimental)."
       },
       "styles": {
         "title": "Estilos: a cara do jogo",
         "text": "Durante o jogo, tire um print de uma frase (pela barrinha ou pelo atalho) e escolha a fonte dela aqui. Toda linha com letras parecidas passa a usar essa fonte."
       },
+      "glossary": {
+        "title": "Glossário do jogo",
+        "text": "Nomes e termos que devem sair sempre do mesmo jeito (Charon → Caronte). Escreva aqui, ou marque a palavra direto no jogo: botão do livro na barrinha ou Ctrl+Shift+G. Ao salvar, a tela é traduzida de novo."
+      },
       "toolbar": {
         "title": "Atalhos e a barrinha",
-        "text": "Dentro do jogo, estes atalhos marcam áreas, tiram prints de estilo, pausam e escondem a tradução. Um deles mostra a barrinha, que faz tudo isso com o mouse."
+        "text": "Dentro do jogo, estes atalhos marcam áreas, tiram prints de estilo, escolhem palavras para o glossário, pausam e escondem a tradução. Um deles mostra a barrinha, que faz tudo isso com o mouse; o botão \"?\" dela explica cada botão."
       },
       "history": {
         "title": "Histórico",

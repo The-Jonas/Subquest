@@ -256,7 +256,10 @@
           {@const on = mode === "screen" ? wholeScreen : !wholeScreen}
           <label class="mode" class:selected={on}>
             <input type="radio" name="read-mode" checked={on} onchange={() => setReadMode(mode)} />
-            <strong>{t(`play.area.${mode}`)}</strong>
+            <strong
+              >{t(`play.area.${mode}`)}{#if mode === "screen"}<span class="experimental">{t("play.area.experimental")}</span
+                >{/if}</strong
+            >
             <span>{t(`play.area.${mode}Help`)}</span>
           </label>
         {/each}
@@ -296,6 +299,8 @@
       <div class="area-hint">
         {#if wholeScreen}
           <p>{t("play.area.wholeWindow")}</p>
+          <!-- Whole-window reading is still rough: say so before someone judges the app by it -->
+          <p class="unstable" role="note">{t("play.area.screenWarning")}</p>
         {:else if area.region}
           <p>
             {t("play.area.marked", { width: String(area.region[2]), height: String(area.region[3]) })}
@@ -498,6 +503,20 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     margin-bottom: 14px;
+  }
+  /* "Experimental" next to the whole-window option */
+  .experimental {
+    margin-left: 8px;
+    padding: 1px 7px;
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    color: var(--gold);
+    font-size: 0.72em;
+    font-weight: 600;
+    vertical-align: 2px;
+  }
+  .unstable {
+    color: var(--gold);
   }
   .mode {
     position: relative; /* keeps the hidden radio inside the card */

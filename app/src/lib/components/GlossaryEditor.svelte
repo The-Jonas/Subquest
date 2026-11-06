@@ -79,7 +79,7 @@
   });
 </script>
 
-<section class="block">
+<section class="block" data-tour="glossary">
   <div class="head">
     <h2>{t("glossary.title")}</h2>
     {#if showSaved}<span class="saved" role="status">{t("glossary.saved")}</span>{/if}

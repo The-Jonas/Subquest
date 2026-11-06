@@ -38,6 +38,8 @@
       "drag": "Drag over the image to mark where the dialogue appears.",
       "clear": "Mark again",
       "wholeWindow": "The whole window will be read.",
+      "experimental": "Experimental",
+      "screenWarning": "Still unstable: on busy screens translations may land out of place, cut off or overlapping. For the best results, mark the areas where text shows up.",
       "add": "New area",
       "defaultName": "Area {n}",
       "name": "Area name",
@@ -287,7 +289,55 @@
     "close": "Hide the bar · {keys} brings it back",
     "edit": "Edit the areas in the game",
     "closeNoKey": "Hide the bar · Subquest brings it back",
-    "term": "Pick a word for the glossary"
+    "term": "Pick a word for the glossary",
+    "help": "How to use the toolbar",
+    "guide": {
+      "title": "How to use the toolbar",
+      "count": "{n} of {total}",
+      "back": "Back",
+      "next": "Next",
+      "close": {
+        "title": "Put the toolbar away",
+        "text": "Hides the toolbar. It comes back with its shortcut or from the app."
+      },
+      "tapHint": "Press any toolbar button to see what it does.",
+      "intro": {
+        "title": "The toolbar",
+        "text": "Does everything without leaving the game. While this guide is open, pressing a button only explains what it does."
+      },
+      "move": {
+        "title": "Handle",
+        "text": "Drag here to move the toolbar to another corner of the screen."
+      },
+      "area": {
+        "title": "Mark an area",
+        "text": "Drag a rectangle over the game where text shows up (dialogue, song lyrics, names). The new area is read right away."
+      },
+      "edit": {
+        "title": "Edit areas",
+        "text": "Shows the marked areas over the game to move, resize or delete them."
+      },
+      "style": {
+        "title": "Style print",
+        "text": "Mark a line of the game to keep its look. Then, in the Games screen, pick the font: every similar line uses it."
+      },
+      "term": {
+        "title": "Glossary",
+        "text": "Point at a word in the game and say how it must be translated (or that it stays as is). It applies to this game, and the screen is translated again."
+      },
+      "pause": {
+        "title": "Pause",
+        "text": "Stops reading the game; the translations on screen stay. Press again to resume."
+      },
+      "hide": {
+        "title": "Hide",
+        "text": "Hides the translations to see the original game (even to take a style print). Press again to show them."
+      },
+      "open": {
+        "title": "Open Subquest",
+        "text": "Brings the app's window to the front: history, glossary, settings."
+      }
+    }
   },
   "select": {
     "area": "Mark the new area",
@@ -390,15 +440,19 @@
       },
       "game": {
         "title": "Pick the game",
-        "text": "With the game open, pick its window here. Then mark where the text appears: only in marked areas (faster) or anywhere on screen."
+        "text": "With the game open, pick its window here. Then mark where the text shows up: only in marked areas (faster and more accurate) or on the whole screen (still experimental)."
       },
       "styles": {
         "title": "Styles: the game's look",
         "text": "While playing, take a print of a phrase (bar or shortcut) and pick its font here. Every line with similar letters then uses that font."
       },
+      "glossary": {
+        "title": "The game's glossary",
+        "text": "Names and terms that must always come out the same way (Charon → Caronte). Write them here, or pick the word right in the game: the book button on the toolbar or Ctrl+Shift+G. Saving translates the screen again."
+      },
       "toolbar": {
         "title": "Shortcuts and the bar",
-        "text": "In the game, these keys mark areas, take style prints, pause and hide the translation. One of them shows the bar, which does all that with the mouse."
+        "text": "In the game, these shortcuts mark areas, take style prints, pick words for the glossary, pause and hide the translation. One of them shows the toolbar, which does all that with the mouse; its \"?\" button explains every button."
       },
       "history": {
         "title": "History",

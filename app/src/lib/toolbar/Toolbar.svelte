@@ -1,12 +1,14 @@
 <!--
   Toolbar — a small floating bar over the game, so areas and styles can be set
   without leaving it. Drag it by the handle on the left. Every button also has
-  a global shortcut (shown in its tooltip).
+  a global shortcut (shown in its tooltip). The "?" button opens a short guide
+  under the bar: one step per button, and pressing a button while it is open
+  explains that button instead of doing it.
 -->
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { listen } from "@tauri-apps/api/event";
-  import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
+  import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { keyHint, defaultShortcuts, type Shortcuts } from "../shortcuts";
   import { applyTheme, beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
@@ -29,7 +31,30 @@
     edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
     term: "M3 4.5h5a2 2 0 0 1 2 1.5a2 2 0 0 1 2-1.5h5v11h-5a2 2 0 0 0-2 1.5a2 2 0 0 0-2-1.5H3zM10 6v10.5", // open book: the glossary
     tuck: "M5 8l5 5 5-5M4 16.5h12", // arrow down into a line: put the bar away
+    help: "M10 2.5a7.5 7.5 0 1 0 0 15a7.5 7.5 0 0 0 0-15zM7.8 8a2.2 2.2 0 1 1 3.2 2c-.7.4-1 .9-1 1.6v.4M10 14.6v.1", // a question mark in a circle
   };
+
+  // The guide: one step per part of the bar, in its order (texts in toolbar.guide.<key>).
+  const GUIDE = ["intro", "move", "area", "edit", "style", "term", "pause", "hide", "open", "close"] as const;
+  type Part = (typeof GUIDE)[number];
+  const WIDTH = 440; // the window: the bar's width (see ingame.rs)
+  const BAR_HEIGHT = 84; // the bar and the label under it
+  const GUIDE_HEIGHT = 250; // the bar and the guide's box under it
+  let guide = $state<number | null>(null); // the step shown, or null when the guide is closed
+  const step = $derived(guide === null ? null : GUIDE[guide]);
+
+  // Opens the guide (the window grows down to hold its box) or closes it.
+  async function setGuide(open: boolean) {
+    guide = open ? 0 : null;
+    tip = "";
+    if (inTauri) await getCurrentWindow().setSize(new LogicalSize(WIDTH, open ? GUIDE_HEIGHT : BAR_HEIGHT));
+  }
+
+  // A button's own action, or, while the guide is open, its explanation.
+  function press(part: Part, run: () => unknown) {
+    if (guide !== null) guide = GUIDE.indexOf(part);
+    else run();
+  }
 
   // Moving the bar by its handle. Done by hand instead of the system drag
   // (data-tauri-drag-region): this window never takes the focus, and the
@@ -97,10 +122,11 @@
 
 <!-- Labels are drawn by the page, under the bar: the browser's own tooltips
      open behind the bar and the overlay, which both stay on top of everything -->
-{#snippet tool(label: string, icon: string, run: () => unknown, on = false)}
+{#snippet tool(part: Part, label: string, icon: string, run: () => unknown, on = false)}
   <button
     class:on
-    onclick={run}
+    class:lit={step === part}
+    onclick={() => press(part, run)}
     aria-label={label}
     onmouseenter={() => (tip = label)}
     onmouseleave={() => (tip = "")}
@@ -115,7 +141,8 @@
     <div
       class="grip"
       class:moving={!!moving}
-      onpointerdown={grab}
+      class:lit={step === "move"}
+      onpointerdown={(e) => (guide !== null ? (guide = GUIDE.indexOf("move")) : grab(e))}
       onpointermove={drag}
       onpointerup={drop}
       onpointercancel={drop}
@@ -129,32 +156,63 @@
       </svg>
     </div>
 
-    {@render tool(t("toolbar.area") + keyHint(keys.area), ICONS.area, () => beginSelection("area"))}
-    {@render tool(t("toolbar.edit") + keyHint(keys.edit), ICONS.edit, () => beginSelection("edit"))}
-    {@render tool(t("toolbar.style") + keyHint(keys.style), ICONS.style, () => beginSelection("style"))}
-    {@render tool(t("toolbar.term") + keyHint(keys.term), ICONS.term, () => beginSelection("term"))}
+    {@render tool("area", t("toolbar.area") + keyHint(keys.area), ICONS.area, () => beginSelection("area"))}
+    {@render tool("edit", t("toolbar.edit") + keyHint(keys.edit), ICONS.edit, () => beginSelection("edit"))}
+    {@render tool("style", t("toolbar.style") + keyHint(keys.style), ICONS.style, () => beginSelection("style"))}
+    {@render tool("term", t("toolbar.term") + keyHint(keys.term), ICONS.term, () => beginSelection("term"))}
     {@render tool(
+      "pause",
       (paused ? t("toolbar.resume") : t("toolbar.pause")) + keyHint(keys.pause),
       paused ? ICONS.play : ICONS.pause,
       pause,
       paused,
     )}
     {@render tool(
+      "hide",
       (hidden ? t("toolbar.show") : t("toolbar.hide")) + keyHint(keys.hide),
       hidden ? ICONS.hide : ICONS.show,
       hide,
       hidden,
     )}
     <span class="sep"></span>
-    {@render tool(t("toolbar.open"), ICONS.open, () => showMain())}
+    {@render tool("open", t("toolbar.open"), ICONS.open, () => showMain())}
     <span class="sep"></span>
     {@render tool(
+      "close",
       keys.toolbar ? t("toolbar.close", { keys: keys.toolbar }) : t("toolbar.closeNoKey"),
       ICONS.tuck,
       () => toggleToolbar(),
     )}
+    <button
+      class="help"
+      class:on={guide !== null}
+      onclick={() => setGuide(guide === null)}
+      aria-label={t("toolbar.help")}
+      onmouseenter={() => (tip = guide === null ? t("toolbar.help") : "")}
+      onmouseleave={() => (tip = "")}
+    >
+      <svg viewBox="0 0 20 20"><path d={ICONS.help} /></svg>
+    </button>
   </div>
-  {#if tip}<div class="tip">{tip}</div>{/if}
+  {#if step}
+    <!-- The guide: what the lit part of the bar does -->
+    <div class="guide" role="dialog" aria-label={t("toolbar.guide.title")}>
+      <p class="count">{t("toolbar.guide.count", { n: String(guide! + 1), total: String(GUIDE.length) })}</p>
+      <h2>{t(`toolbar.guide.${step}.title`)}</h2>
+      <p class="text">{t(`toolbar.guide.${step}.text`)}</p>
+      {#if step === "intro"}<p class="hint">{t("toolbar.guide.tapHint")}</p>{/if}
+      <div class="actions">
+        <button class="text-btn" onclick={() => setGuide(false)}>{t("toolbar.guide.close")}</button>
+        <span class="space"></span>
+        {#if guide! > 0}<button class="text-btn" onclick={() => (guide = guide! - 1)}>{t("toolbar.guide.back")}</button>{/if}
+        {#if guide! < GUIDE.length - 1}
+          <button class="text-btn primary" onclick={() => (guide = guide! + 1)}>{t("toolbar.guide.next")}</button>
+        {:else}
+          <button class="text-btn primary" onclick={() => setGuide(false)}>{t("toolbar.guide.close")}</button>
+        {/if}
+      </div>
+    </div>
+  {:else if tip}<div class="tip">{tip}</div>{/if}
 </div>
 
 <style>
@@ -250,6 +308,65 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* The part of the bar the guide is explaining */
+  .lit {
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+  .guide {
+    box-sizing: border-box;
+    width: 100%;
+    display: grid;
+    gap: 6px;
+    padding: 12px 14px 10px;
+    border: 1.5px solid color-mix(in srgb, var(--gold) 55%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--night-deep) 96%, transparent);
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .guide h2 {
+    margin: 0;
+    font-size: 15px;
+  }
+  .guide p {
+    margin: 0;
+  }
+  .guide .count {
+    color: var(--gold);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  .guide .text {
+    color: var(--ink-dim);
+    line-height: 1.45;
+  }
+  .guide .hint {
+    color: var(--gold);
+    font-size: 12px;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .space {
+    flex: 1;
+  }
+  /* The guide's buttons: words, not icons (the bar's button style is for icons) */
+  .text-btn {
+    width: auto;
+    height: 28px;
+    padding: 0 10px;
+    font: inherit;
+    font-size: 12.5px;
+  }
+  .text-btn.primary {
+    background: var(--gold);
+    color: var(--gold-ink);
   }
   .sep {
     width: 1px;
