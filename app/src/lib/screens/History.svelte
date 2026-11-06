@@ -7,6 +7,7 @@
   import { t } from "../i18n/index.svelte";
   import { app } from "../stores/app.svelte";
   import { session, type HistoryEntry } from "../stores/session.svelte";
+  import LinePair from "../components/LinePair.svelte";
 
   let onlyMissed = $state(false);
   let query = $state("");
@@ -61,21 +62,19 @@
 
     <ol class="lines">
       {#each shown as h (h.frameId)}
-        <li class:missed={h.missed}>
+        <li>
           <div class="meta">
             <span class="time">{time(h.at)}</span>
             <span class="area">{areaName(h)}</span>
             {#if h.missed}<span class="tag missed-tag">{t("history.missed")}</span>{/if}
             {#if h.quick && h.done}<span class="tag">{t("history.quick")}</span>{/if}
           </div>
-          {#if h.failed}
-            <p class="text failed">{t("history.failed")}</p>
-          {:else if h.translation}
-            <p class="text" class:streaming={!h.done}>{h.translation}</p>
-          {:else}
-            <p class="text pending">…</p>
-          {/if}
-          <p class="original">{h.original}</p>
+          <LinePair
+            original={h.original}
+            translation={h.translation}
+            streaming={!h.done && !!h.translation}
+            failed={h.failed ? t("history.failed") : ""}
+          />
         </li>
       {:else}
         <li class="empty-filter">{t("history.nothingMatches")}</li>
@@ -134,19 +133,11 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 8px;
+    gap: 16px;
   }
   .lines li {
     display: grid;
-    gap: 4px;
-    padding: 12px 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-control);
-    background: var(--night-deep);
-  }
-  /* Missed lines: the reason this screen exists, so they get the accent */
-  .lines li.missed {
-    border-left: 3px solid var(--gold);
+    gap: 6px;
   }
   .meta {
     display: flex;
@@ -168,29 +159,6 @@
   .missed-tag {
     border-color: var(--gold);
     color: var(--gold);
-  }
-  .text {
-    margin: 0;
-    font-size: var(--text-md, 1.05rem);
-    white-space: pre-line;
-  }
-  .streaming::after {
-    content: "▍";
-    margin-left: 2px;
-    color: var(--gold);
-  }
-  .pending {
-    color: var(--ink-faint);
-  }
-  .failed {
-    color: var(--danger);
-    font-size: var(--text-sm);
-  }
-  .original {
-    margin: 0;
-    color: var(--ink-dim);
-    font-size: var(--text-sm);
-    white-space: pre-line;
   }
   .empty,
   .empty-filter {

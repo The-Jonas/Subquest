@@ -7,6 +7,7 @@
 <script lang="ts">
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
+  import LinePair from "../components/LinePair.svelte";
   import { t } from "../i18n/index.svelte";
   import { app } from "../stores/app.svelte";
   import { session, startTranslating, stopTranslating, applyAreas } from "../stores/session.svelte";
@@ -219,18 +220,16 @@
   <DialogueBox line={question}>
     {#if showFeed}
       <ol class="feed" aria-live="polite">
-        {#each session.lines as l (l.frameId)}
+        {#each session.lines as l, i (l.frameId)}
           {@const tr = session.translations[l.frameId]}
           <li>
-            {#if tr?.errorKind}
-              <p class="text">{l.text}</p>
-              <p class="tr-error">{t(`errors.${tr.errorKind}`)}</p>
-            {:else if tr?.text}
-              <p class="text" class:streaming={!tr.done}>{tr.text}</p>
-              <p class="original">{l.text}</p>
-            {:else}
-              <p class="text pending">{l.text}</p>
-            {/if}
+            <LinePair
+              original={l.text}
+              translation={tr?.text ?? ""}
+              streaming={!!tr && !tr.done}
+              failed={tr?.errorKind ? t(`errors.${tr.errorKind}`) : ""}
+              large={i === 0}
+            />
             <p class="timing">{timing(l, tr)}</p>
           </li>
         {:else}
@@ -632,36 +631,10 @@
   }
   .feed li {
     display: grid;
-    gap: 2px;
+    gap: 6px;
   }
   .feed li:not(:first-child) {
     opacity: 0.55;
-  }
-  .feed .text {
-    white-space: pre-line; /* keeps the line breaks the OCR found */
-  }
-  .feed li:first-child .text {
-    font-size: var(--text-lg);
-  }
-  /* Original under the translation, quieter: it's there to check the OCR */
-  .original {
-    color: var(--ink-dim);
-    font-size: var(--text-sm);
-    white-space: pre-line;
-  }
-  /* Untranslated line waiting for the service */
-  .pending {
-    color: var(--ink-dim);
-  }
-  /* While the translation is still arriving, a gold caret follows the text */
-  .streaming::after {
-    content: "▍";
-    margin-left: 2px;
-    color: var(--gold);
-  }
-  .tr-error {
-    color: var(--danger);
-    font-size: var(--text-sm);
   }
   .timing {
     color: var(--ink-faint);
