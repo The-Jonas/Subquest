@@ -9,7 +9,7 @@ namespace {
 
 constexpr int kBorder = 3;               // border ring thickness, in pixels
 constexpr float kInkThreshold = 0.5f;    // a pixel is "ink" if at least this far from the background, relative to the farthest one
-constexpr float kMinContrast = 0.25f;    // below this luminance gap, fall back to black/white
+constexpr int kMinGap = 40;              // below this RGB distance text and background can't be told apart: black/white
 
 // Packs channels into 0xRRGGBB.
 uint32_t pack(uint32_t r, uint32_t g, uint32_t b) { return (r << 16) | (g << 8) | b; }
@@ -134,9 +134,12 @@ static uint32_t ink_color(const Frame& frame, const std::vector<Rect>& areas, ui
     if (count == 0) return fallback;
     const uint32_t ink = pack(uint32_t(r / count), uint32_t(g / count), uint32_t(b / count));
 
-    // Safety net: if text and background are too alike, pick whichever of
-    // white/black reads better on that background.
-    if (std::fabs(luminance(ink) - luminance(background)) < kMinContrast) return fallback;
+    // Safety net: only when text and background really can't be told apart,
+    // pick whichever of white/black reads better on that background. A dim
+    // color is still the game's (Hades' purple flavor text on a dark purple
+    // scroll is only 0.14 apart in luminance): replacing it drew the
+    // translation in white and left the original under the cleaned picture.
+    if (distance2(ink, background) < kMinGap * kMinGap) return fallback;
     return ink;
 }
 

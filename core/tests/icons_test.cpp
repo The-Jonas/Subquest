@@ -93,6 +93,49 @@ int main() {
         check(lines[0].text == "{1} go" && lines[1].text == "{2} back", "pictures are numbered across the reading");
     }
     {
+        // Hades II: "In 9 [clock], grow": a dark green clock ringed in light
+        // green, read as "C". Its body is nearly as dark as the background, so
+        // only its colorfulness tells it from a white letter.
+        Frame f = blank();
+        const Rect in{20, 20, 24, 16}, nine{52, 20, 10, 16}, c{68, 17, 22, 22}, grow{98, 20, 50, 16};
+        letters(f, in), letters(f, nine), letters(f, grow);
+        paint(f, c, 0x75D39F);
+        paint(f, {c.x + 2, c.y + 2, c.width - 4, c.height - 4}, 0x3D5342);
+        paint(f, {78, 21, 2, 9}, 0x75D39F); // a hand
+        std::vector<OcrLine> lines{make_line({{"In", in}, {"9", nine}, {"C", c}, {"grow", grow}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && lines[0].text == "In 9 {1} grow", "a dark colored clock read as a letter is a picture");
+    }
+    {
+        // The same clock as Hades II draws it on a dark scroll: a light green rim in
+        // separate arcs around a face as dark as the background. The picture
+        // is the whole clock, not its biggest arc.
+        Frame f = blank();
+        const Rect in{20, 20, 24, 16}, c{68, 18, 20, 20}, grow{98, 20, 50, 16};
+        letters(f, in), letters(f, grow);
+        paint(f, {70, 34, 16, 3}, 0x75D39F);  // bottom arc (the biggest)
+        paint(f, {70, 19, 6, 3}, 0x75D39F);   // top-left arc
+        paint(f, {80, 19, 6, 3}, 0x75D39F);   // top-right arc
+        paint(f, {68, 23, 3, 9}, 0x75D39F);   // left side
+        paint(f, {77, 24, 2, 8}, 0x75D39F); // the green hand
+        std::vector<OcrLine> lines{make_line({{"In", in}, {"C", c}, {"grow", grow}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && icons[0].y <= 19 && icons[0].y + icons[0].height >= 37,
+              "the whole clock is the picture, top arcs included");
+    }
+    {
+        // Hades II: "Found using the [pickaxe] Crescent Pick": a pickaxe drawn
+        // in the text's own light colors, alone in the gap OCR left.
+        Frame f = blank();
+        const Rect the{20, 20, 30, 16}, crescent{90, 20, 70, 16};
+        letters(f, the), letters(f, crescent);
+        paint(f, {62, 18, 16, 3}, TEXT); // the head
+        paint(f, {69, 18, 3, 20}, TEXT); // the handle
+        std::vector<OcrLine> lines{make_line({{"the", the}, {"Crescent", crescent}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && lines[0].text == "the {1} Crescent", "a picture in the text's colors alone in a gap is found");
+    }
+    {
         // Plain text, with normal spaces: nothing changes.
         Frame f = blank();
         const Rect hello{20, 20, 50, 16}, there{78, 20, 50, 16};

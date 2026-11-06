@@ -43,7 +43,9 @@ void fill_holes(std::vector<uint8_t>& bgra, int32_t width, int32_t height, const
 // icons.h: the overlay draws them again where the translation puts them): the
 // whole frame when `whole` (a marked area: the translation may be laid out
 // anywhere in it), otherwise just around the lines (the whole window: only
-// what the lines cover is needed). False when there is nothing to clean.
+// what the lines cover is needed). Its alpha is opaque only where the text
+// was (fading out around it), see-through elsewhere. False when there is
+// nothing to clean.
 bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool whole, CleanImage& out,
                  const std::vector<Rect>& pictures = {});
 

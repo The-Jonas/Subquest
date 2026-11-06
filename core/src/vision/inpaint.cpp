@@ -241,7 +241,21 @@ bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool who
         const uint8_t* src = frame.bgra.data() + size_t(region.y + y) * frame.stride + size_t(region.x) * 4;
         std::copy(src, src + size_t(region.width) * 4, out.bgra.data() + size_t(y) * region.width * 4);
     }
-    fill_holes(out.bgra, region.width, region.height, text_mask(frame, region, lines, pictures));
+    const std::vector<uint8_t> mask = text_mask(frame, region, lines, pictures);
+    fill_holes(out.bgra, region.width, region.height, mask);
+
+    // Only the filled holes are kept, fading out over a few pixels; the rest is
+    // see-through, so the overlay shows the live game there (an animated
+    // scene behind a lyric no longer freezes in a box around it).
+    int32_t tallest = 0;
+    for (const OcrLine& line : lines) tallest = std::max(tallest, line.box.height);
+    const int32_t feather = std::max(1, tallest / 10);
+    std::vector<uint8_t> near = mask, far;
+    dilate(near, region.width, region.height, feather);
+    far = near;
+    dilate(far, region.width, region.height, feather);
+    for (size_t i = 0; i < mask.size(); ++i)
+        out.bgra[i * 4 + 3] = mask[i] ? 255 : near[i] ? 170 : far[i] ? 85 : 0;
     return true;
 }
 

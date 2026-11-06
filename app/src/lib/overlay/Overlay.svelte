@@ -285,7 +285,10 @@
     const kept: T[] = [];
     for (const item of [...items].sort((a, b) => b.frame - a.frame)) {
       const c = item.patch.cover;
-      const clash = kept.some(({ patch: { cover: k } }) => {
+      // Only against another reading's patches: one reading's own paragraphs
+      // may touch (a paragraph pushed down keeps its cover over its old place).
+      const clash = kept.some(({ patch: { cover: k }, frame }) => {
+        if (frame === item.frame) return false;
         const w = Math.min(c.left + c.width, k.left + k.width) - Math.max(c.left, k.left);
         const h = Math.min(c.top + c.height, k.top + k.height) - Math.max(c.top, k.top);
         const smaller = Math.min(c.width * c.height, k.width * k.height);
@@ -603,7 +606,11 @@
       style:background-size={bg ? `${bg.width}px ${bg.height}px` : null}
       style:background-position={bg ? `${bg.left - (p.cover.left - pad)}px ${bg.top - (p.cover.top - pad)}px` : null}
     ></div>
-    <!-- ...and the translation takes its place: same size, baseline and alignment -->
+  {/each}
+  <!-- ...and the translations take their place: same size, baseline and
+       alignment. Every cover goes first, so no line's cover hides the line
+       above it (a paragraph pushed down, tight line spacing). -->
+  {#each patches as { look, patch: p, scale, icons }, i (i)}
     <div
       class="line"
       class:upper={look.caps === "upper"}

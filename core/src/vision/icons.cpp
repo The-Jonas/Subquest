@@ -20,6 +20,9 @@ constexpr float OTHER_INK = 0.5f;    // short junk whose ink is mostly another c
 constexpr float FILLED_KEY = 0.6f;   // short junk whose box is at least this full is a key's face (letters fill 20-40%)
 constexpr float EDGE_REACH = 3.0f;   // pictures before the first word / after the last: within this many line heights
 constexpr float SMALLEST = 0.4f;     // a picture is at least this share of the line height, both ways
+constexpr float GAP_TALL = 0.8f;     // a drawing alone in a wide gap this tall (share of the line height) is a picture
+constexpr float ICON_SPAN = 1.4f;    // pieces of one picture fit in this many line heights, both ways
+constexpr int VIVID = 30;            // colorfulness above the text's and background's that only a picture has
 
 // RGB distance between a BGRA pixel and a 0xRRGGBB color.
 float distance(const uint8_t* px, uint32_t rgb) {
@@ -46,6 +49,23 @@ float off_mix(const uint8_t* px, uint32_t a, uint32_t b) {
     for (int i = 0; i < 3; ++i) d2 += (p[i] - (ca[i] + (cb[i] - ca[i]) * t)) * (p[i] - (ca[i] + (cb[i] - ca[i]) * t));
     return std::sqrt(d2);
 }
+
+// How colorful a 0xRRGGBB color is: its strongest channel minus its weakest.
+int chroma(uint32_t rgb) {
+    const int r = int((rgb >> 16) & 0xFF), g = int((rgb >> 8) & 0xFF), b = int(rgb & 0xFF);
+    return std::max({r, g, b}) - std::min({r, g, b});
+}
+
+// Whether a BGRA pixel is more colorful than any mix of the text and the
+// background can be (a mix is never more colorful than the more colorful of
+// the two): the green of a clock on white-on-black text, even when that green
+// is dark enough to pass for background.
+bool vivid(const uint8_t* px, int limit) {
+    return std::max({px[0], px[1], px[2]}) - std::min({px[0], px[1], px[2]}) > limit;
+}
+
+// Colorfulness a pixel must pass to be vivid, for a line's two colors.
+int vivid_limit(uint32_t text, uint32_t background) { return std::max(chroma(text), chroma(background)) + VIVID; }
 
 // Box clipped to the frame.
 Rect clipped(Rect r, const Frame& frame) {
@@ -77,6 +97,7 @@ Look look_at(const Frame& frame, Rect box, uint32_t text, uint32_t background) {
     // A letter's soft edge sits right on the text/background mix; a color of
     // its own (a green button on a gray line) stands well off it.
     const float off = std::max(30.0f, contrast * 0.15f);
+    const int colorful = vivid_limit(text, background);
     size_t others = 0;
     size_t drawn = 0;
     int32_t x0 = INT32_MAX, y0 = INT32_MAX, x1 = INT32_MIN, y1 = INT32_MIN;
@@ -84,14 +105,14 @@ Look look_at(const Frame& frame, Rect box, uint32_t text, uint32_t background) {
         const uint8_t* row = frame.bgra.data() + size_t(y) * frame.stride;
         for (int32_t x = box.x; x < box.x + box.width; ++x) {
             const uint8_t* px = row + size_t(x) * 4;
-            const float to_bg = distance(px, background);
-            if (to_bg < close) continue; // background
+            const bool lively = vivid(px, colorful);
+            if (distance(px, background) < close && !lively) continue; // background
             ++drawn;
             x0 = std::min(x0, x);
             y0 = std::min(y0, y);
             x1 = std::max(x1, x + 1);
             y1 = std::max(y1, y + 1);
-            if (distance(px, text) >= close && off_mix(px, text, background) >= off) ++others;
+            if (lively || (distance(px, text) >= close && off_mix(px, text, background) >= off)) ++others;
         }
     }
     out.other = float(others) / float(size_t(box.width) * box.height);
@@ -153,7 +174,7 @@ struct Drawing {
 };
 
 Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, bool own_only = false,
-                         bool largest_only = false) {
+                         bool largest_only = false, bool vivid_ink = false, bool gather = false) {
     Drawing out;
     area = clipped(area, frame);
     if (area.width < 3 || area.height < 3) return out;
@@ -162,14 +183,17 @@ Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, boo
     const float contrast = std::max(60.0f, distance(t, line.background_rgb));
     const float close = contrast * 0.33f;
     const float off = std::max(30.0f, contrast * 0.15f);
+    const int colorful = vivid_limit(line.text_rgb, line.background_rgb);
     const int32_t w = area.width, h = area.height;
     std::vector<uint8_t> ink(size_t(w) * h, 0); // 1 = drawn, 2 = drawn in a color of its own
     for (int32_t y = 0; y < h; ++y) {
         const uint8_t* row = frame.bgra.data() + size_t(area.y + y) * frame.stride;
         for (int32_t x = 0; x < w; ++x) {
             const uint8_t* px = row + size_t(area.x + x) * 4;
-            if (distance(px, line.background_rgb) < close) continue;
-            const bool own = distance(px, line.text_rgb) >= close && off_mix(px, line.text_rgb, line.background_rgb) >= off;
+            const bool lively = vivid_ink && vivid(px, colorful);
+            if (distance(px, line.background_rgb) < close && !lively) continue;
+            const bool own =
+                lively || (distance(px, line.text_rgb) >= close && off_mix(px, line.text_rgb, line.background_rgb) >= off);
             if (own_only && !own) continue; // looking for something not drawn in the text's color
             ink[size_t(y) * w + x] = own ? 2 : 1;
         }
@@ -180,7 +204,12 @@ Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, boo
     std::vector<uint8_t> seen(ink.size(), 0);
     std::vector<int32_t> stack;
     int32_t x0 = INT32_MAX, y0 = INT32_MAX, x1 = INT32_MIN, y1 = INT32_MIN;
-    size_t kept = 0, kept_own = 0, biggest = 0;
+    size_t kept = 0, kept_own = 0;
+    struct Piece {
+        int32_t x0, y0, x1, y1;
+        size_t count, own;
+    };
+    std::vector<Piece> pieces;
     for (int32_t start = 0; start < w * h; ++start) {
         if (!ink[start] || seen[start]) continue;
         // One piece: every drawn pixel connected to this one (8 neighbors).
@@ -212,14 +241,42 @@ Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, boo
         if (touches || speck || middle < top || middle > bottom) continue;
         ++out.pieces;
         if (largest_only) {
-            if (count <= biggest) continue;
-            biggest = count; // only the biggest piece: a key's face, not letters boxed with it
-            x0 = px0, y0 = py0, x1 = px1, y1 = py1, kept = count, kept_own = own;
+            pieces.push_back({px0, py0, px1, py1, count, own});
             continue;
         }
         x0 = std::min(x0, px0), y0 = std::min(y0, py0), x1 = std::max(x1, px1), y1 = std::max(y1, py1);
         kept += count;
         kept_own += own;
+    }
+    if (largest_only && !pieces.empty()) {
+        // The biggest piece (a key's face, not the letters boxed with it), with
+        // the pieces right around it that still make one picture: a clock's
+        // light rim comes in several arcs around its dark face. A piece joins
+        // when it is close and the picture stays about icon-sized (a key with
+        // the "S" beside it would get too wide).
+        std::sort(pieces.begin(), pieces.end(), [](const Piece& a, const Piece& b) { return a.count > b.count; });
+        const Piece& big = pieces.front();
+        x0 = big.x0, y0 = big.y0, x1 = big.x1, y1 = big.y1, kept = big.count, kept_own = big.own;
+        const int32_t near = std::max(2, letters / 4);
+        const int32_t widest = std::max(x1 - x0 + 1, int32_t(letters * ICON_SPAN));
+        const int32_t tallest = std::max(y1 - y0 + 1, int32_t(letters * ICON_SPAN));
+        std::vector<bool> used(pieces.size(), false);
+        used[0] = true;
+        for (bool grew = gather; grew;) { // without `gather`, the biggest piece alone
+            grew = false;
+            for (size_t k = 1; k < pieces.size(); ++k) {
+                const Piece& p = pieces[k];
+                if (used[k]) continue;
+                const bool close_by = p.x0 <= x1 + near && p.x1 >= x0 - near && p.y0 <= y1 + near && p.y1 >= y0 - near;
+                const int32_t nx0 = std::min(x0, p.x0), ny0 = std::min(y0, p.y0);
+                const int32_t nx1 = std::max(x1, p.x1), ny1 = std::max(y1, p.y1);
+                if (!close_by || nx1 - nx0 + 1 > widest || ny1 - ny0 + 1 > tallest) continue;
+                x0 = nx0, y0 = ny0, x1 = nx1, y1 = ny1;
+                kept += p.count;
+                kept_own += p.own;
+                used[k] = grew = true;
+            }
+        }
     }
     if (kept == 0) return out;
     out.box = {area.x + x0, area.y + y0, x1 - x0 + 1, y1 - y0 + 1};
@@ -240,7 +297,7 @@ Rect edge_picture(const Frame& frame, const OcrLine& line, const std::vector<Ocr
     const Rect area = clipped({x, line.box.y - reach_y, reach_x - inset, line.box.height + 2 * reach_y}, frame);
     if (area.empty()) return {};
     // The biggest piece only: a note, not the scenery specks beside it.
-    const Rect d = isolated_drawing(frame, area, line, false, true).box;
+    const Rect d = isolated_drawing(frame, area, line, false, true, false, true).box;
     if (d.empty() || d.width < height * SMALLEST || d.height < height * SMALLEST) return {};
     // Nor part of another line: its letters or its own pictures (the line's
     // box may have been cut to its letters already).
@@ -333,9 +390,14 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
                     const int32_t inset = std::max(1, line_height / 6);
                     const int32_t reach = int32_t(line_height * TALLER);
                     const Rect area{gap_x + inset, line.box.y - reach, gap - 2 * inset, line.box.height + 2 * reach};
-                    const Drawing seen = isolated_drawing(frame, area, line);
+                    const Drawing seen = isolated_drawing(frame, area, line, false, false, true);
                     const bool big = seen.box.width >= line_height * SMALLEST && seen.box.height >= line_height * SMALLEST;
-                    if (!seen.box.empty() && big && seen.ink_other >= OTHER_GAP_INK) {
+                    // OCR's words hold every letter, so a drawing as tall as
+                    // the letters standing alone in a wide gap is a picture
+                    // even in the text's own colors (Hades' gray pickaxe in a
+                    // line of white and purple words).
+                    const bool letter_tall = seen.box.height >= line_height * GAP_TALL;
+                    if (!seen.box.empty() && big && (seen.ink_other >= OTHER_GAP_INK || letter_tall)) {
                         words.push_back({icon_placeholder(icons.size()), seen.box});
                         icons.push_back(seen.box);
                         changed = true;
@@ -361,7 +423,7 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
                 const int32_t inset = std::max(1, line_height / 6);
                 const Drawing whole = isolated_drawing(
                     frame, {w.box.x - inset, w.box.y - reach, w.box.width + 2 * inset, w.box.height + 2 * reach}, line,
-                    false, true);
+                    false, true, false, true);
                 const Rect box = !whole.box.empty() ? whole.box : !seen.drawn.empty() ? seen.drawn : w.box;
                 // A bullet ("·") or a dot is too small to be a picture: it stays text.
                 const bool big = box.width >= line_height * SMALLEST && box.height >= line_height * SMALLEST;

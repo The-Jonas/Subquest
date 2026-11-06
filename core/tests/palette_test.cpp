@@ -44,6 +44,9 @@ int main() {
     check(c.background == 0x101418, "background comes from the border");
     check(c.text == 0x3FA34D, "text color is the ink inside the line");
 
+    Frame dim = make_box(0x19182A, 0x493851, line); // Hades II flavor text: dim purple on dark purple
+    check(sample_colors(dim, {{"x", line}}).text == 0x493851, "a dim but distinct color is kept");
+
     Frame same = make_box(0x808080, 0x828282, line);
     TextColors low = sample_colors(same, {{"x", line}});
     check(low.text == 0xFFFFFF || low.text == 0x000000, "low contrast falls back to black or white");

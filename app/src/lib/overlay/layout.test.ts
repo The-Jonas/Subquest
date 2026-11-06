@@ -328,4 +328,43 @@ describe("item descriptions (Hades II)", () => {
     expect(bullet.textTop).toBeGreaterThan(110); // stays on the bullet's own line, not glued to the description
     expect(patches.filter((p) => p.text.includes("Oceanus")).length).toBe(1);
   });
+
+  it("keeps a title on one line, a little smaller, instead of breaking it", () => {
+    const title = [line("MANDRAKE ROOT", [40, 10, 300, 30]), line("Mostly used with incantations", [40, 60, 400, 20])];
+    // "RAIZ DE MANDRÁGORA" at the title's size: 18 x 0.5 x 33 = 300 px... room is 640 - 40 = 600, so make it wider:
+    const translation = "RAIZ DE MANDRÁGORA DA ENCRUZILHADA ANTIGA\nPrincipalmente usado com encantamentos";
+    const patches = layoutArea(title, translation, [20, 0, 640, 300], screen, screen, () => measure);
+    expect(patches[0].text).toBe("RAIZ DE MANDRÁGORA DA ENCRUZILHADA ANTIGA");
+    expect(patches[0].fontPx).toBeLessThan(40);
+  });
+
+  it("pushes the next paragraph down when one grows", () => {
+    const two = [
+      line("Mostly used with incantations", [40, 60, 400, 20]),
+      line("involving power and protection.", [40, 86, 420, 20]),
+      line("· Grown in the Crossroads using", [40, 140, 420, 20]),
+      line("Mandrake Seeds", [40, 166, 200, 20]),
+    ];
+    const translation =
+      "Principalmente usado com encantamentos que envolvem\npoder e proteção, e também com outras coisas bem longas que não cabem\n· Cultivado na Encruzilhada usando\nSementes de Mandrágora";
+    const patches = layoutArea(two, translation, [20, 0, 500, 400], screen, screen, () => measure);
+    const body = patches.filter((p) => !p.text.startsWith("·") && !p.text.startsWith("Sementes"));
+    const bullet = patches.find((p) => p.text.startsWith("·"))!;
+    const bodyBottom = Math.max(...body.map((p) => p.textTop + p.lineHeight));
+    expect(bullet.textTop).toBeGreaterThan(bodyBottom); // below the grown paragraph, not over it
+  });
+
+  it("keeps a lone body line left aligned with the title above it, even in the middle", () => {
+    const item = [
+      line("CATTAIL SEEDS", [133, 135, 277, 30]),
+      line("In 9 {1}, grow into spindly plants.", [133, 200, 407, 24]),
+      line("· Found using the Silver Spade on", [133, 338, 405, 22]),
+      line("Digging Spots in Oceanus", [133, 365, 300, 22]),
+    ];
+    const translation = "SEMENTES DE TABOA\nEm 9 {1}, crescem em plantas esguias e compridas.\n· Encontradas usando a Pá de Prata nos\nPontos de Escavação em Oceanus";
+    const patches = layoutArea(item, translation, [0, 80, 685, 700], screen, screen, () => measure);
+    const body = patches.find((p) => p.text.startsWith("Em 9"))!;
+    expect(body.textLeft).toBe(133);
+  });
 });
+

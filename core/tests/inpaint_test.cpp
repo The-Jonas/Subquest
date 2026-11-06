@@ -58,6 +58,11 @@ int main() {
 
     CleanImage clean;
     check(remove_text(frame, {line}, true, clean), "a frame with a line can be cleaned");
+    if (!clean.bgra.empty()) {
+        const auto alpha = [&](int x, int y) { return clean.bgra[(size_t(y - clean.rect.y) * clean.rect.width + (x - clean.rect.x)) * 4 + 3]; };
+        check(alpha(24, 30) == 255, "where the letters were, the clean picture is opaque");
+        check(alpha(100, 5) == 0, "away from them it is see-through (the live game shows)");
+    }
     check(clean.rect.x == 0 && clean.rect.width == 200, "a marked area is cleaned whole");
 
     // Behind the letters: the gradient again, within a few levels.

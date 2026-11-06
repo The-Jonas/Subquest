@@ -42,6 +42,7 @@ export interface Patch {
 }
 
 const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original size, not less
+const TITLE_SHRINK = 0.75; // a lone line shrinks this far to stay on one line before it breaks
 const FALLBACK_INK = 0.72; // ink height / font size when the original can't be measured
 const EDGE = 0.98; // keep 2% of the room free at the screen edges
 
@@ -251,6 +252,27 @@ export function loneAlign(rect: Region, area: Region): Align {
   return Math.abs(middle - areaMiddle) <= area[2] * CENTERED ? "center" : "left";
 }
 
+// Alignment of a line that is a paragraph by itself, inside a marked area:
+// the other lines tell first. Sharing its left edge with them (an item's
+// title, its description and its bullet all start at the same x) it is left
+// aligned, even when it happens to sit in the middle; sharing its middle (a
+// centered menu) it is centered. Only alone does its place decide (loneAlign).
+function aloneAlign(index: number, rects: Region[], area: Region): Align {
+  const r = rects[index];
+  const near = Math.max(4, r[3] * 0.5);
+  const middle = r[0] + r[2] / 2;
+  let lefts = 0;
+  let middles = 0;
+  rects.forEach((o, k) => {
+    if (k === index) return;
+    if (Math.abs(o[0] - r[0]) <= near) lefts++;
+    if (Math.abs(o[0] + o[2] / 2 - middle) <= near) middles++;
+  });
+  if (lefts > middles) return "left";
+  if (middles > lefts) return "center";
+  return loneAlign(r, area);
+}
+
 const SIZE_JUMP = 1.3; // letters this much taller (or shorter) than the line before: a title
 const SHORT_LINE = 0.7; // a line this much narrower than the widest one can be a paragraph's end
 const WIDE_STEP = 1.45; // a gap between lines this much wider than the group's tightest: a new paragraph
@@ -355,6 +377,9 @@ export function layoutArea(
 
   const [ax, ay, aw, ah] = area.map((v) => v * scale);
   const patches: Patch[] = [];
+  // Paragraphs already placed, to push the next ones down when one grew
+  // (Portuguese runs longer): the gap the game left under it is kept.
+  const placed: { left: number; right: number; bottom0: number; bottom: number }[] = [];
   for (const [g, group] of groups.entries()) {
     const own = matched ? group.map((i) => parts[i]) : shared ? shared[g] : parts;
     const text = own.join(" ").replace(/\s+/g, " ").trim();
@@ -366,6 +391,25 @@ export function layoutArea(
     const top = Math.min(...boxes.map((b) => b[1]));
     const right0 = Math.max(...boxes.map((b) => b[0] + b[2]));
     const bottom0 = Math.max(...boxes.map((b) => b[1] + b[3]));
+    // How far down this paragraph goes: as much as any paragraph above it
+    // (side by side with it) grew past its own bottom.
+    const shift = Math.max(
+      0,
+      ...placed.filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right).map((p) => p.bottom - p.bottom0),
+    );
+    const from = patches.length;
+    const settle = () => {
+      const mine = patches.slice(from);
+      let bottom = bottom0;
+      for (const p of mine) {
+        bottom = Math.max(bottom, p.cover.top + p.cover.height);
+        if (!shift) continue;
+        // Moved down: the cover still hides the original above, and reaches the new place.
+        p.textTop += shift;
+        if (p.cover.height > 0) p.cover.height += shift;
+      }
+      placed.push({ left, right: right0, bottom0, bottom: bottom + shift });
+    };
 
     // Size: each original line, in this font, as tall as its OCR box; the
     // paragraph takes the usual one (a line of capitals would skew it).
@@ -391,7 +435,7 @@ export function layoutArea(
     // Only a left-aligned paragraph that would spill out is written again.
     // A lone line in the middle of the area is a label (a menu button, a
     // title): it stays on one line, centered where it was, inside the area.
-    const align = group.length === 1 ? loneAlign(rects[group[0]], area) : detectAlign(group.map((i) => rects[i]), "left");
+    const align = group.length === 1 ? aloneAlign(group[0], rects, area) : detectAlign(group.map((i) => rects[i]), "left");
     const eachFits =
       matched && group.every((i) => measure(parts[i], base).width <= roomRight - rects[i][0] * scale);
     if (align !== "left" || eachFits) {
@@ -399,6 +443,7 @@ export function layoutArea(
         ? group.map((i) => ({ line: lines[i], text: parts[i] }))
         : pairLines(group.map((i) => lines[i]), text);
       patches.push(...layout(pairs, frame, view, measureFor, align, { left: ax, right: ax + aw }));
+      settle();
       continue;
     }
 
@@ -412,8 +457,17 @@ export function layoutArea(
     const fits = (px: number, count: number) => {
       const { baseline } = firstInk(px);
       const m = measure("Hg", px);
-      return baseline + (count - 1) * pitch * (px / base) + m.inkDescent <= bottomLimit;
+      return baseline + shift + (count - 1) * pitch * (px / base) + m.inkDescent <= bottomLimit;
     };
+    // A lone line (a title) stays one line, a little smaller, rather than
+    // breaking in two ("RAIZ DE / MANDRÁGORA").
+    if (group.length === 1 && wrapped.length > 1) {
+      const one = (base * width) / Math.max(1, measure(text, base).width);
+      if (one >= base * TITLE_SHRINK) {
+        fontPx = one;
+        wrapped = [text];
+      }
+    }
     while (fontPx > base * MIN_SHRINK && !fits(fontPx, wrapped.length)) {
       fontPx *= 0.95;
       wrapped = wrap(text, width, fontPx, measure);
@@ -448,6 +502,7 @@ export function layoutArea(
         weight: first.weight ?? null,
       });
     });
+    settle();
   }
   return patches;
 }

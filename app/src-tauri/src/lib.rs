@@ -158,9 +158,10 @@ unsafe fn clean_background(e: &core_ffi::SqOcrEvent) -> Option<CleanBackground> 
     }
     let bgra = std::slice::from_raw_parts(e.clean_bgra, (r.width * r.height * 4) as usize);
     let mut pixels = bgra.to_vec();
+    // BGRA to RGBA. The alpha is the core's: opaque where the text was taken
+    // out, see-through elsewhere (the live game shows there).
     for px in pixels.chunks_exact_mut(4) {
         px.swap(0, 2);
-        px[3] = 255; // a window capture's alpha means nothing: the picture is opaque
     }
     let png = styles::Rgba { pixels, width: r.width, height: r.height }.png()?;
     Some(CleanBackground {
