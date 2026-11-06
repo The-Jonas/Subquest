@@ -129,8 +129,11 @@ export function layout(
   view: { width: number; height: number },
   measureFor: (line: OcrLine) => Measure,
   single: Align = "left",
+  bounds?: { left: number; right: number }, // px the text must stay within (default: the whole view)
 ): Patch[] {
   const scale = view.height / frame.height; // CSS px per capture px
+  const minX = bounds?.left ?? 0;
+  const maxX = bounds?.right ?? view.width;
   const rects = pairs.map((p) => p.line.rect);
   const align: Align[] = [];
   for (const group of blocks(rects)) {
@@ -164,10 +167,10 @@ export function layout(
     const center = x + w / 2;
     const room =
       align[i] === "left"
-        ? view.width - x
+        ? maxX - x
         : align[i] === "right"
-          ? x + w
-          : 2 * Math.min(center, view.width - center);
+          ? x + w - minX
+          : 2 * Math.min(center - minX, maxX - center);
     const width = measure(text, base).width;
     const fontPx = width > room * EDGE ? Math.max(base * MIN_SHRINK, (base * room * EDGE) / width) : base;
     const m = measure(text, fontPx);
@@ -176,7 +179,7 @@ export function layout(
     // Ink centered where the original's was: same baseline when not shrunk.
     const baseline = y + h / 2 + (o.inkAscent - o.inkDescent) / 2;
     let left = align[i] === "left" ? x : align[i] === "right" ? x + w - m.width : center - m.width / 2;
-    left = Math.min(Math.max(0, left), Math.max(0, view.width - m.width));
+    left = Math.min(Math.max(minX, left), Math.max(minX, maxX - m.width));
 
     // The cover hides the original and sits behind the new text, whichever is bigger.
     const coverLeft = Math.min(x, left);
@@ -223,6 +226,16 @@ function median(values: number[]): number {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)];
+}
+
+const CENTERED = 0.08; // a lone line whose middle is this close to the area's (share of its width) is centered
+
+// Alignment of a line that stands alone in a marked area: centered when its
+// middle is the area's (a menu button, a title), otherwise left (dialogue).
+export function loneAlign(rect: Region, area: Region): Align {
+  const middle = rect[0] + rect[2] / 2;
+  const areaMiddle = area[0] + area[2] / 2;
+  return Math.abs(middle - areaMiddle) <= area[2] * CENTERED ? "center" : "left";
 }
 
 const SIZE_JUMP = 1.3; // letters this much taller (or shorter) than the line before: a title
@@ -320,14 +333,16 @@ export function layoutArea(
     // Lines kept as the game broke them when that already fits: a menu
     // (centered words), or translated lines that each fit inside the area.
     // Only a left-aligned paragraph that would spill out is written again.
-    const align = detectAlign(group.map((i) => rects[i]), "left");
+    // A lone line in the middle of the area is a label (a menu button, a
+    // title): it stays on one line, centered where it was, inside the area.
+    const align = group.length === 1 ? loneAlign(rects[group[0]], area) : detectAlign(group.map((i) => rects[i]), "left");
     const eachFits =
       matched && group.every((i) => measure(parts[i], base).width <= roomRight - rects[i][0] * scale);
     if (align !== "left" || eachFits) {
       const pairs = matched
         ? group.map((i) => ({ line: lines[i], text: parts[i] }))
         : pairLines(group.map((i) => lines[i]), text);
-      patches.push(...layout(pairs, frame, view, measureFor, "left"));
+      patches.push(...layout(pairs, frame, view, measureFor, align, { left: ax, right: ax + aw }));
       continue;
     }
 

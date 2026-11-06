@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, union, wrap, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, loneAlign, union, wrap, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -217,5 +217,39 @@ describe("titles and paragraphs inside a box", () => {
     const patches = layoutArea(help, translation, area, screen, screen, () => measure);
     expect(patches[0].text).toBe("Turnos");
     expect(patches[1].text.startsWith("Em cada turno")).toBe(true);
+  });
+});
+
+describe("lone lines in a marked area (menu buttons)", () => {
+  // The Wesnoth main menu marked as one area: each button label stands alone.
+  const area: Region = [1375, 200, 192, 470];
+  const mapEditor = line("Map Editor", [1430, 405, 82, 14]);
+  const addOns = line("Add-ons", [1442, 363, 58, 14]);
+
+  it("tells a centered label from a dialogue line", () => {
+    expect(loneAlign(mapEditor.rect, area)).toBe("center");
+    expect(loneAlign([190, 520, 300, 18], [180, 510, 680, 130])).toBe("left");
+  });
+
+  it("keeps a longer translation on one line, centered on the button", () => {
+    const patches = layoutArea([mapEditor], "Editor de Mapas", area, screen, screen, () => measure);
+    expect(patches).toHaveLength(1);
+    const p = patches[0];
+    const middle = p.textLeft + measure(p.text, p.fontPx).width / 2;
+    expect(Math.abs(middle - (1430 + 41))).toBeLessThan(1);
+  });
+
+  it("stays inside the area, shrinking a little if it must", () => {
+    const patches = layoutArea([addOns], "Complementos e extensões", area, screen, screen, () => measure);
+    const p = patches[0];
+    expect(p.textLeft).toBeGreaterThanOrEqual(1375);
+    expect(p.textLeft + measure(p.text, p.fontPx).width).toBeLessThanOrEqual(1375 + 192 + 1e-6);
+  });
+
+  it("still wraps a lone dialogue line that runs past the box", () => {
+    const talk = line("Konrad, we must go now.", [190, 520, 230, 18]);
+    const long = "Konrad, precisamos ir agora mesmo, antes que os orcs atravessem o rio e cheguem até a vila.";
+    const patches = layoutArea([talk], long, [180, 510, 680, 130], screen, screen, () => measure);
+    expect(patches.length).toBeGreaterThan(1);
   });
 });
