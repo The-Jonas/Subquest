@@ -42,7 +42,7 @@
   import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
   import TermPicker from "./TermPicker.svelte";
-  import { layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
+  import { effectShadow, layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
   const AUTO_FALLBACK = 24; // automatic size before any line was measured
@@ -194,7 +194,7 @@
   // whole screen (menus, signs) stay centered on the original.
   const patches = $derived.by(() => {
     if (viewHeight <= 0 || !fontReady) return [];
-    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number; bg: CleanPiece | null }[] = [];
+    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number; bg: CleanPiece | null; scale: number }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
       if (classic || !v.current || !v.translation) continue;
@@ -208,7 +208,8 @@
           ? layoutArea(v.current.lines, v.translation, a.region, frame, view, measureFor)
           : layout(pairLines(v.current.lines, v.translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId, bg });
+      const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId, bg, scale });
     }
     return withoutOverlaps(out);
   });
@@ -506,7 +507,7 @@
       {/if}
     </div>
   {/if}
-  {#each patches as { look, patch: p, bg }, i (i)}
+  {#each patches as { look, patch: p, bg, scale }, i (i)}
     {@const pad = bg ? Math.max(3, p.fontPx * 0.3) : Math.max(2, p.fontPx * 0.18)}
     <!-- The cover hides the original line: with the game's picture without the
          text when there is one (no visible patch), else with the color around it -->
@@ -535,6 +536,7 @@
       style:font-size="{p.fontPx}px"
       style:font-family={cssFamily(look.font)}
       style:color={p.textColor}
+      style:text-shadow={effectShadow(p.effect, scale)}
     >
       {applyCase(p.text, look.caps)}
     </div>

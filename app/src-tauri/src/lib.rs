@@ -2,6 +2,7 @@
 //! bridge to the C++ core.
 
 mod core_ffi;
+mod effects;
 mod error;
 mod font_detect;
 mod fonts;
@@ -133,6 +134,7 @@ struct OcrLineEvent {
     text_color: String,
     style: Option<String>, // id of the game's text style this line belongs to
     words: Vec<OcrWordEvent>, // so a word can be picked over the game (glossary)
+    effect: Option<effects::TextEffect>, // outline or shadow around the letters (window pixels)
 }
 
 /// One word of a recognized line.
@@ -187,6 +189,24 @@ unsafe fn line_shape(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Optio
         u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
     };
     shape::Shape::measure(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
+}
+
+/// Outline or shadow around a line's letters, measured on the event's area
+/// pixels (only valid during this callback).
+unsafe fn line_effect(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Option<effects::TextEffect> {
+    if e.image_bgra.is_null() || e.image_stride <= 0 {
+        return None;
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    let stride = e.image_stride as usize;
+    let pixel = |x: i32, y: i32| {
+        ((0..e.image_width).contains(&x) && (0..e.image_height).contains(&y)).then(|| {
+            let i = y as usize * stride + x as usize * 4;
+            u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
+        })
+    };
+    let r = line.rect;
+    effects::measure(pixel, (r.x - e.image_x, r.y - e.image_y, r.width, r.height), line.text_rgb, line.background_rgb)
 }
 
 /// Formats 0xRRGGBB as a CSS color.
@@ -392,8 +412,17 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             text_color: css_color(l.text_rgb),
             style: style_ids.get(i).cloned().flatten(),
             words: line_words(l),
+            effect: if meaningful { line_effect(e, l) } else { None },
         })
         .collect();
+    // A text of the game has one effect, but it hardly shows where a line
+    // crosses a background like its own: the most common one goes to every line.
+    let found: Vec<Option<effects::TextEffect>> = lines.iter().map(|l| l.effect.clone()).collect();
+    if let Some(shared) = effects::shared(&found) {
+        for line in &mut lines {
+            line.effect = Some(shared.clone());
+        }
+    }
     if !meaningful {
         // The text left the screen (or only stray marks are left): tell the UI, translate nothing.
         text.clear();

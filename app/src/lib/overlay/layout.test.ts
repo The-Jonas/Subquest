@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, loneAlign, union, wrap, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -251,5 +251,27 @@ describe("lone lines in a marked area (menu buttons)", () => {
     const long = "Konrad, precisamos ir agora mesmo, antes que os orcs atravessem o rio e cheguem até a vila.";
     const patches = layoutArea([talk], long, [180, 510, 680, 130], screen, screen, () => measure);
     expect(patches.length).toBeGreaterThan(1);
+  });
+});
+
+describe("effectShadow (the game's effect on translated letters)", () => {
+  it("draws nothing without an effect", () => {
+    expect(effectShadow(null, 1)).toBeNull();
+  });
+
+  it("draws a drop shadow as one offset copy, scaled", () => {
+    expect(effectShadow({ kind: "shadow", color: "#000000", size: 1, dx: 2, dy: 2 }, 0.5)).toBe("1px 1px 0.5px #000000");
+  });
+
+  it("draws a thin outline as eight crisp copies around the letters", () => {
+    const css = effectShadow({ kind: "outline", color: "#000000", size: 1, dx: 0, dy: 0 }, 1)!;
+    expect(css.split(", ")).toHaveLength(8);
+    expect(css).toContain("-1px -1px 0 #000000");
+  });
+
+  it("draws a wide halo as stacked soft glows", () => {
+    expect(effectShadow({ kind: "outline", color: "#080808", size: 3, dx: 0, dy: 0 }, 1)).toBe(
+      "0 0 3px #080808, 0 0 3px #080808, 0 0 1.5px #080808",
+    );
   });
 });

@@ -116,6 +116,16 @@ export interface OcrLine {
   textColor: string; // color of the line's letters
   style?: string | null; // id of the game's text style this line belongs to
   words?: OcrWord[]; // the line's words, so one can be picked over the game
+  effect?: TextEffect | null; // outline or shadow the game draws around these letters
+}
+
+// An effect around a line's letters (mirrors TextEffect in effects.rs). Sizes in window pixels.
+export interface TextEffect {
+  kind: "outline" | "shadow"; // all around (outline or halo) | to one side
+  color: string;
+  size: number; // outline: how far it reaches; shadow: its blur
+  dx: number; // shadow offset
+  dy: number;
 }
 
 // One word of a recognized line.

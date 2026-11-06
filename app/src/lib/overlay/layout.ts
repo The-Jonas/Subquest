@@ -9,7 +9,7 @@
 //  - alignment: lines stacked one above the other keep the alignment they
 //    share (centered menus stay centered, dialogue stays left-aligned).
 // Positions are CSS pixels of the overlay, which covers exactly the captured area.
-import type { OcrLine, Region } from "../api";
+import type { OcrLine, Region, TextEffect } from "../api";
 import { continues } from "../text/paragraphs";
 
 export type Align = "left" | "center" | "right";
@@ -36,6 +36,7 @@ export interface Patch {
   fontPx: number;
   boxColor: string;
   textColor: string;
+  effect?: TextEffect | null; // the game's outline or shadow, in window pixels
 }
 
 const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original size, not less
@@ -197,6 +198,7 @@ export function layout(
       fontPx,
       boxColor: line.boxColor,
       textColor: line.textColor,
+      effect: line.effect ?? null,
     });
   });
   return patches;
@@ -387,8 +389,25 @@ export function layoutArea(
         fontPx,
         boxColor: first.boxColor,
         textColor: first.textColor,
+        effect: first.effect ?? null,
       });
     });
   }
   return patches;
+}
+
+// The CSS text-shadow that draws a game's effect around translated letters,
+// `scale` = CSS px per window pixel. An outline 1 px wide is crisp (eight
+// copies around the letters); wider ones are the soft halos games use, drawn
+// as stacked blurred shadows. A drop shadow is one copy, offset.
+export function effectShadow(effect: TextEffect | null | undefined, scale: number): string | null {
+  if (!effect) return null;
+  const px = (v: number) => `${+(v * scale).toFixed(2)}px`;
+  if (effect.kind === "shadow") return `${px(effect.dx)} ${px(effect.dy)} ${px(effect.size)} ${effect.color}`;
+  if (effect.size <= 1) {
+    const ring = [-1, 0, 1].flatMap((dx) => [-1, 0, 1].filter((dy) => dx || dy).map((dy) => [dx, dy]));
+    return ring.map(([dx, dy]) => `${px(dx * effect.size)} ${px(dy * effect.size)} 0 ${effect.color}`).join(", ");
+  }
+  const halo = `0 0 ${px(effect.size)} ${effect.color}`;
+  return [halo, halo, `0 0 ${px(effect.size / 2)} ${effect.color}`].join(", ");
 }
