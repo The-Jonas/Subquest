@@ -144,7 +144,7 @@ export async function stylePrint(profileKey: string, id: string): Promise<Blob> 
     ctx.fillText("PLAY", 24, 52);
     return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/png"));
   }
-  const bytes: ArrayBuffer = await invoke("style_print", { profileKey, id });
+  const bytes = asBuffer(await invoke("style_print", { profileKey, id }));
   return new Blob([bytes], { type: "image/png" });
 }
 
@@ -219,6 +219,20 @@ export async function sessionFlags(): Promise<[boolean, boolean]> {
   return invoke("session_flags");
 }
 
+// Raw bytes from Rust as an ArrayBuffer, whatever shape they arrive in.
+// Normally an ArrayBuffer; but when the webview can't use Tauri's fast IPC
+// path, the fallback delivers them as a plain array of numbers, and code
+// that assumed an ArrayBuffer read garbage (broken pictures, a preview that
+// never showed in the installed app).
+export function asBuffer(data: unknown): ArrayBuffer {
+  if (data instanceof ArrayBuffer) return data;
+  if (ArrayBuffer.isView(data)) {
+    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+  }
+  if (Array.isArray(data)) return Uint8Array.from(data as number[]).buffer;
+  throw new Error("unexpected binary data from the app");
+}
+
 // A picture (PNG bytes) as a data: URL for an <img>. Not a blob: URL: the
 // installed app's security policy refused those, so every picture showed
 // broken (in dev mode no policy applies, which hid the problem).
@@ -248,7 +262,7 @@ export async function windowThumbnail(handle: number): Promise<Blob | null> {
     return new Promise((resolve) => c.toBlob(resolve, "image/png"));
   }
   try {
-    const bytes: ArrayBuffer = await invoke("window_thumbnail", { windowHandle: handle });
+    const bytes = asBuffer(await invoke("window_thumbnail", { windowHandle: handle }));
     return new Blob([bytes], { type: "image/png" });
   } catch {
     return null;
@@ -381,7 +395,7 @@ export async function importFont(file: File): Promise<ImportedFont> {
 // Bytes of an imported font, to register it with the FontFace API.
 export async function readFont(file: string): Promise<ArrayBuffer> {
   if (!inTauri) return browserFontBytes.get(file) ?? new ArrayBuffer(0);
-  return invoke("read_font", { file });
+  return asBuffer(await invoke("read_font", { file }));
 }
 
 // Deletes an imported font.
@@ -428,7 +442,7 @@ export async function detectFont(png: Blob): Promise<FontDetection> {
 // Bytes of a suggested font, to show a sample before keeping it.
 export async function candidateFont(file: string): Promise<ArrayBuffer> {
   if (!inTauri) return new ArrayBuffer(0);
-  return invoke("candidate_font", { file });
+  return asBuffer(await invoke("candidate_font", { file }));
 }
 
 // Keeps a suggested font in the Fonts folder; returns it as an imported font.
@@ -461,7 +475,8 @@ export async function saveSettings(settings: Settings) {
 
 // Reads the 16-byte header (4 x u32: width, height, source width, source height)
 // followed by the RGBA pixels, in the layout built by `on_preview_frame` in Rust.
-function decodePreview(buffer: ArrayBuffer): PreviewFrame {
+function decodePreview(data: unknown): PreviewFrame {
+  const buffer = asBuffer(data);
   const header = new DataView(buffer, 0, 16);
   const width = header.getUint32(0, true);
   const height = header.getUint32(4, true);
@@ -501,7 +516,7 @@ export async function startPreview(
     onFrame(fakePreview(maxWidth));
     return async () => {};
   }
-  const channel = new Channel<ArrayBuffer>();
+  const channel = new Channel<unknown>();
   channel.onmessage = (data) => onFrame(decodePreview(data));
   await invoke("start_preview", { windowHandle, maxWidth, channel });
   return async () => {
