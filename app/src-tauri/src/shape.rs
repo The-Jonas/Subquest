@@ -165,6 +165,26 @@ impl Shape {
 
 #[cfg(test)]
 mod tests {
+    use super::stroke_weight;
+
+    /// Letters as vertical stems `stem` px wide, 20 px tall, every 8 px.
+    fn stems(stem: usize) -> impl Fn(usize, usize) -> u32 {
+        move |x: usize, y: usize| if (2..22).contains(&y) && x % 8 < stem { 0xFFFFFF } else { 0x000000 }
+    }
+
+    #[test]
+    fn thin_strokes_are_regular_and_thick_ones_bold() {
+        assert_eq!(stroke_weight(200, 24, stems(2), 0xFFFFFF, 0), Some(400)); // 2/20 = 0.10
+        assert_eq!(stroke_weight(200, 24, stems(4), 0xFFFFFF, 0), Some(800)); // 4/20 = 0.20
+        assert_eq!(stroke_weight(200, 24, stems(1), 0xFFFFFF, 0), Some(300)); // hairlines
+    }
+
+    #[test]
+    fn too_little_ink_says_nothing() {
+        assert_eq!(stroke_weight(4, 8, stems(2), 0xFFFFFF, 0), None); // 6 strokes
+        assert_eq!(stroke_weight(200, 24, stems(2), 0x101010, 0), None); // ink like the background
+    }
+
     use super::*;
 
     const INK: u32 = 0xFFFFFF;
@@ -236,6 +256,45 @@ mod tests {
         assert!(Shape::measure(10, 10, |_, _| BG, INK, BG).is_none());
         assert!(Shape::measure(10, 10, |_, _| INK, INK, INK).is_none()); // no contrast
     }
+}
+
+/// Weight of a line's letters as a CSS font weight (300 light .. 800 extra
+/// bold), from how thick their strokes are against how tall they are: the
+/// usual run of ink across a row is a stem's width. Measured on Hades II:
+/// regular text about 0.09 of the letters' height, bold about 0.18. None when
+/// there is too little ink to tell.
+pub fn stroke_weight(width: usize, height: usize, pixel: impl Fn(usize, usize) -> u32, ink: u32, background: u32) -> Option<u16> {
+    if width == 0 || height == 0 || color_gap(ink, background) < 40 * 40 {
+        return None;
+    }
+    let at = |x: usize, y: usize| {
+        let c = pixel(x, y);
+        color_gap(c, ink) < color_gap(c, background)
+    };
+    let mut runs: Vec<usize> = Vec::new();
+    let (mut top, mut bottom) = (usize::MAX, 0);
+    for y in 0..height {
+        let mut run = 0;
+        for x in 0..=width {
+            if x < width && at(x, y) {
+                run += 1;
+                top = top.min(y);
+                bottom = bottom.max(y);
+            } else if run > 0 {
+                runs.push(run);
+                run = 0;
+            }
+        }
+    }
+    if runs.len() < 20 || bottom <= top {
+        return None;
+    }
+    runs.sort_unstable();
+    let stem = runs[runs.len() / 2] as f32;
+    let tall = (bottom - top + 1) as f32;
+    let ratio = stem / tall;
+    let weight = 400.0 + (ratio - 0.09) / 0.09 * 300.0;
+    Some(((weight / 100.0).round() * 100.0).clamp(300.0, 800.0) as u16)
 }
 
 /// How a line's letters are cased, seen on a picture: "upper" (all capitals),

@@ -25,6 +25,7 @@ std::pair<size_t, size_t> stray_marks(const std::vector<std::wstring>& words); /
 
 std::vector<OcrWord> split_words(const std::string& text, Rect box); // words of a line read without word boxes, each given its share of the box
 bool tidy_line(OcrLine& line);    // cleans one line and its words; false when nothing but symbols was left
-void tidy_lines(OcrResult& result); // cleans every line, drops empty ones and rebuilds full_text
+void join_split_lines(std::vector<OcrLine>& lines); // joins pieces of one visual line OCR returned apart (a font change)
+void tidy_lines(OcrResult& result); // cleans every line, drops empty ones, joins split ones and rebuilds full_text
 
 } // namespace subquest

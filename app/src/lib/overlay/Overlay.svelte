@@ -38,7 +38,7 @@
     type OcrTextEvent,
     type IconPicture,
   } from "../api";
-  import { applyCase, caseFor, cssFamily, ensureFont, styleCase } from "../fonts";
+  import { applyCase, caseFor, cssFamily, ensureFont, styleCase, variableFont } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
@@ -147,6 +147,8 @@
     return metas.get(i)!;
   }
 
+  type Look = { font: string; caps: LetterCase; weight: number | null };
+
   // Canvas used only to measure texts for the in-place layout.
   const measureCtx = document.createElement("canvas").getContext("2d")!;
 
@@ -155,22 +157,38 @@
   // A line's font and letter case: its style's; or, for a line like none of
   // them ("~id"), only the font of the nearest style; or the area's own.
   // `seen`: the case measured on the line's picture, used when none was chosen.
-  function lookFor(a: GameArea, styleId: string | null | undefined, seen?: string | null): { font: string; caps: LetterCase } {
+  // The line's own case, measured on this very picture, wins over the one
+  // seen on the style's print ("as in the game"): a title in small capitals
+  // and its body share a style but not a case. A case chosen by hand still wins.
+  // `weight`: the letters' measured weight, used only with a variable font
+  // (a static font has one weight; faking bold would smear it).
+  function lookFor(
+    a: GameArea,
+    styleId: string | null | undefined,
+    seen?: string | null,
+    weight?: number | null,
+  ): Look {
     const nearest = !!styleId?.startsWith("~");
     const style = styleId ? gameStyles[nearest ? styleId.slice(1) : styleId] : undefined;
-    if (style?.font) {
-      // The style's case (its print's, when "as in the game"); "none" stays "as translated".
-      const chosen = nearest ? a.caps : style.caps === "none" ? "none" : styleCase(style);
-      return { font: style.font, caps: caseFor(chosen, seen) };
-    }
-    return { font: a.font, caps: caseFor(a.caps, seen) };
+    const measured = seen !== undefined && seen !== null;
+    const font = style?.font ? style.font : a.font;
+    const chosen = style?.font
+      ? nearest
+        ? a.caps
+        : style.caps === "none"
+          ? "none"
+          : style.caps === "" && measured
+            ? ""
+            : styleCase(style)
+      : a.caps;
+    return { font, caps: caseFor(chosen, seen), weight: variableFont(font) && weight ? weight : null };
   }
 
-  // Measures texts in a font and letter case.
-  function measurer(look: { font: string; caps: LetterCase }) {
+  // Measures texts in a font, letter case and weight.
+  function measurer(look: Look) {
     const family = cssFamily(look.font);
     return (text: string, px: number): Metrics => {
-      measureCtx.font = `${look.caps === "smallCaps" ? "small-caps " : ""}${px}px ${family}`;
+      measureCtx.font = `${look.caps === "smallCaps" ? "small-caps " : ""}${look.weight ?? ""} ${px}px ${family}`.trim();
       const m = measureCtx.measureText(applyCase(text, look.caps));
       return {
         width: m.width,
@@ -205,7 +223,7 @@
   const patches = $derived.by(() => {
     if (viewHeight <= 0 || !fontReady) return [];
     const out: {
-      look: { font: string; caps: LetterCase };
+      look: Look;
       patch: Patch;
       frame: number;
       bg: CleanPiece | null;
@@ -219,7 +237,7 @@
       const view = { width: viewWidth, height: viewHeight };
       // A picture ({1}) takes about the room of two wide letters when measured.
       const measureFor = (line: OcrLine) => {
-        const measure = measurer(lookFor(a, line.style, line.letterCase));
+        const measure = measurer(lookFor(a, line.style, line.letterCase, line.weight));
         return (text: string, px: number) => measure(forMeasure(text), px);
       };
       // Pictures the translator dropped still show, at the start.
@@ -235,7 +253,7 @@
           : layout(pairLines(lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase), patch, frame: v.current.frameId, bg, scale, icons });
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, bg, scale, icons });
     }
     return withoutOverlaps(out);
   });
@@ -596,6 +614,7 @@
       style:line-height="{p.lineHeight}px"
       style:font-size="{p.fontPx}px"
       style:font-family={cssFamily(look.font)}
+      style:font-weight={look.weight}
       style:color={p.textColor}
       style:text-shadow={effectShadow(p.effect, scale)}
     >

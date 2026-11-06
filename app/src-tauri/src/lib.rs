@@ -181,6 +181,7 @@ struct OcrLineEvent {
     words: Vec<OcrWordEvent>, // so a word can be picked over the game (glossary)
     effect: Option<effects::TextEffect>, // outline or shadow around the letters (window pixels)
     letter_case: &'static str, // "upper" | "smallCaps" | "" as seen on the picture (OCR reads small capitals as capitals)
+    weight: Option<u16>, // CSS font weight of the letters, from how thick their strokes are
 }
 
 /// One word of a recognized line.
@@ -257,6 +258,28 @@ unsafe fn line_case(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> &'stat
         u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
     };
     shape::letter_case(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
+}
+
+/// Weight of a line's letters (see shape::stroke_weight), measured on the
+/// event's area pixels (only valid during this callback).
+unsafe fn line_weight(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Option<u16> {
+    if e.image_bgra.is_null() || e.image_stride <= 0 {
+        return None;
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    let x0 = (line.rect.x - e.image_x).clamp(0, e.image_width) as usize;
+    let y0 = (line.rect.y - e.image_y).clamp(0, e.image_height) as usize;
+    let x1 = (line.rect.x - e.image_x + line.rect.width).clamp(0, e.image_width) as usize;
+    let y1 = (line.rect.y - e.image_y + line.rect.height).clamp(0, e.image_height) as usize;
+    if x1 <= x0 || y1 <= y0 {
+        return None;
+    }
+    let stride = e.image_stride as usize;
+    let pixel = |x: usize, y: usize| {
+        let i = (y0 + y) * stride + (x0 + x) * 4;
+        u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
+    };
+    shape::stroke_weight(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
 }
 
 /// Outline or shadow around a line's letters, measured on the event's area
@@ -482,6 +505,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             words: line_words(l),
             effect: if meaningful { line_effect(e, l) } else { None },
             letter_case: if meaningful { line_case(e, l) } else { "" },
+            weight: if meaningful { line_weight(e, l) } else { None },
         })
         .collect();
     // A text of the game has one effect, but it hardly shows where a line

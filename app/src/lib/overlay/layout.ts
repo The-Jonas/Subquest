@@ -38,6 +38,7 @@ export interface Patch {
   textColor: string;
   effect?: TextEffect | null; // the game's outline or shadow, in window pixels
   letterCase?: string | null; // case seen on the original line ("smallCaps", "upper")
+  weight?: number | null; // weight of the original line's letters (CSS font weight)
 }
 
 const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original size, not less
@@ -208,6 +209,7 @@ export function layout(
       textColor: line.textColor,
       effect: line.effect ?? null,
       letterCase: line.letterCase ?? null,
+      weight: line.weight ?? null,
     });
   });
   return patches;
@@ -251,14 +253,20 @@ export function loneAlign(rect: Region, area: Region): Align {
 
 const SIZE_JUMP = 1.3; // letters this much taller (or shorter) than the line before: a title
 const SHORT_LINE = 0.7; // a line this much narrower than the widest one can be a paragraph's end
+const WIDE_STEP = 1.45; // a gap between lines this much wider than the group's tightest: a new paragraph
+const BULLET = /^\s*[·•‣◦▪▸►\-–—*]\s/u; // a list item starts here
 
 // Splits lines that sit together (sorted top to bottom) into paragraphs. A
 // break goes where a title ends ("Turns" above its explanation) or a
 // paragraph ends: the line is short and its text doesn't go on into the next
-// one, or the letters change size or text style.
+// one, the letters change size or text style, a list item starts ("• Grants
+// +5 Health") or the gap to the next line is clearly wider than the others
+// (games space paragraphs further apart than lines).
 export function splitParagraphs(lines: OcrLine[], group: number[]): number[][] {
   if (!group.length) return [];
   const widest = Math.max(...group.map((i) => lines[i].rect[2]));
+  const steps = group.slice(1).map((i, k) => lines[i].rect[1] - lines[group[k]].rect[1]);
+  const tightest = Math.min(...steps.filter((v) => v > 0));
   const out: number[][] = [[group[0]]];
   for (let k = 1; k < group.length; k++) {
     const a = lines[group[k - 1]];
@@ -267,10 +275,40 @@ export function splitParagraphs(lines: OcrLine[], group: number[]): number[][] {
     const sizeJump = Math.max(ha, hb) / Math.max(1, Math.min(ha, hb)) > SIZE_JUMP;
     const otherStyle = !!a.style && !!b.style && a.style !== b.style;
     const ended = a.rect[2] < widest * SHORT_LINE && !continues(a.text, b.text);
-    if (sizeJump || otherStyle || ended) out.push([group[k]]);
+    const bullet = BULLET.test(b.text);
+    const wideGap = Number.isFinite(tightest) && steps[k - 1] > tightest * WIDE_STEP;
+    if (sizeJump || otherStyle || ended || bullet || wideGap) out.push([group[k]]);
     else out[out.length - 1].push(group[k]);
   }
   return out;
+}
+
+// Hands the translated lines to the paragraphs in order when the model kept
+// neither the original line count nor one line per paragraph: each paragraph
+// takes the lines whose middle falls in its share of the original text
+// (by characters), so a long description stays long and a title stays short.
+// Null when there are fewer translated lines than paragraphs.
+export function shareParts(paragraphs: string[], parts: string[]): string[][] | null {
+  if (parts.length < paragraphs.length) return null;
+  const total = paragraphs.reduce((n, p) => n + p.length, 0) || 1;
+  const ends: number[] = [];
+  let sum = 0;
+  for (const p of paragraphs) ends.push((sum += p.length) / total);
+  const allParts = parts.reduce((n, p) => n + p.length, 0) || 1;
+  const out: string[][] = paragraphs.map(() => []);
+  let at = 0;
+  let g = 0;
+  parts.forEach((part, k) => {
+    const middle = (at + part.length / 2) / allParts;
+    at += part.length;
+    // Its share's paragraph, one step at a most (none is left empty), and on
+    // to the next while there are just enough lines left for the rest.
+    const own = ends.findIndex((end) => middle <= end);
+    if (k > 0 && (own < 0 ? paragraphs.length - 1 : own) > g) g++;
+    g = Math.max(g, paragraphs.length - (parts.length - k));
+    out[g].push(part);
+  });
+  return out.every((o) => o.length) ? out : null;
 }
 
 // Patches for a marked area (a dialogue box): instead of one translated line
@@ -297,21 +335,28 @@ export function layoutArea(
 
   // Paragraphs: lines that sit together, split where a title or a paragraph
   // ends (splitParagraphs). With the model's line count matching the original,
-  // each paragraph gets its own lines' translation; with one line per
-  // paragraph, each gets its line; otherwise everything is one paragraph.
+  // each paragraph gets its own lines' translation; otherwise the translated
+  // lines are shared out in order by length (shareParts); only when there
+  // are fewer of them than paragraphs is everything one paragraph.
   const rects = lines.map(placement);
   let groups = blocks(rects)
     .map((g) => [...g].sort((a, b) => rects[a][1] - rects[b][1]))
     .flatMap((g) => splitParagraphs(lines, g));
   groups.sort((a, b) => rects[a[0]][1] - rects[b[0]][1]);
   const matched = parts.length === lines.length;
-  const perParagraph = !matched && parts.length === groups.length && groups.length > 1;
-  if (!matched && !perParagraph) groups = [lines.map((_, i) => i).sort((a, b) => rects[a][1] - rects[b][1])];
+  const shared =
+    !matched && groups.length > 1
+      ? shareParts(
+          groups.map((g) => g.map((i) => lines[i].text).join(" ")),
+          parts.filter((p) => p !== ""),
+        )
+      : null;
+  if (!matched && !shared) groups = [lines.map((_, i) => i).sort((a, b) => rects[a][1] - rects[b][1])];
 
   const [ax, ay, aw, ah] = area.map((v) => v * scale);
   const patches: Patch[] = [];
   for (const [g, group] of groups.entries()) {
-    const own = matched ? group.map((i) => parts[i]) : perParagraph ? [parts[g]] : parts;
+    const own = matched ? group.map((i) => parts[i]) : shared ? shared[g] : parts;
     const text = own.join(" ").replace(/\s+/g, " ").trim();
     if (!text) continue;
     const first = lines[group[0]];
@@ -400,6 +445,7 @@ export function layoutArea(
         textColor: first.textColor,
         effect: first.effect ?? null,
         letterCase: first.letterCase ?? null,
+        weight: first.weight ?? null,
       });
     });
   }

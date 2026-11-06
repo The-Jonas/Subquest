@@ -46,6 +46,12 @@ export function importedOption(font: ImportedFont): FontOption {
 }
 
 // CSS font-family for a stored value, with the app font as fallback.
+// Whether a font comes in every weight (the default and the built-in
+// "* Variable" ones), so a line's measured weight can be drawn with it.
+export function variableFont(value: string): boolean {
+  return value === "" || value.endsWith(" Variable");
+}
+
 export function cssFamily(value: string): string {
   const fallback = "'Atkinson Hyperlegible Next Variable', system-ui, sans-serif";
   if (!value) return fallback;

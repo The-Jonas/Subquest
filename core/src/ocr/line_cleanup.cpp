@@ -1,6 +1,8 @@
 #include "ocr/line_cleanup.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdlib>
 #include <cstdint>
 #include <cwctype>
 
@@ -219,15 +221,50 @@ bool tidy_line(OcrLine& line) {
     return true;
 }
 
-// Tidies every line of a result and joins what is left into full_text.
+// Pieces of one visual line that OCR returned as separate lines: on the same
+// row (their middles within a third of the letters' height) and close
+// sideways (less than 1.5 letter heights apart). OCR splits a line where the
+// font changes ("Found using the" / "Crescent Pick" in bold / "on"); each piece
+// would then get a piece of the translation, drawn over each other. Columns
+// further apart ("Gold        120") stay separate lines.
+void join_split_lines(std::vector<OcrLine>& lines) {
+    const auto middle = [](const Rect& r) { return r.y + r.height / 2; };
+    bool joined = true;
+    while (joined) {
+        joined = false;
+        for (size_t i = 0; i < lines.size() && !joined; ++i) {
+            for (size_t j = 0; j < lines.size() && !joined; ++j) {
+                if (i == j) continue;
+                OcrLine& a = lines[i]; // the one on the left
+                const OcrLine& b = lines[j];
+                const int32_t height = std::max(a.box.height, b.box.height);
+                const int32_t gap = b.box.x - (a.box.x + a.box.width);
+                const bool same_row = std::abs(middle(a.box) - middle(b.box)) * 3 <= height;
+                if (!same_row || gap < -height / 2 || gap * 2 > height * 3) continue;
+                a.text += " " + b.text;
+                a.words.insert(a.words.end(), b.words.begin(), b.words.end());
+                const int32_t x0 = std::min(a.box.x, b.box.x), y0 = std::min(a.box.y, b.box.y);
+                const int32_t x1 = std::max(a.box.x + a.box.width, b.box.x + b.box.width);
+                const int32_t y1 = std::max(a.box.y + a.box.height, b.box.y + b.box.height);
+                a.box = {x0, y0, x1 - x0, y1 - y0};
+                lines.erase(lines.begin() + std::ptrdiff_t(j));
+                joined = true;
+            }
+        }
+    }
+}
+
+// Tidies every line of a result, joins lines OCR split, and joins what is left into full_text.
 void tidy_lines(OcrResult& result) {
     std::vector<OcrLine> kept;
-    result.full_text.clear();
     for (OcrLine& line : result.lines) {
-        if (!tidy_line(line)) continue;
+        if (tidy_line(line)) kept.push_back(std::move(line));
+    }
+    join_split_lines(kept);
+    result.full_text.clear();
+    for (const OcrLine& line : kept) {
         if (!result.full_text.empty()) result.full_text += '\n';
         result.full_text += line.text;
-        kept.push_back(std::move(line));
     }
     result.lines = std::move(kept);
 }

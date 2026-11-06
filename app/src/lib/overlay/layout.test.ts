@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, shareParts, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -283,5 +283,49 @@ describe("effectShadow (the game's effect on translated letters)", () => {
     expect(effectShadow({ kind: "outline", color: "#080808", size: 3, dx: 0, dy: 0 }, 1)).toBe(
       "0 0 3px #080808, 0 0 3px #080808, 0 0 1.5px #080808",
     );
+  });
+});
+
+describe("item descriptions (Hades II)", () => {
+  // Cattail: a title, a description, a wider gap, a bullet line.
+  const item = [
+    line("CATTAIL", [40, 10, 160, 30]),
+    line("A marsh reed whose fluffy seed heads drift on the wind", [40, 60, 620, 20]),
+    line("toward the shores of the Oceanus.", [40, 86, 380, 20]),
+    line("· Used in Incantations at the Crossroads.", [40, 130, 470, 20]),
+  ];
+  const area: Region = [20, 0, 700, 200];
+
+  it("starts a paragraph at a bullet", () => {
+    const listed = [line("Grants these blessings to you:", [40, 10, 620, 20]), line("• +5 Health", [40, 36, 620, 20])];
+    expect(splitParagraphs(listed, [0, 1])).toEqual([[0], [1]]);
+  });
+
+  it("starts a paragraph where the gap between lines is wider", () => {
+    const spaced = [
+      line("A marsh reed whose fluffy seed heads drift on the wind", [40, 60, 620, 20]),
+      line("toward the shores of the Oceanus, far from here and", [40, 86, 620, 20]),
+      line("Used in Incantations at the Crossroads.", [40, 130, 620, 20]),
+    ];
+    expect(splitParagraphs(spaced, [0, 1, 2])).toEqual([[0, 1], [2]]);
+  });
+
+  it("shares translated lines out by length", () => {
+    expect(shareParts(["CATTAIL", "A long description of the reed and where it grows", "Used here."], ["TABOA", "Uma longa descrição da taboa", "e de onde ela cresce", "Usada aqui."])).toEqual([
+      ["TABOA"],
+      ["Uma longa descrição da taboa", "e de onde ela cresce"],
+      ["Usada aqui."],
+    ]);
+    expect(shareParts(["a", "b", "c"], ["só uma", "duas"])).toBeNull();
+  });
+
+  it("keeps title, description and bullet apart when the line count differs", () => {
+    const translation = "TABOA\nUm junco do pântano cujas sementes fofas voam com o vento rumo às margens do Oceanus.\n· Usada em Encantamentos na Encruzilhada.";
+    const patches = layoutArea(item, translation, area, screen, screen, () => measure);
+    expect(patches[0].text).toBe("TABOA");
+    const bullet = patches.find((p) => p.text.startsWith("·"))!;
+    expect(bullet).toBeDefined();
+    expect(bullet.textTop).toBeGreaterThan(110); // stays on the bullet's own line, not glued to the description
+    expect(patches.filter((p) => p.text.includes("Oceanus")).length).toBe(1);
   });
 });

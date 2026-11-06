@@ -73,6 +73,25 @@ int main() {
         check(result.lines.size() == 2 && result.full_text == "Hi\nBye", "tidy_lines drops empty lines and rebuilds full_text");
     }
 
+    {
+        // Hades II item card: OCR split "Found using the | Crescent Pick | on" where the font changes.
+        std::vector<OcrLine> lines{OcrLine{"Crescent Pick", {200, 102, 110, 20}, {}, {}, {{"Crescent", {200, 102, 70, 20}}, {"Pick", {275, 102, 35, 20}}}},
+                                   OcrLine{"Found using the", {80, 104, 110, 17}, {}, {}, {{"Found", {80, 104, 40, 17}}}},
+                                   OcrLine{"on", {318, 104, 18, 17}, {}, {}, {{"on", {318, 104, 18, 17}}}},
+                                   OcrLine{"Outcroppings in Erebus", {80, 132, 200, 20}, {}, {}, {}}};
+        join_split_lines(lines);
+        check(lines.size() == 2, "pieces of one row are joined, the next row stays apart");
+        check(!lines.empty() && lines[0].text == "Found using the Crescent Pick on" && lines[0].box.x == 80 &&
+                  lines[0].box.x + lines[0].box.width == 336 && lines[0].words.size() == 4,
+              "in reading order, with one box and all their words");
+    }
+    {
+        // Two columns far apart on the same row stay two lines.
+        std::vector<OcrLine> lines{OcrLine{"Gold", {20, 20, 40, 16}}, OcrLine{"120", {200, 20, 30, 16}}};
+        join_split_lines(lines);
+        check(lines.size() == 2, "columns far apart stay apart");
+    }
+
     std::printf(failures ? "%d FAILURE(S)\n" : "ALL OK\n", failures);
     return failures ? 1 : 0;
 }
