@@ -366,5 +366,25 @@ describe("item descriptions (Hades II)", () => {
     const body = patches.find((p) => p.text.startsWith("Em 9"))!;
     expect(body.textLeft).toBe(133);
   });
+
+  it("hands a bullet's translation to the bullet's paragraph", () => {
+    const paragraphs = ["ADAMANT", "Mostly used with incantations involving direction and durability.", "· Found using the Crescent Pick on Outcroppings on Mount Olympus", "The hardest substance known reveals itself only to the gods, for their greatest artifacts."];
+    const parts = ["ADAMANTE", "Muito usado em encantamentos", "envolvendo direção e durabilidade.", "• Encontrado usando a Picareta Crescente em", "Afloramentos no Monte Olimpo", "A substância mais dura conhecida só se revela", "aos deuses, para seus maiores artefatos."];
+    const shared = shareParts(paragraphs, parts)!;
+    expect(shared[2]).toEqual(["• Encontrado usando a Picareta Crescente em", "Afloramentos no Monte Olimpo"]);
+    expect(shared[3]).toEqual(["A substância mais dura conhecida só se revela", "aos deuses, para seus maiores artefatos."]);
+  });
+
+  it("never pushes a paragraph out of the marked area", () => {
+    const card = [
+      line("Mostly used with incantations", [40, 60, 400, 20]),
+      line("involving power and protection.", [40, 86, 420, 20]),
+      line("The hardest substance known", [40, 270, 400, 20]),
+    ];
+    const translation = "Principalmente usado com encantamentos que envolvem poder e proteção e muito mais texto que cresce bastante\npor várias linhas porque o português é longo demais aqui mesmo\nA substância mais dura";
+    const patches = layoutArea(card, translation, [20, 0, 460, 300], screen, screen, () => measure);
+    const last = patches.find((p) => p.text.startsWith("A substância"))!;
+    expect(last.textTop + last.lineHeight).toBeLessThanOrEqual(300 + 5); // the line box runs a little past the letters
+  });
 });
 

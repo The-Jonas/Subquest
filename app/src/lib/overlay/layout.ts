@@ -311,6 +311,35 @@ export function splitParagraphs(lines: OcrLine[], group: number[]): number[][] {
 // (by characters), so a long description stays long and a title stays short.
 // Null when there are fewer translated lines than paragraphs.
 export function shareParts(paragraphs: string[], parts: string[]): string[][] | null {
+  // List items first: the translated line that starts with a bullet starts the
+  // paragraph that does ("· Found using..." -> "• Encontrado usando..."), and
+  // the lines between bullets are shared out on their own. Without that, a
+  // long item could take the line after it (the flavor text below).
+  const bulletParagraphs = paragraphs.flatMap((p, i) => (BULLET.test(p) ? [i] : []));
+  const bulletParts = parts.flatMap((p, i) => (BULLET.test(p) ? [i] : []));
+  if (bulletParagraphs.length && bulletParagraphs.length === bulletParts.length) {
+    const cutsP = [0, ...bulletParagraphs, paragraphs.length];
+    const cutsQ = [0, ...bulletParts, parts.length];
+    const out: string[][] = [];
+    let ok = true;
+    for (let k = 0; k + 1 < cutsP.length && ok; k++) {
+      const ps = paragraphs.slice(cutsP[k], cutsP[k + 1]);
+      const qs = parts.slice(cutsQ[k], cutsQ[k + 1]);
+      if (!ps.length) {
+        ok = !qs.length;
+        continue;
+      }
+      const shared = shareRun(ps, qs);
+      if (shared) out.push(...shared);
+      else ok = false;
+    }
+    if (ok) return out;
+  }
+  return shareRun(paragraphs, parts);
+}
+
+// shareParts without list items: by length only.
+function shareRun(paragraphs: string[], parts: string[]): string[][] | null {
   if (parts.length < paragraphs.length) return null;
   const total = paragraphs.reduce((n, p) => n + p.length, 0) || 1;
   const ends: number[] = [];
@@ -393,9 +422,13 @@ export function layoutArea(
     const bottom0 = Math.max(...boxes.map((b) => b[1] + b[3]));
     // How far down this paragraph goes: as much as any paragraph above it
     // (side by side with it) grew past its own bottom.
-    const shift = Math.max(
-      0,
-      ...placed.filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right).map((p) => p.bottom - p.bottom0),
+    // Never out of the marked area: a paragraph already at its bottom stays put.
+    const shift = Math.min(
+      Math.max(0, ay + ah - bottom0),
+      Math.max(
+        0,
+        ...placed.filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right).map((p) => p.bottom - p.bottom0),
+      ),
     );
     const from = patches.length;
     const settle = () => {

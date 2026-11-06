@@ -223,10 +223,12 @@ bool tidy_line(OcrLine& line) {
 
 // Pieces of one visual line that OCR returned as separate lines: on the same
 // row (their middles within a third of the letters' height) and close
-// sideways (less than 1.5 letter heights apart). OCR splits a line where the
-// font changes ("Found using the" / "Crescent Pick" in bold / "on"); each piece
-// would then get a piece of the translation, drawn over each other. Columns
-// further apart ("Gold        120") stay separate lines.
+// sideways (at most 3 letter heights apart: the gap may hold a picture OCR
+// left out, Hades' pickaxe in "Found using the [pickaxe] Crescent Pick on").
+// OCR splits a line where the font changes; each piece would then get a piece
+// of the translation, drawn over each other. Columns further apart
+// ("Gold        120") stay separate lines.
+constexpr int32_t JOIN_GAP = 3;
 void join_split_lines(std::vector<OcrLine>& lines) {
     const auto middle = [](const Rect& r) { return r.y + r.height / 2; };
     bool joined = true;
@@ -240,7 +242,7 @@ void join_split_lines(std::vector<OcrLine>& lines) {
                 const int32_t height = std::max(a.box.height, b.box.height);
                 const int32_t gap = b.box.x - (a.box.x + a.box.width);
                 const bool same_row = std::abs(middle(a.box) - middle(b.box)) * 3 <= height;
-                if (!same_row || gap < -height / 2 || gap * 2 > height * 3) continue;
+                if (!same_row || gap < -height / 2 || gap > height * JOIN_GAP) continue;
                 a.text += " " + b.text;
                 a.words.insert(a.words.end(), b.words.begin(), b.words.end());
                 const int32_t x0 = std::min(a.box.x, b.box.x), y0 = std::min(a.box.y, b.box.y);

@@ -86,6 +86,12 @@ int main() {
               "in reading order, with one box and all their words");
     }
     {
+        // The same line with the pickaxe between "the" and "Crescent": a wider gap, still one line.
+        std::vector<OcrLine> picked{OcrLine{"Found using the", {80, 100, 110, 22}}, OcrLine{"Crescent Pick on", {240, 101, 130, 22}}};
+        join_split_lines(picked);
+        check(picked.size() == 1, "a split line with a picture in the gap is joined");
+    }
+    {
         // Two columns far apart on the same row stay two lines.
         std::vector<OcrLine> lines{OcrLine{"Gold", {20, 20, 40, 16}}, OcrLine{"120", {200, 20, 30, 16}}};
         join_split_lines(lines);
