@@ -386,5 +386,17 @@ describe("item descriptions (Hades II)", () => {
     const last = patches.find((p) => p.text.startsWith("A substância"))!;
     expect(last.textTop + last.lineHeight).toBeLessThanOrEqual(300 + 5); // the line box runs a little past the letters
   });
+
+  it("leaves the next paragraph where it was when the one above grows into free space", () => {
+    const card = [
+      line("Mostly used with incantations", [40, 60, 400, 20]),
+      line("involving power and protection.", [40, 86, 420, 20]),
+      line("· Grown in the Crossroads", [40, 220, 400, 20]),
+    ];
+    const translation = "Muito usado em encantamentos envolvendo poder e proteção e mais um pouco de texto\naqui\n• Cultivado na Encruzilhada";
+    const patches = layoutArea(card, translation, [20, 0, 460, 400], screen, screen, () => measure);
+    const bullet = patches.find((p) => p.text.startsWith("•"))!;
+    expect(bullet.textTop).toBeLessThan(220); // its own place (the ink sits in the box), not pushed
+  });
 });
 

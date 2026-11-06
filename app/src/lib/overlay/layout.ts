@@ -420,14 +420,19 @@ export function layoutArea(
     const top = Math.min(...boxes.map((b) => b[1]));
     const right0 = Math.max(...boxes.map((b) => b[0] + b[2]));
     const bottom0 = Math.max(...boxes.map((b) => b[1] + b[3]));
-    // How far down this paragraph goes: as much as any paragraph above it
-    // (side by side with it) grew past its own bottom.
-    // Never out of the marked area: a paragraph already at its bottom stays put.
+    // How far down this paragraph goes: only as far as a paragraph above it
+    // (side by side with it) now reaches into it, keeping a little room
+    // between them (half the game's gap, or a third of a line if that is less).
+    // Growing into the free space below is fine: nothing else moves. Never
+    // out of the marked area: a paragraph already at its bottom stays put.
+    const lineH = median(boxes.map((b) => b[3]));
     const shift = Math.min(
       Math.max(0, ay + ah - bottom0),
       Math.max(
         0,
-        ...placed.filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right).map((p) => p.bottom - p.bottom0),
+        ...placed
+          .filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right)
+          .map((p) => p.bottom + Math.min((top - p.bottom0) / 2, lineH / 3) - top),
       ),
     );
     const from = patches.length;

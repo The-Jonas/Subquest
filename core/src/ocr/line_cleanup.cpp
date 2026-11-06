@@ -180,8 +180,23 @@ bool tidy_line(OcrLine& line) {
     if (line.words.empty()) return false;
     std::vector<std::wstring> wide;
     for (const OcrWord& w : line.words) wide.push_back(widen(w.text));
-    const auto [first, last] = kept_words(wide);
-    if (first == last) return false;
+    auto [first, last] = kept_words(wide);
+    // Question and exclamation marks standing apart at the end are the
+    // sentence's ("Ready ?", "· ? ? ?"), not noise.
+    const auto only_marks = [](const std::wstring& w) {
+        return !w.empty() && std::all_of(w.begin(), w.end(), [](wchar_t c) { return c == L'?' || c == L'!'; });
+    };
+    if (first < last)
+        while (last < wide.size() && only_marks(wide[last])) ++last;
+    if (first == last) {
+        // Only symbols: noise, except a line of question or exclamation marks,
+        // which games write for what is still unknown ("· ? ? ?").
+        size_t marks = 0;
+        for (const auto& w : wide) marks += size_t(std::count_if(w.begin(), w.end(), [](wchar_t c) { return c == L'?' || c == L'!'; }));
+        if (marks < 2) return false;
+        first = 0;
+        last = wide.size();
+    }
     const std::vector<std::wstring> kept(wide.begin() + first, wide.begin() + last);
     const auto [front, back] = stray_marks(kept);
 

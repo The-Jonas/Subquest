@@ -44,7 +44,11 @@ float off_mix(const uint8_t* px, uint32_t a, uint32_t b) {
         axis2 += (cb[i] - ca[i]) * (cb[i] - ca[i]);
         along += (p[i] - ca[i]) * (cb[i] - ca[i]);
     }
-    const float t = std::clamp(along / std::max(axis2, 1.0f), 0.0f, 1.0f);
+    // Past `a` on the far side from `b` still counts as on the mix: the
+    // letters' cores are brighter than their sampled color, which averages in
+    // their soft edges (Hades' dim purple italics; a plain "a" there read as
+    // a picture). A color of its own lies off the axis, not along it.
+    const float t = std::clamp(along / std::max(axis2, 1.0f), -2.0f, 1.0f);
     float d2 = 0;
     for (int i = 0; i < 3; ++i) d2 += (p[i] - (ca[i] + (cb[i] - ca[i]) * t)) * (p[i] - (ca[i] + (cb[i] - ca[i]) * t));
     return std::sqrt(d2);
@@ -412,7 +416,10 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
             const bool colored = junk && (seen.other >= OTHER_WORD || (seen.filled > 0.05f && seen.ink_other >= OTHER_INK));
             // A key drawn as a box with its letter on it: the face fills the box.
             const bool squarish = w.box.width * 10 >= w.box.height * 6; // keys are about square; an "I" is a thin bar
-            const bool key_face = junk && squarish && line.words.size() > 1 && seen.filled >= FILLED_KEY;
+            // Keys carry capitals: a lone lowercase letter is a word ("a"), even
+            // a bold one that fills its tight box (Hades' italic "a", 62%).
+            const bool lowercase = w.text.size() == 1 && std::islower(static_cast<unsigned char>(w.text[0]));
+            const bool key_face = junk && squarish && !lowercase && line.words.size() > 1 && seen.filled >= FILLED_KEY;
             // ...or a short word much taller than the line's other words.
             const int32_t others = usual_height_without(source, i);
             const bool tall_key = junk && others > 0 && w.box.height > others * TALL_WORD;

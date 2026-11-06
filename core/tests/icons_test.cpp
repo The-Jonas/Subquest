@@ -136,6 +136,25 @@ int main() {
         check(icons.size() == 1 && lines[0].text == "the {1} Crescent", "a picture in the text's colors alone in a gap is found");
     }
     {
+        // Hades II flavor text: dim purple italics, "Shed for a variety". The
+        // letters' cores are brighter than the line's sampled color (it
+        // averages in their soft edges): the lone "a" is a word, not a picture.
+        Frame f = blank();
+        const uint32_t bg = 0x19182A, ink = 0x493851, core = 0x795878;
+        paint(f, {0, 0, f.width, f.height}, bg);
+        const Rect for_{20, 20, 30, 16}, a{56, 24, 10, 12}, variety{72, 20, 60, 16};
+        for (const Rect& r : {for_, variety})
+            for (int x = r.x; x < r.x + r.width; x += 5) paint(f, {x, r.y, 2, r.height}, core);
+        paint(f, {56, 24, 10, 2}, core), paint(f, {56, 34, 10, 2}, core), paint(f, {64, 24, 2, 12}, core);
+        paint(f, {56, 28, 2, 6}, ink);
+        paint(f, {58, 26, 6, 8}, core); // bold: the "a" fills most of its tight box, like a key's face
+        OcrLine line = make_line({{"for", for_}, {"a", a}, {"variety", variety}});
+        line.text_rgb = ink;
+        line.background_rgb = bg;
+        std::vector<OcrLine> lines{line};
+        check(find_icons(f, lines).empty() && lines[0].text == "for a variety", "a dim letter brighter than its line's color stays text");
+    }
+    {
         // Plain text, with normal spaces: nothing changes.
         Frame f = blank();
         const Rect hello{20, 20, 50, 16}, there{78, 20, 50, 16};

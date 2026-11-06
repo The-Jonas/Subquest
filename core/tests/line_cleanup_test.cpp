@@ -99,5 +99,12 @@ int main() {
     }
 
     std::printf(failures ? "%d FAILURE(S)\n" : "ALL OK\n", failures);
+    {
+        // Hades II: a list item still unknown, "· ? ? ?": kept, it is text the game shows.
+        OcrLine unknown{"· ? ? ?", {40, 500, 60, 20}};
+        check(tidy_line(unknown) && unknown.text == "· ? ? ?", "a line of question marks is kept");
+        OcrLine dots{"- . ,", {40, 500, 60, 20}};
+        check(!tidy_line(dots), "other symbol-only lines are still noise");
+    }
     return failures ? 1 : 0;
 }
