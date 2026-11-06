@@ -226,9 +226,9 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px 10px 18px;
-    border: 1.5px solid #f2c14e;
+    border: 1.5px solid var(--gold);
     border-radius: 12px;
-    background: rgb(15 18 34 / 0.95);
+    background: color-mix(in srgb, var(--night-deep) 95%, transparent);
     white-space: nowrap;
     cursor: default;
   }
@@ -253,8 +253,8 @@
     cursor: pointer;
   }
   .hint button.primary {
-    border-color: #f2c14e;
-    background: #f2c14e;
+    border-color: var(--gold);
+    background: var(--gold);
     color: #1b1608;
     font-weight: 700;
   }
@@ -263,14 +263,14 @@
   .box {
     position: absolute;
     box-sizing: border-box;
-    border: 2px solid rgb(242 193 78 / 0.8);
+    border: 2px solid color-mix(in srgb, var(--gold) 80%, transparent);
     border-radius: 3px;
-    background: rgb(242 193 78 / 0.06);
+    background: color-mix(in srgb, var(--gold) 6%, transparent);
     cursor: move;
   }
   .box.selected {
-    border-color: #f2c14e;
-    background: rgb(242 193 78 / 0.12);
+    border-color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
   }
 
   /* Tab above the box, like the area tabs in Subquest */
@@ -284,7 +284,7 @@
     margin-bottom: 4px;
     padding: 3px 4px 3px 3px;
     border-radius: 7px;
-    background: rgb(15 18 34 / 0.95);
+    background: color-mix(in srgb, var(--night-deep) 95%, transparent);
     cursor: default;
     white-space: nowrap;
   }
@@ -294,7 +294,7 @@
     min-width: 20px;
     height: 20px;
     border-radius: 5px;
-    background: #f2c14e;
+    background: var(--gold);
     color: #1b1608;
     font-size: 12px;
     font-weight: 700;
@@ -325,9 +325,9 @@
   .tab input {
     width: 180px;
     padding: 2px 6px;
-    border: 1px solid #f2c14e;
+    border: 1px solid var(--gold);
     border-radius: 5px;
-    background: #0d1018;
+    background: var(--picture);
     color: inherit;
     font: inherit;
     font-size: 13px;
@@ -342,7 +342,7 @@
     margin: -6px;
     border: 1.5px solid #1b1608;
     border-radius: 2px;
-    background: #f2c14e;
+    background: var(--gold);
   }
   .nw { left: 0; top: 0; cursor: nwse-resize; }
   .n { left: 50%; top: 0; cursor: ns-resize; }

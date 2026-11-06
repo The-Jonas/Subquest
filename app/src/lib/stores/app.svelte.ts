@@ -1,6 +1,6 @@
 // Global UI state: settings and which screen is open.
 import { listen } from "@tauri-apps/api/event";
-import { getSettings, saveSettings, defaultSettings, coreStatus, inTauri, type Settings, type CoreStatus } from "../api";
+import { applyTheme, getSettings, saveSettings, defaultSettings, coreStatus, inTauri, type Settings, type CoreStatus } from "../api";
 import { setLocale, type Locale } from "../i18n/index.svelte";
 import { watchStyles } from "./styles.svelte";
 import { startTour } from "./tour.svelte";
@@ -22,6 +22,7 @@ export async function boot() {
   app.settings = settings;
   app.core = core;
   setLocale(settings.uiLanguage as Locale);
+  applyTheme(settings.uiTheme);
   app.ready = true;
   if (!settings.tutorialDone) startTour();
   void watchStyles();
@@ -29,8 +30,15 @@ export async function boot() {
   if (inTauri) void listen<Settings>("settings-changed", (e) => (app.settings = e.payload));
 }
 
+// Shows a theme at once (Settings > Look); it is kept with the other settings.
+export function previewTheme(theme: Settings["uiTheme"]) {
+  app.settings.uiTheme = theme;
+  applyTheme(theme);
+}
+
 // Saves the current settings and applies the UI language.
 export async function persistSettings() {
   setLocale(app.settings.uiLanguage as Locale);
+  applyTheme(app.settings.uiTheme);
   await saveSettings($state.snapshot(app.settings));
 }

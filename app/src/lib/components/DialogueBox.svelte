@@ -6,7 +6,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  let { speaker, line, children }: { speaker: string; line: string; children?: Snippet } = $props();
+  let { speaker = "", line, children }: { speaker?: string; line: string; children?: Snippet } = $props();
 
   let typed = $state("");
   let done = $state(false);
@@ -36,7 +36,7 @@
 </script>
 
 <section class="dialogue">
-  <span class="nameplate">{speaker}</span>
+  {#if speaker}<span class="nameplate">{speaker}</span>{/if}
   <h1 class="line" aria-label={line}>
     <span aria-hidden="true">{typed}</span><span class="continue" class:visible={done} aria-hidden="true">▼</span>
   </h1>
@@ -49,10 +49,9 @@
   .dialogue {
     position: relative;
     background: var(--panel);
-    border: 2px solid var(--ink);
+    border: 1px solid var(--line);
     border-radius: var(--radius-box);
-    padding: 34px 32px 28px;
-    box-shadow: 0 0 0 6px var(--night), 0 24px 48px -24px rgb(0 0 0 / 0.6);
+    padding: 28px 30px 26px;
   }
 
   /* Nameplate with the speaker's name, sitting on the top border */
@@ -70,9 +69,12 @@
     box-shadow: 0 0 0 5px var(--night);
   }
 
+  /* The question: big and narrow, typed out letter by letter */
   .line {
-    font-size: var(--text-xl);
-    min-height: 1.2em;
+    font-size: 34px;
+    font-weight: 800;
+    font-stretch: 72%;
+    min-height: 1.1em;
   }
 
   .continue {

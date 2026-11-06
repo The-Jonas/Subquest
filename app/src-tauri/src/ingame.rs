@@ -26,6 +26,7 @@ use crate::{overlay, AppState};
 
 pub const TOOLBAR: &str = "toolbar";
 const GRAB_WAIT: Duration = Duration::from_secs(2); // the first full-size frame usually comes in ~100 ms
+const THUMBNAIL_WAIT: Duration = Duration::from_millis(900); // a minimized window never sends one
 
 /// What a rectangle drawn over the game is for.
 #[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -304,14 +305,15 @@ pub fn toggle_hidden(app: &AppHandle) -> bool {
     hidden
 }
 
-/// Where the core's preview callback leaves the first full-size frame.
+/// Where the core's preview callback leaves the first frame wanted.
 #[derive(Default)]
 struct GrabSlot {
     frame: Mutex<Option<Rgba>>,
     ready: Condvar,
+    any_size: bool, // a thumbnail takes the first frame; a grab waits for a full-size one
 }
 
-/// Preview callback for `grab_window`: keeps the first frame that is not downscaled.
+/// Preview callback for `grab`: keeps the first frame wanted.
 unsafe extern "C" fn on_grab_frame(
     rgba: *const u8,
     width: i32,
@@ -320,10 +322,10 @@ unsafe extern "C" fn on_grab_frame(
     source_height: i32,
     user: *mut std::ffi::c_void,
 ) {
-    if width != source_width || height != source_height {
+    let slot = &*(user as *const GrabSlot);
+    if !slot.any_size && (width != source_width || height != source_height) {
         return;
     }
-    let slot = &*(user as *const GrabSlot);
     let mut frame = slot.frame.lock().unwrap();
     if frame.is_none() {
         let len = width as usize * height as usize * 4;
@@ -339,19 +341,31 @@ unsafe extern "C" fn on_grab_frame(
 /// One full-size picture of the game window, through a short preview capture
 /// (the in-app preview, if open, stops: only one preview runs at a time).
 pub fn grab_window(app: &AppHandle, window_handle: u64) -> Result<Rgba, AppError> {
+    grab(app, window_handle, 16384, false, GRAB_WAIT)
+}
+
+/// A small picture of a window (`max_width` wide at most), for the game list.
+/// Minimized windows send no frames: they time out quickly and get no picture.
+pub fn thumbnail(app: &AppHandle, window_handle: u64, max_width: i32) -> Result<Rgba, AppError> {
+    grab(app, window_handle, max_width, true, THUMBNAIL_WAIT)
+}
+
+/// One picture of a window through a short preview capture (the in-app
+/// preview, if open, stops: only one preview runs at a time).
+fn grab(app: &AppHandle, window_handle: u64, max_width: i32, any_size: bool, wait: Duration) -> Result<Rgba, AppError> {
     let state = app.state::<AppState>();
     let core = crate::core(&state)?;
     let mut preview = state.preview_user_data.lock().unwrap();
     crate::release_preview(core, &mut preview);
 
-    let slot = Box::new(GrabSlot::default());
+    let slot = Box::new(GrabSlot { any_size, ..GrabSlot::default() });
     let user = &*slot as *const GrabSlot as *mut std::ffi::c_void;
-    core.preview_start(window_handle, 16384, on_grab_frame, user)?;
+    core.preview_start(window_handle, max_width, on_grab_frame, user)?;
     let frame = {
         let guard = slot.frame.lock().unwrap();
         let (mut guard, _) = slot
             .ready
-            .wait_timeout_while(guard, GRAB_WAIT, |frame| frame.is_none())
+            .wait_timeout_while(guard, wait, |frame| frame.is_none())
             .unwrap();
         guard.take()
     };

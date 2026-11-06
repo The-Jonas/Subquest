@@ -52,8 +52,11 @@ export function newArea(): GameArea {
   return { name: "", mode: "dialogue", region: null, font: "", style: "inPlace", caps: "" };
 }
 
+export type UiTheme = "graphite" | "night" | "moss" | "plum";
+
 export interface Settings {
   uiLanguage: string;
+  uiTheme: UiTheme; // colors of Subquest's own windows
   sourceLanguage: string;
   targetLanguage: string;
   ocrEngine: string;
@@ -216,6 +219,30 @@ export async function sessionFlags(): Promise<[boolean, boolean]> {
   return invoke("session_flags");
 }
 
+// Paints a window in the chosen theme's colors (app.css [data-theme]).
+export function applyTheme(theme: string | undefined) {
+  document.documentElement.dataset.theme = theme || "graphite";
+}
+
+// Small picture of a window for the game list (null when none came: minimized...).
+export async function windowThumbnail(handle: number): Promise<Blob | null> {
+  if (!inTauri) {
+    const c = document.createElement("canvas");
+    c.width = 320;
+    c.height = 180;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = `hsl(${(handle * 67) % 360} 30% 22%)`;
+    ctx.fillRect(0, 0, c.width, c.height);
+    return new Promise((resolve) => c.toBlob(resolve, "image/png"));
+  }
+  try {
+    const bytes: ArrayBuffer = await invoke("window_thumbnail", { windowHandle: handle });
+    return new Blob([bytes], { type: "image/png" });
+  } catch {
+    return null;
+  }
+}
+
 // Brings Subquest to the front, optionally on a screen ("styles"...).
 export async function showMain(screen?: string) {
   if (!inTauri) return;
@@ -240,13 +267,14 @@ export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in
 // Defaults mirrored from settings.rs, used in browser mode.
 export const defaultSettings: Settings = {
   uiLanguage: "pt-BR",
+  uiTheme: "graphite",
   sourceLanguage: "en",
   targetLanguage: "pt-BR",
   ocrEngine: "windows",
   translator: { kind: "openai-compatible", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "", visionModel: "", apiKey: "" },
   quick: { engine: "google", deeplKey: "" },
   shortcuts: { ...defaultShortcuts },
-  overlay: { fontSize: 22, backgroundOpacity: 0.78, showOriginal: false, look: "inPlace" },
+  overlay: { fontSize: 0, backgroundOpacity: 0.78, showOriginal: false, look: "inPlace" },
   tutorialDone: false,
   profiles: {},
 };

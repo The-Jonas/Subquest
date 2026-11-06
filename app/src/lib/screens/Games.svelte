@@ -282,11 +282,7 @@
   }
   h2 {
     margin: 0;
-    color: var(--ink-dim);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-size: var(--text-lg);
   }
   .hint,
   .none {
@@ -429,7 +425,7 @@
     display: flex;
     align-items: center;
     border-radius: 6px;
-    background: #0d1018;
+    background: var(--picture);
     overflow: hidden;
   }
   .print {
@@ -457,7 +453,7 @@
     margin: 0;
     padding: 8px 12px;
     border-radius: 6px;
-    background: #0d1018;
+    background: var(--picture);
     font-size: 24px;
     line-height: 1.25;
     overflow-wrap: anywhere;

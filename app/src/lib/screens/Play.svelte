@@ -14,6 +14,7 @@
     inTauri,
     listWindows,
     toggleToolbar,
+    windowThumbnail,
     errorKind,
     profileKey,
     newArea,
@@ -28,6 +29,7 @@
   // Coming back to Play during a session shows the running game again.
   let step = $state<Step>(session.running ? 2 : 0);
   let windows = $state<GameWindow[]>([]);
+  let thumbs = $state<Record<number, string>>({}); // window handle -> object URL of its picture
   let loading = $state(false);
   let game = $state<GameWindow | null>(session.game);
   let areas = $state<GameArea[]>([newArea()]); // the game's screen areas, edited in the area step
@@ -64,12 +66,25 @@
     error = null;
     try {
       windows = await listWindows();
+      void loadThumbs(windows);
     } catch (e) {
       error = t(`errors.${errorKind(e)}`);
     } finally {
       loading = false;
     }
   }
+
+  // Takes a small picture of each window, one after the other (a capture
+  // each), so the games are recognized by sight. Old pictures are replaced.
+  async function loadThumbs(list: GameWindow[]) {
+    for (const w of list) {
+      const blob = await windowThumbnail(w.handle);
+      if (!blob || !windows.includes(w)) continue;
+      if (thumbs[w.handle]) URL.revokeObjectURL(thumbs[w.handle]);
+      thumbs[w.handle] = URL.createObjectURL(blob);
+    }
+  }
+  $effect(() => () => Object.values(thumbs).forEach((url) => URL.revokeObjectURL(url)));
 
   // Every marked area needs its rectangle; the whole-window mode needs none.
   const canContinue = $derived(areas.every((a) => a.mode === "screen" || !!a.region));
@@ -200,7 +215,7 @@
 
 <!-- The area step gets a wider layout: a bigger preview makes marking precise -->
 <div class="play" class:wide={(step === 1 && !running) || editing} data-tour="play-box">
-  <DialogueBox speaker={t("play.speaker")} line={question}>
+  <DialogueBox line={question}>
     {#if showFeed}
       <ol class="feed" aria-live="polite">
         {#each session.lines as l (l.frameId)}
@@ -330,8 +345,14 @@
         {#each windows as w (w.handle)}
           <li>
             <button class="window" class:selected={game?.handle === w.handle} onclick={() => pick(w)}>
-              <strong>{w.title}</strong>
-              <span>{w.process}</span>
+              <!-- The window as it is now: recognized at a glance -->
+              <span class="thumb">
+                {#if thumbs[w.handle]}<img src={thumbs[w.handle]} alt="" />{/if}
+              </span>
+              <span class="name">
+                <strong>{w.title}</strong>
+                <small>{w.process}</small>
+              </span>
             </button>
           </li>
         {:else}
@@ -401,36 +422,72 @@
     color: var(--ink);
   }
 
+  /* Open windows as picture cards: the game is found by sight */
   .windows {
     list-style: none;
     margin: 16px 0 0;
-    padding: 0;
+    padding: 2px;
     display: grid;
-    gap: 6px;
-    max-height: 260px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    max-height: 420px;
     overflow-y: auto;
   }
-
   .window {
     width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 16px;
-    padding: 12px 14px;
-    border: 1px solid var(--line);
+    display: grid;
+    padding: 0;
+    border: 0;
     border-radius: var(--radius-control);
     background: var(--night-deep);
+    outline: 1px solid var(--line);
+    overflow: hidden;
     cursor: pointer;
     text-align: left;
-  }
-  .window span {
-    color: var(--ink-faint);
-    font-size: var(--text-sm);
+    transition:
+      outline-color 0.12s ease,
+      transform 0.12s ease;
   }
   .window:hover,
   .window.selected {
-    border-color: var(--gold);
+    outline: 2px solid var(--gold);
+  }
+  .window:hover {
+    transform: translateY(-2px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .window {
+      transition: none;
+    }
+    .window:hover {
+      transform: none;
+    }
+  }
+  .thumb {
+    aspect-ratio: 16 / 9;
+    display: block;
+    background: var(--picture);
+  }
+  .thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .name {
+    display: grid;
+    padding: 8px 10px 9px;
+    min-width: 0;
+  }
+  .name strong,
+  .name small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .name small {
+    color: var(--ink-faint);
+    font-size: var(--text-sm);
   }
 
   /* Read mode: two slim cards side by side, above everything it governs */

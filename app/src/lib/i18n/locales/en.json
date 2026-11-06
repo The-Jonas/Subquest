@@ -12,7 +12,6 @@
     "missingHelp": "Build the core folder (see the README) to list windows and translate. The interface works anyway."
   },
   "play": {
-    "speaker": "Subquest",
     "steps": {
       "game": "Game",
       "area": "Area",
@@ -145,6 +144,15 @@
       "classic": "Classic subtitle",
       "classicHelp": "A dark box with all the text, like a movie subtitle. Simpler, always readable.",
       "inPlaceNote": "Each line's font comes from the game's styles (Games tab). Color and size are measured on screen."
+    },
+    "fontSizeAuto": "Automatic",
+    "fontSizeAutoHelp": "Automatic: as big as the game's own letters",
+    "theme": {
+      "title": "Subquest theme",
+      "graphite": "Graphite",
+      "night": "Night",
+      "moss": "Moss",
+      "plum": "Plum"
     }
   },
   "languages": {
@@ -373,5 +381,8 @@
         "text": "This button opens the tour again whenever you want. Have fun!"
       }
     }
+  },
+  "strip": {
+    "label": "Latest translated line"
   }
 }

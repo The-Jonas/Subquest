@@ -1,7 +1,27 @@
 /* ==== Subquest — design tokens ====
-   Bluish night background, parchment-colored text, "quest marker" gold as the
-   only accent. Teal is reserved for the "translating" state. */
-:root {
+   Like a game's pause menu: quiet surfaces, big narrow type for what you pick,
+   and ONE accent color (--gold, whatever hue the theme gives it) for what is
+   selected and for the translation itself. Teal is reserved for "translating".
+   The default theme is graphite with subtitle yellow; the others only change
+   colors (Settings > Look > Theme), never the layout. */
+:root,
+[data-theme="graphite"] {
+  --night: #17191e;
+  --night-deep: #111317;
+  --panel: #1e2128;
+  --panel-raised: #262a31;
+  --line: #343944;
+  --ink: #eceae4;
+  --ink-dim: #a0a3aa;
+  --ink-faint: #6b7079;
+  --gold: #f2d04b;
+  --gold-ink: #2a2306;
+  --live: #5cc8b8;
+  --danger: #ef8a8f;
+  --picture: #0c0d10; /* behind prints and pictures of the game */
+}
+/* The first look: night blue with quest-marker gold */
+[data-theme="night"] {
   --night: #151a2e;
   --night-deep: #10142a;
   --panel: #1f2643;
@@ -12,10 +32,40 @@
   --ink-faint: #6f7394;
   --gold: #f2c14e;
   --gold-ink: #2a2108;
-  --live: #5cc8b8;
-  --danger: #ef8a8f;
+  --picture: #0d1018;
+}
+/* Deep green with a leaf accent */
+[data-theme="moss"] {
+  --night: #141a17;
+  --night-deep: #0f1411;
+  --panel: #1b231f;
+  --panel-raised: #232d28;
+  --line: #33403a;
+  --ink: #e8ece6;
+  --ink-dim: #a3ada6;
+  --ink-faint: #6b7770;
+  --gold: #a8d672;
+  --gold-ink: #1c2a0e;
+  --picture: #0b0f0d;
+}
+/* Dark plum with a rose accent */
+[data-theme="plum"] {
+  --night: #1a1520;
+  --night-deep: #141019;
+  --panel: #221b2a;
+  --panel-raised: #2b2335;
+  --line: #3e3449;
+  --ink: #eee8f0;
+  --ink-dim: #ada4b5;
+  --ink-faint: #776e80;
+  --gold: #f0a6c4;
+  --gold-ink: #3a1426;
+  --picture: #0f0c12;
+}
 
-  --font-display: "Bricolage Grotesque Variable", system-ui, sans-serif;
+:root {
+  /* Display: Archivo, narrowed like a game menu; body stays hyper-legible */
+  --font-display: "Archivo Variable", system-ui, sans-serif;
   --font-body: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
 
   /* Type scale (~1.25 ratio from 15px) */
@@ -63,10 +113,17 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 650;
-  line-height: 1.2;
+  font-weight: 700;
+  font-stretch: 85%;
+  line-height: 1.15;
   margin: 0;
-  letter-spacing: -0.01em;
+}
+/* Screen titles: big and narrow, the menu's voice */
+h1 {
+  font-size: 36px;
+  font-weight: 800;
+  font-stretch: 72%;
+  line-height: 1.05;
 }
 
 p {

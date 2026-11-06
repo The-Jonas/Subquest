@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub ui_language: String,     // UI language: "pt-BR", "en", "es"
+    pub ui_theme: String,        // color theme of Subquest's windows: "graphite", "night", "moss", "plum"
     pub source_language: String, // game language
     pub target_language: String, // translation language
     pub ocr_engine: String,      // "windows" | "paddle"
@@ -97,7 +98,7 @@ pub struct TranslatorSettings {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 pub struct OverlaySettings {
-    pub font_size: u32,
+    pub font_size: u32,          // classic box font size in px; 0 = automatic
     pub background_opacity: f32, // 0..1
     pub show_original: bool,     // show the original text above the translation
     pub look: String,            // "inPlace" (drawn over each original line) or "classic" (subtitle box)
@@ -155,6 +156,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             ui_language: "pt-BR".into(),
+            ui_theme: "graphite".into(),
             source_language: "en".into(),
             target_language: "pt-BR".into(),
             ocr_engine: "windows".into(),
@@ -186,7 +188,7 @@ impl Default for OverlaySettings {
     /// Large font and a background dark enough to read over any scene.
     fn default() -> Self {
         Self {
-            font_size: 22,
+            font_size: 0, // 0 = automatic: the size of the game's own letters
             background_opacity: 0.78,
             show_original: false,
             look: "inPlace".into(),
@@ -230,7 +232,8 @@ mod tests {
         let s: Settings = serde_json::from_str(r#"{ "uiLanguage": "en" }"#).unwrap();
         assert_eq!(s.ui_language, "en");
         assert_eq!(s.target_language, "pt-BR");
-        assert_eq!(s.overlay.font_size, 22);
+        assert_eq!(s.overlay.font_size, 0); // automatic
+        assert_eq!(s.overlay.look, "inPlace");
         assert!(s.profiles.is_empty());
     }
 

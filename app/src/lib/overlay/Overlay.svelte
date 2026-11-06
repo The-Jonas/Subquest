@@ -37,11 +37,13 @@
   } from "../api";
   import { applyCase, cssFamily, ensureFont, styleCase } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
-  import { finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
+  import { applyTheme, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
   import { layout, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
+  const AUTO_FALLBACK = 24; // automatic size before any line was measured
+  const AUTO_MAX = 64; // automatic size never grows past this (huge titles)
   const HIDE_AFTER_MS = 1500; // how long a translation outlives its text on screen
 
   // What one area shows right now (reactive).
@@ -222,10 +224,23 @@
     return out;
   });
 
+  // Classic box font size. "Automatic" (0) uses the game's own letter size:
+  // the median height of the lines read, in overlay pixels (an OCR line box
+  // is about one font size tall). Without lines yet, a size that suits most games.
+  function startSize(v: AreaView): number {
+    if (settings.overlay.fontSize > 0) return settings.overlay.fontSize;
+    const frame = v.current;
+    if (!frame?.lines.length || frame.frameHeight <= 0 || viewHeight <= 0) return AUTO_FALLBACK;
+    const heights = frame.lines.map((l) => l.rect[3]).sort((a, b) => a - b);
+    const median = heights[Math.floor(heights.length / 2)];
+    return Math.round(Math.min(AUTO_MAX, Math.max(MIN_FONT, median * (viewHeight / frame.frameHeight))));
+  }
+
   // Svelte action: shrinks a classic box's font one step at a time until the text fits.
-  function fitText(node: HTMLElement, _deps: unknown) {
+  function fitText(node: HTMLElement, deps: [string, number, number, number]) {
+    let start = deps[1];
     const fit = () => {
-      let size = settings.overlay.fontSize;
+      let size = start;
       node.style.fontSize = `${size}px`;
       while (size > MIN_FONT && (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth)) {
         size -= 1;
@@ -233,7 +248,12 @@
       }
     };
     fit();
-    return { update: fit };
+    return {
+      update: (next: [string, number, number, number]) => {
+        start = next[1];
+        fit();
+      },
+    };
   }
 
   // True when a frame id is the area's line on screen or a re-reading of it.
@@ -339,6 +359,7 @@
   async function setup() {
     if (!inTauri) return demo();
     settings = await getSettings();
+    applyTheme(settings.uiTheme);
     setLocale(settings.uiLanguage as Locale);
     await useProfile(await activeProfile());
     unlisteners.push(await listen<string>("session-started", (e) => useProfile(e.payload)));
@@ -350,6 +371,7 @@
     unlisteners.push(
       await listen<Settings>("settings-changed", (e) => {
         settings = e.payload;
+        applyTheme(settings.uiTheme);
         loadFonts();
       }),
     );
@@ -459,7 +481,7 @@
     <div
       class="subtitle"
       {style}
-      use:fitText={[v.classicText, settings.overlay.fontSize, viewWidth, viewHeight]}
+      use:fitText={[v.classicText, startSize(v), viewWidth, viewHeight]}
       class:upper={area.caps === "upper"}
       class:small-caps={area.caps === "smallCaps"}
       style:font-family={cssFamily(area.font)}
@@ -512,9 +534,9 @@
     align-items: center;
     gap: 14px;
     padding: 10px 14px 10px 18px;
-    border: 1.5px solid #f2c14e;
+    border: 1.5px solid var(--gold);
     border-radius: 12px;
-    background: rgb(15 18 34 / 0.95);
+    background: color-mix(in srgb, var(--night-deep) 95%, transparent);
     color: #eae4d3;
     font: 15px "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
     white-space: nowrap; /* one line: it sits over the game, short and readable */
@@ -535,7 +557,7 @@
   }
   .select-rect {
     position: absolute;
-    border: 2px solid #f2c14e;
+    border: 2px solid var(--gold);
     border-radius: 3px;
     background: rgb(242 193 78 / 0.08);
     box-shadow: 0 0 0 1px rgb(0 0 0 / 0.5);

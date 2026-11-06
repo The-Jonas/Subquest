@@ -29,6 +29,8 @@ use settings::{Settings, TranslatorSettings};
 use translate::similar;
 use translation::TranslationState;
 
+const THUMBNAIL_WIDTH: i32 = 360; // game list pictures: enough to recognize a game, cheap to send
+
 /// Channel the preview reaches the UI through, as raw bytes (no JSON).
 type PreviewChannel = Channel<InvokeResponseBody>;
 
@@ -670,6 +672,17 @@ fn list_styles(state: State<'_, AppState>, profile_key: String) -> Vec<styles::T
     state.styles.list(&profile_key)
 }
 
+/// PNG thumbnail of a window, for the game list (a short capture of it).
+#[tauri::command]
+async fn window_thumbnail(app: AppHandle, window_handle: u64) -> Result<tauri::ipc::Response, AppError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let picture = ingame::thumbnail(&app, window_handle, THUMBNAIL_WIDTH)?;
+        picture.png().map(tauri::ipc::Response::new).ok_or_else(|| AppError::other("could not encode the thumbnail"))
+    })
+    .await
+    .map_err(|e| AppError::other(e.to_string()))?
+}
+
 /// PNG of a style's print (the phrase as the game drew it).
 #[tauri::command]
 fn style_print(
@@ -855,6 +868,7 @@ pub fn run() {
             toggle_hidden,
             toggle_toolbar,
             forget_styles,
+            window_thumbnail,
             session_flags,
             show_main,
             start_preview,

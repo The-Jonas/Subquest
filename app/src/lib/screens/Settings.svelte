@@ -6,7 +6,8 @@
 -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { app, persistSettings, type SettingsTab } from "../stores/app.svelte";
+  import { app, persistSettings, previewTheme, type SettingsTab } from "../stores/app.svelte";
+  import type { UiTheme } from "../api";
   import Shortcuts from "./Shortcuts.svelte";
   import Fonts from "./Fonts.svelte";
   import {
@@ -24,6 +25,19 @@
   const quickEngines = ["google", "deepl", ""]; // "" = layer off
   const tabs: SettingsTab[] = ["translation", "look", "shortcuts", "fonts", "storage"];
   const looks = ["inPlace", "classic"] as const;
+  // Themes with the colors their swatch shows: background, panel, accent.
+  const themes: { id: UiTheme; colors: [string, string, string] }[] = [
+    { id: "graphite", colors: ["#17191e", "#262a31", "#f2d04b"] },
+    { id: "night", colors: ["#151a2e", "#283055", "#f2c14e"] },
+    { id: "moss", colors: ["#141a17", "#232d28", "#a8d672"] },
+    { id: "plum", colors: ["#1a1520", "#2b2335", "#f0a6c4"] },
+  ];
+
+  // Applies a theme at once and keeps it (no need for the save button).
+  async function chooseTheme(id: UiTheme) {
+    previewTheme(id);
+    await persistSettings().catch(errorKind);
+  }
   const withSave = $derived(app.settingsTab === "translation" || app.settingsTab === "look");
 
   // Saved translations [count, bytes], shown in the Storage section.
@@ -262,6 +276,28 @@
   </section>
 
   {:else if app.settingsTab === "look"}
+  <!-- Colors of Subquest itself: applied the moment one is picked -->
+  <section>
+    <h2>{t("settings.theme.title")}</h2>
+    <div class="themes" role="radiogroup" aria-label={t("settings.theme.title")}>
+      {#each themes as theme (theme.id)}
+        <button
+          class="theme"
+          class:selected={app.settings.uiTheme === theme.id}
+          role="radio"
+          aria-checked={app.settings.uiTheme === theme.id}
+          onclick={() => chooseTheme(theme.id)}
+        >
+          <span class="swatch" style:background={theme.colors[0]}>
+            <span style:background={theme.colors[1]}></span>
+            <span style:background={theme.colors[2]}></span>
+          </span>
+          {t(`settings.theme.${theme.id}`)}
+        </button>
+      {/each}
+    </div>
+  </section>
+
   <!-- How translations are drawn over the game -->
   <section>
     <h2>{t("settings.look.title")}</h2>
@@ -280,10 +316,24 @@
   <section>
     <h2>{t("settings.overlay")}</h2>
     <div class="grid">
-      <label class="field">
-        <span>{t("settings.fontSize")} <output>{app.settings.overlay.fontSize}px</output></span>
-        <input type="range" min="14" max="40" bind:value={app.settings.overlay.fontSize} />
-      </label>
+      <!-- Automatic: the size of the game's own letters; or a fixed size -->
+      <div class="field">
+        <span>
+          {t("settings.fontSize")}
+          <output>{app.settings.overlay.fontSize > 0 ? `${app.settings.overlay.fontSize}px` : t("settings.fontSizeAuto")}</output>
+        </span>
+        <label class="check">
+          <input
+            type="checkbox"
+            checked={app.settings.overlay.fontSize === 0}
+            onchange={(e) => (app.settings.overlay.fontSize = e.currentTarget.checked ? 0 : 22)}
+          />
+          {t("settings.fontSizeAutoHelp")}
+        </label>
+        {#if app.settings.overlay.fontSize > 0}
+          <input type="range" min="14" max="40" bind:value={app.settings.overlay.fontSize} />
+        {/if}
+      </div>
       <label class="field">
         <span>{t("settings.opacity")} <output>{Math.round(app.settings.overlay.backgroundOpacity * 100)}%</output></span>
         <input type="range" min="0" max="1" step="0.02" bind:value={app.settings.overlay.backgroundOpacity} />
@@ -296,7 +346,7 @@
 
     <!-- Preview: a striped "scene" to show the subtitle over a busy background -->
     <figure class="preview" aria-label={t("settings.preview")}>
-      <div class="subtitle" style:font-size="{app.settings.overlay.fontSize}px" style:background="rgb(10 12 24 / {app.settings.overlay.backgroundOpacity})">
+      <div class="subtitle" style:font-size="{app.settings.overlay.fontSize || 24}px" style:background="rgb(10 12 24 / {app.settings.overlay.backgroundOpacity})">
         {#if app.settings.overlay.showOriginal}
           <small>{t("settings.previewOriginal")}</small>
         {/if}
@@ -445,6 +495,48 @@
   }
   .looks {
     grid-template-columns: 1fr 1fr;
+  }
+  /* Theme swatches: a tiny window in the theme's colors, its name under it */
+  .themes {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .theme {
+    display: grid;
+    gap: 8px;
+    padding: 8px 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    text-align: left;
+  }
+  .theme:hover {
+    color: var(--ink);
+  }
+  .theme.selected {
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 1px var(--gold);
+    color: var(--ink);
+  }
+  .swatch {
+    height: 56px;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 1fr 26px;
+    gap: 6px;
+    padding: 8px;
+  }
+  .swatch span:first-child {
+    border-radius: 4px;
+  }
+  .swatch span:last-child {
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    align-self: end;
   }
   .storage {
     display: flex;

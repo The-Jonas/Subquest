@@ -9,7 +9,7 @@
   import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { keyHint, defaultShortcuts, type Shortcuts } from "../shortcuts";
-  import { beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
+  import { applyTheme, beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
 
   let paused = $state(false);
   let tip = $state(""); // label of the button under the mouse, drawn below the bar
@@ -77,8 +77,14 @@
     if (!inTauri) return;
     const settings = await getSettings();
     setLocale(settings.uiLanguage as Locale);
+    applyTheme(settings.uiTheme);
     keys = settings.shortcuts;
-    unlisteners.push(await listen<Settings>("settings-changed", (e) => (keys = e.payload.shortcuts)));
+    unlisteners.push(
+      await listen<Settings>("settings-changed", (e) => {
+        keys = e.payload.shortcuts;
+        applyTheme(e.payload.uiTheme);
+      }),
+    );
     [paused, hidden] = await sessionFlags();
     unlisteners.push(await listen<boolean>("session-paused", (e) => (paused = e.payload)));
     unlisteners.push(await listen<boolean>("overlay-hidden", (e) => (hidden = e.payload)));
@@ -175,9 +181,9 @@
     align-items: center;
     gap: 2px;
     padding: 4px 6px 4px 4px;
-    border: 1.5px solid rgb(242 193 78 / 0.55);
+    border: 1.5px solid color-mix(in srgb, var(--gold) 55%, transparent);
     border-radius: 12px;
-    background: rgb(15 18 34 / 0.92);
+    background: color-mix(in srgb, var(--night-deep) 92%, transparent);
     color: var(--ink);
   }
   .grip {
@@ -236,7 +242,7 @@
     padding: 4px 10px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: rgb(15 18 34 / 0.95);
+    background: color-mix(in srgb, var(--night-deep) 95%, transparent);
     color: var(--ink);
     font-size: 12.5px;
     white-space: nowrap;

@@ -12,7 +12,6 @@
     "missingHelp": "Compila la carpeta core (mira el README) para listar ventanas y traducir. La interfaz funciona igual."
   },
   "play": {
-    "speaker": "Subquest",
     "steps": {
       "game": "Juego",
       "area": "Área",
@@ -145,6 +144,15 @@
       "classic": "Subtítulo clásico",
       "classicHelp": "Una caja oscura con todo el texto, como subtítulo de película. Más simple, siempre legible.",
       "inPlaceNote": "La fuente de cada línea viene de los estilos del juego (pestaña Juegos). El color y el tamaño se miden en pantalla."
+    },
+    "fontSizeAuto": "Automático",
+    "fontSizeAutoHelp": "Automático: del tamaño de las letras del juego",
+    "theme": {
+      "title": "Tema de Subquest",
+      "graphite": "Grafito",
+      "night": "Noche",
+      "moss": "Musgo",
+      "plum": "Ciruela"
     }
   },
   "languages": {
@@ -373,5 +381,8 @@
         "text": "Este botón vuelve a abrir el tour cuando quieras. ¡Buen juego!"
       }
     }
+  },
+  "strip": {
+    "label": "Última frase traducida"
   }
 }
