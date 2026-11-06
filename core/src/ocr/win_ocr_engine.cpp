@@ -1,5 +1,4 @@
 #include "ocr/win_ocr_engine.h"
-#include "ocr/line_cleanup.h"
 
 #ifdef _WIN32
 
@@ -47,20 +46,6 @@ bool starts_with_ci(const std::wstring& text, const std::wstring& prefix) {
                       [](wchar_t a, wchar_t b) { return towlower(a) == towlower(b); });
 }
 
-// Union of the word rectangles, i.e. the box around a whole line.
-Rect line_box(const std::vector<ocr::OcrWord>& words) {
-    float left = 1e9f, top = 1e9f, right = -1e9f, bottom = -1e9f;
-    for (const auto& word : words) {
-        const auto r = word.BoundingRect();
-        left = std::min(left, r.X);
-        top = std::min(top, r.Y);
-        right = std::max(right, r.X + r.Width);
-        bottom = std::max(bottom, r.Y + r.Height);
-    }
-    if (right < left) return {};
-    return {int32_t(left), int32_t(top), int32_t(right - left), int32_t(bottom - top)};
-}
-
 } // namespace
 
 struct WinOcrEngine::Impl {
@@ -94,9 +79,10 @@ OcrLoadError WinOcrEngine::load(const std::string& language) {
     }
 }
 
-// Copies the frame into a SoftwareBitmap, runs RecognizeAsync and converts the
-// lines. Frames larger than the engine's limit are shrunk first. Blocking on
-// .get() is fine here: this always runs on a background thread, never on a UI one.
+// Copies the frame into a SoftwareBitmap, runs RecognizeAsync and reports the
+// lines with their words (cleaned up later by the pipeline). Frames larger than
+// the engine's limit are shrunk first. Blocking on .get() is fine here: this
+// always runs on a background thread, never on a UI one.
 OcrResult WinOcrEngine::recognize(const Frame& frame) {
     OcrResult result;
     result.frame_id = frame.id;
@@ -120,51 +106,19 @@ OcrResult WinOcrEngine::recognize(const Frame& frame) {
 
         const auto ocr_result = impl_->engine.RecognizeAsync(bitmap).get();
         for (const auto& line : ocr_result.Lines()) {
-            // Words without letters at the line's edges are game art read as
-            // "(" or "|": they leave both the text and the box.
-            std::vector<ocr::OcrWord> all;
-            std::vector<std::wstring> texts;
+            OcrLine out;
+            out.text = winrt::to_string(line.Text()); // Windows' own spacing (none in Japanese)
             for (const auto& word : line.Words()) {
-                all.push_back(word);
-                texts.emplace_back(word.Text());
+                const auto r = word.BoundingRect();
+                out.words.push_back({winrt::to_string(word.Text()),
+                                     Rect{int32_t(r.X * scale), int32_t(r.Y * scale), int32_t(r.Width * scale),
+                                          int32_t(r.Height * scale)}});
             }
-            const auto [first, last] = kept_words(texts);
-            if (first == last) continue; // nothing but symbols
-            const std::vector<ocr::OcrWord> words(all.begin() + first, all.begin() + last);
-            std::vector<std::wstring> kept(texts.begin() + first, texts.begin() + last);
-            Rect box = line_box(words);
-            // Marks glued to the ends ("(PLAY"): cut from the text, and from the
-            // box by their share of that word's width (OCR has no letter boxes).
-            const auto [front, back] = stray_marks(kept);
-            if (front > 0) {
-                const auto r = words.front().BoundingRect();
-                const float cut = r.Width * float(front) / float(kept.front().size());
-                box.x += int32_t(cut);
-                box.width -= int32_t(cut);
-                kept.front().erase(0, front);
-            }
-            if (back > 0) {
-                const auto r = words.back().BoundingRect();
-                box.width -= int32_t(r.Width * float(back) / float(kept.back().size()));
-                kept.back().erase(kept.back().size() - back);
-            }
-            box = {int32_t(box.x * scale), int32_t(box.y * scale), int32_t(box.width * scale),
-                   int32_t(box.height * scale)};
-            std::string text;
-            if (first == 0 && last == all.size() && front == 0 && back == 0) {
-                text = winrt::to_string(line.Text()); // untouched: keep Windows' own spacing
-            } else {
-                for (const auto& word : kept) {
-                    if (!text.empty()) text += ' ';
-                    text += winrt::to_string(word);
-                }
-            }
-            if (!result.full_text.empty()) result.full_text += '\n';
-            result.full_text += text;
-            result.lines.push_back({std::move(text), box});
+            result.lines.push_back(std::move(out));
         }
     } catch (const winrt::hresult_error&) {
         // A failed frame just yields no text; the next stable frame tries again.
+        result.lines.clear();
     } catch (...) {
         // Anything else (out of memory on a huge frame...) must not escape the
         // OCR thread: an uncaught exception there ends the whole app.

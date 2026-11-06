@@ -17,17 +17,21 @@ add_library(subquest_portable STATIC
     src/vision/image_ops.cpp
     src/vision/palette.cpp
     src/ocr/line_cleanup.cpp
+    src/pipeline/pipeline.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
+set_target_properties(subquest_portable PROPERTIES POSITION_INDEPENDENT_CODE ON) # goes into the core DLL
+find_package(Threads REQUIRED)
+target_link_libraries(subquest_portable PUBLIC Threads::Threads)
 
 # --- Core DLL (Windows) ---
 add_library(subquest_core SHARED
     src/core_api.cpp
-    src/pipeline/pipeline.cpp
     src/pipeline/preview_stream.cpp
     src/capture/wgc_capture.cpp
     src/capture/window_list.cpp
     src/ocr/win_ocr_engine.cpp
+    src/ocr/ocr_factory.cpp
 )
 target_include_directories(subquest_core
     PUBLIC  include
@@ -79,4 +83,8 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(line_cleanup_test tests/line_cleanup_test.cpp)
     target_link_libraries(line_cleanup_test PRIVATE subquest_portable)
     add_test(NAME line_cleanup COMMAND line_cleanup_test)
+
+    add_executable(pipeline_test tests/pipeline_test.cpp)
+    target_link_libraries(pipeline_test PRIVATE subquest_portable)
+    add_test(NAME pipeline COMMAND pipeline_test)
 endif()

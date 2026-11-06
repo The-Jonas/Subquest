@@ -29,6 +29,47 @@ int main() {
     check(stray_marks(W{L"Options", L"(more"}) == P{0, 0}, "only the line's own ends are looked at");
     check(stray_marks(W{L"Yes", L"no)"}) == P{0, 1}, "an unmatched closing bracket at the end goes");
 
+    // --- tidy_line: what every engine's lines go through in the pipeline ---
+    {
+        OcrLine line{"( PLAY", {}, {}, {}, {{"(", {100, 10, 10, 20}}, {"PLAY", {120, 10, 60, 20}}}};
+        check(tidy_line(line) && line.text == "PLAY", "a lone '(' before a menu item leaves the text...");
+        check(line.box.x == 120 && line.box.width == 60, "...and the box");
+    }
+    {
+        OcrLine line{"(PLAY", {}, {}, {}, {{"(PLAY", {100, 10, 50, 20}}}};
+        check(tidy_line(line) && line.text == "PLAY", "a '(' glued to the word is cut from the text...");
+        check(line.box.x == 110 && line.box.width == 40, "...and its share of the word's width from the box");
+    }
+    {
+        // Japanese: no spaces between words; the engine's text is kept, not rebuilt with spaces.
+        OcrLine line{"|\xe3\x81\xaf\xe3\x81\x84", {}, {}, {}, {{"|", {0, 0, 5, 20}}, {"\xe3\x81\xaf", {5, 0, 20, 20}}, {"\xe3\x81\x84", {25, 0, 20, 20}}}};
+        check(tidy_line(line) && line.text == "\xe3\x81\xaf\xe3\x81\x84", "a line without spaces stays without spaces");
+    }
+    {
+        OcrLine line{"Hello  there", {}, {}, {}, {{"Hello", {0, 0, 50, 20}}, {"there", {60, 0, 50, 20}}}};
+        check(tidy_line(line) && line.text == "Hello  there", "an untouched line keeps the engine's spacing");
+        check(line.box.x == 0 && line.box.width == 110, "its box surrounds all its words");
+    }
+    {
+        OcrLine line{"... ?", {}, {}, {}, {{"...", {0, 0, 10, 20}}, {"?", {20, 0, 5, 20}}}};
+        check(!tidy_line(line), "a line of symbols only is dropped");
+    }
+    {
+        // An engine that only boxes whole lines: words get their share of the box.
+        const std::vector<OcrWord> words = split_words("ab cd", {0, 0, 50, 10});
+        check(words.size() == 2 && words[1].text == "cd" && words[1].box.x == 30 && words[1].box.width == 20,
+              "split_words gives each word its share of the line's box");
+        OcrLine line{"| Quit", {0, 0, 60, 10}};
+        check(tidy_line(line) && line.text == "Quit" && line.box.x == 20, "a line without words is still tidied");
+    }
+    {
+        OcrResult result;
+        result.lines = {OcrLine{"Hi", {}, {}, {}, {{"Hi", {0, 0, 20, 10}}}}, OcrLine{"--", {}, {}, {}, {{"--", {0, 20, 20, 10}}}},
+                        OcrLine{"Bye", {}, {}, {}, {{"Bye", {0, 40, 30, 10}}}}};
+        tidy_lines(result);
+        check(result.lines.size() == 2 && result.full_text == "Hi\nBye", "tidy_lines drops empty lines and rebuilds full_text");
+    }
+
     std::printf(failures ? "%d FAILURE(S)\n" : "ALL OK\n", failures);
     return failures ? 1 : 0;
 }

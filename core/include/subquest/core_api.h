@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 9u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 10u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -33,7 +33,8 @@ typedef enum SqStatus {
     SQ_ERR_NOT_RUNNING = 3,     /* sq_stop with no active session */
     SQ_ERR_PLATFORM = 4,        /* a Windows API failed (capture, OCR...) */
     SQ_ERR_NOT_IMPLEMENTED = 5, /* feature still a stub */
-    SQ_ERR_OCR_LANGUAGE = 6     /* Windows has no OCR installed for the requested language */
+    SQ_ERR_OCR_LANGUAGE = 6,    /* the OCR engine can't read the requested language (not installed) */
+    SQ_ERR_OCR_ENGINE = 7       /* no OCR engine with the requested name */
 } SqStatus;
 
 typedef struct SqRect {
@@ -50,6 +51,7 @@ typedef struct SqSessionConfig {
     const SqRect* areas;         /* screen areas to read; width/height = 0 => whole window */
     uint32_t area_count;         /* 0 => one area, the whole window */
     const char* ocr_language;    /* tag BCP-47: "en", "ja", "zh-Hans", "ko" */
+    const char* ocr_engine;      /* "windows" (Windows.Media.Ocr); NULL or "" = the default */
     uint32_t settle_frames;      /* identical frames in a row before running OCR (default 3) */
     float change_threshold;      /* minimum mean difference (0..1) that counts as a change (default 0.02) */
 } SqSessionConfig;

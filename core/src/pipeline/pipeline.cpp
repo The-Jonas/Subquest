@@ -4,6 +4,7 @@
 #include <chrono>
 #include <climits>
 
+#include "ocr/line_cleanup.h"
 #include "vision/image_ops.h"
 #include "vision/palette.h"
 
@@ -89,7 +90,8 @@ void Pipeline::on_frame(Frame&& frame) {
     }
 }
 
-// Drains the slots until the session closes; skips repeated text per area.
+// Drains the slots until the session closes; tidies what the engine read and
+// skips repeated text per area.
 // When an area's text disappears, sends one empty result so the UI can hide
 // the old translation. Line boxes leave in WINDOW pixels, so the overlay
 // (which covers the whole window) can place every area's lines directly.
@@ -99,6 +101,7 @@ void Pipeline::ocr_loop() {
         const size_t area = job->first;
         const Frame& frame = job->second;
         OcrResult result = ocr_->recognize(frame);
+        tidy_lines(result); // the same cleanup whatever the engine
         const auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
                                 std::chrono::steady_clock::now().time_since_epoch()).count();
         result.total_ms = double(now_us - int64_t(frame.timestamp_us)) / 1000.0;

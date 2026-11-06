@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 9;
+pub const EXPECTED_API_VERSION: u32 = 10;
 pub const MAX_AREAS: usize = 16; // SQ_MAX_AREAS
 
 #[repr(C)]
@@ -32,6 +32,7 @@ pub struct SqSessionConfig {
     pub areas: *const SqRect, // width/height 0 = whole window
     pub area_count: u32,
     pub ocr_language: *const c_char,
+    pub ocr_engine: *const c_char, // "windows"; empty = the core's default
     pub settle_frames: u32,
     pub change_threshold: f32,
 }
@@ -181,15 +182,18 @@ impl Core {
         window_handle: u64,
         areas: &[SqRect],
         ocr_language: &str,
+        ocr_engine: &str,
         callback: SqTextCallback,
         user_data: *mut c_void,
     ) -> Result<(), AppError> {
         let lang = CString::new(ocr_language).map_err(|e| AppError::other(e.to_string()))?;
+        let engine = CString::new(ocr_engine).map_err(|e| AppError::other(e.to_string()))?;
         let config = SqSessionConfig {
             window_handle,
             areas: areas.as_ptr(), // `areas` outlives the call; the core copies them
             area_count: areas.len() as u32,
             ocr_language: lang.as_ptr(),
+            ocr_engine: engine.as_ptr(),
             settle_frames: 0,      // 0 = use the core default
             change_threshold: 0.0, // same
         };

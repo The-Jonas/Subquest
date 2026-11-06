@@ -398,7 +398,10 @@ fn session_areas(profile: Option<&profiles::GameProfile>) -> Vec<SqRect> {
 /// the overlay and the translation context are left as they are.
 fn start_core(app: &AppHandle, state: &AppState, window_handle: u64, profile_key: &str) -> Result<(), AppError> {
     let core = core(state)?;
-    let language = state.settings.lock().unwrap().source_language.clone();
+    let (language, engine) = {
+        let settings = state.settings.lock().unwrap();
+        (settings.source_language.clone(), settings.ocr_engine.clone())
+    };
     let areas = session_areas(state.profiles.get(profile_key).as_ref());
     let mut slot = state.session_user_data.lock().unwrap();
     let user = Box::into_raw(Box::new(app.clone()));
@@ -406,6 +409,7 @@ fn start_core(app: &AppHandle, state: &AppState, window_handle: u64, profile_key
         window_handle,
         &areas,
         &language,
+        &engine,
         on_ocr_text,
         user as *mut c_void,
     );

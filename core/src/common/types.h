@@ -30,11 +30,19 @@ struct Frame {
     int32_t source_height = 0;
 };
 
+// One word as an OCR engine found it, so stray marks at a line's edges can be
+// cut from its box too.
+struct OcrWord {
+    std::string text; // UTF-8
+    Rect box;         // inside the frame
+};
+
 struct OcrLine {
     std::string text;                   // UTF-8
     Rect box;                           // line position inside the frame
     uint32_t background_rgb = 0x000000; // color right around this line (0xRRGGBB)
     uint32_t text_rgb = 0xFFFFFF;       // color of this line's letters (0xRRGGBB)
+    std::vector<OcrWord> words;         // from the engine (may be empty); used by tidy_lines()
 };
 
 struct OcrResult {

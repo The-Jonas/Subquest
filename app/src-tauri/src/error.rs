@@ -28,6 +28,7 @@ impl AppError {
             4 => "platform",
             5 => "notImplemented",
             6 => "ocrLanguage",
+            7 => "ocrEngine",
             _ => "unknown",
         };
         Self {
@@ -62,6 +63,7 @@ mod tests {
         assert_eq!(AppError::from_status(5, "x").kind, "notImplemented");
         assert_eq!(AppError::from_status(4, "x").kind, "platform");
         assert_eq!(AppError::from_status(6, "x").kind, "ocrLanguage");
+        assert_eq!(AppError::from_status(7, "x").kind, "ocrEngine");
         assert_eq!(AppError::from_status(99, "x").kind, "unknown");
     }
 }

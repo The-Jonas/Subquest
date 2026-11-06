@@ -8,7 +8,7 @@
 
 #include "capture/wgc_capture.h"
 #include "capture/window_list.h"
-#include "ocr/win_ocr_engine.h"
+#include "ocr/ocr_factory.h"
 #include "pipeline/pipeline.h"
 #include "pipeline/preview_stream.h"
 
@@ -59,7 +59,7 @@ extern "C" SQ_API SqStatus sq_window_bounds(uint64_t window_handle, SqRect* out_
     return SQ_OK;
 }
 
-// Builds the pipeline with the Windows implementations and starts the session.
+// Builds the pipeline (Windows capture + the chosen OCR engine) and starts the session.
 extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallback callback, void* user_data) {
     if (!config || !callback || !config->ocr_language) return fail(SQ_ERR_INVALID_ARG, "null config or callback");
 
@@ -80,7 +80,11 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
     if (config->settle_frames > 0) pc.detector.settle_frames = config->settle_frames;
     if (config->change_threshold > 0.0f) pc.detector.change_threshold = config->change_threshold;
 
-    s.pipeline = std::make_unique<Pipeline>(std::make_unique<WgcCapture>(), std::make_unique<WinOcrEngine>());
+    const std::string engine_name = config->ocr_engine ? config->ocr_engine : "";
+    std::unique_ptr<IOcrEngine> ocr = make_ocr_engine(engine_name);
+    if (!ocr) return fail(SQ_ERR_OCR_ENGINE, ("unknown OCR engine '" + engine_name + "'").c_str());
+
+    s.pipeline = std::make_unique<Pipeline>(std::make_unique<WgcCapture>(), std::move(ocr));
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
         // Plain C view of the result; the strings stay owned by `r` during the call.

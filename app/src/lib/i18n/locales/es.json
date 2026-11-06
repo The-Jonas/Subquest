@@ -176,6 +176,7 @@
     "notImplemented": "Esta parte todavía está en construcción. Llega en los próximos pasos de la fase 1.",
     "unknown": "Algo salió mal. Los detalles están en la consola (F12).",
     "ocrLanguage": "Windows no tiene el reconocimiento de texto (OCR) del idioma del juego. En Configuración > Hora e idioma > Idioma y región, agrega el idioma del juego (por ejemplo, English (United States)); el OCR viene incluido. Después vuelve a abrir Subquest.",
+    "ocrEngine": "El motor de reconocimiento de texto (OCR) configurado no existe en esta versión de Subquest (la configuración debe ser de una versión más nueva). Actualiza Subquest.",
     "translatorNotConfigured": "Falta configurar el traductor: revisa el modelo y la dirección en Ajustes.",
     "translatorNetwork": "No pude conectar con el servicio de traducción. Revisa internet y la dirección en Ajustes.",
     "translatorProvider": "El servicio de traducción rechazó la solicitud. Revisa la clave y el modelo en Ajustes; si es un límite de uso, espera un poco.",
