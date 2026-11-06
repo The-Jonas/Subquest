@@ -127,8 +127,8 @@ int main() {
         std::vector<OcrLine> lines{make_line({{"Dawn", dawn}, {"arrives", arrives}})};
         const std::vector<Rect> icons = find_icons(f, lines);
         check(icons.size() == 2 && lines[0].text == "{1} Dawn arrives {2}", "pictures at both ends of a line are found");
-        check(lines[0].box.x == 30 && lines[0].box.x + lines[0].box.width == 212,
-              "and the line's box takes them in (their place gets cleaned)");
+        check(lines[0].box.x == 60 && lines[0].box.x + lines[0].box.width == 188,
+              "and the line's box keeps only the letters (their size is measured on it)");
     }
     {
         // Hades II's "[G] GIFT": the key read as a letter, its white face filling the box.
@@ -139,6 +139,8 @@ int main() {
         letters(f, gift);
         std::vector<OcrLine> lines{make_line({{"G", key}, {"GIFT", gift}})};
         check(find_icons(f, lines).size() == 1 && lines[0].text == "{1} GIFT", "a key read as a letter is a picture");
+        check(lines[0].box.y == 20 && lines[0].box.height == 16 && lines[0].box.x == 50,
+              "and the line's box loses the key (taller than the letters, it made the translation huge)");
     }
     {
         // A portrait next to the dialogue reaches past the search: not a picture of the line.
@@ -181,6 +183,78 @@ int main() {
         letters(f, know);
         std::vector<OcrLine> lines{make_line({{"I", i}, {"know", know}})};
         check(find_icons(f, lines).empty() && lines[0].text == "I know", "a short word with soft edges stays a word");
+    }
+    {
+        // Hades II lyrics on a thin black strip: the search reaches the scenery above
+        // and below, which must not hide the note standing on its own.
+        Frame f = blank();
+        paint(f, {0, 0, 400, 14}, 0x704080);  // scenery above the strip
+        paint(f, {0, 42, 400, 18}, 0x506030); // and below
+        const Rect sides{60, 20, 50, 16}, coin{118, 20, 40, 16};
+        letters(f, sides), letters(f, coin);
+        paint(f, {36, 19, 12, 18}, 0xFFFFFF); // the note before the words
+        std::vector<OcrLine> lines{make_line({{"Sides", sides}, {"coin", coin}})};
+        check(find_icons(f, lines).size() == 1 && lines[0].text == "{1} Sides coin",
+              "a note on a thin strip is found, scenery around or not");
+    }
+    {
+        // "Right on time." in Hades II: "on" stressed in white bold inside a green line is a word.
+        Frame f = blank();
+        const Rect right{20, 20, 50, 16}, on{78, 17, 26, 21}, time{112, 20, 40, 16};
+        for (const Rect& r : {right, time})
+            for (int x = r.x; x < r.x + r.width; x += 5) paint(f, {x, r.y, 2, r.height}, 0x28E628);
+        for (int x = on.x; x < on.x + on.width; x += 5) paint(f, {x, on.y, 3, on.height}, 0xFFFFFF);
+        OcrLine line = make_line({{"Right", right}, {"on", on}, {"time.", time}});
+        line.text_rgb = 0x28E628;
+        std::vector<OcrLine> lines{line};
+        check(find_icons(f, lines).empty() && lines[0].text == "Right on time.", "a stressed two-letter word stays a word");
+    }
+    {
+        // "[E] SHOP": OCR boxed the key together with the space and the start of the S.
+        Frame f = blank();
+        const Rect key{20, 16, 40, 24}, shop{50, 20, 60, 16};
+        paint(f, {20, 16, 22, 24}, 0xE8E8E8); // the key's face, 22 px wide
+        paint(f, {28, 22, 6, 12}, 0x303030);
+        letters(f, shop);
+        std::vector<OcrLine> lines{make_line({{"E", key}, {"SHOP", shop}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && icons[0].x == 20 && icons[0].width == 22,
+              "a key boxed with the start of the next word is cut to the key alone");
+    }
+    {
+        // "♫Mares": OCR boxed the white note into the first word but left it out of the text.
+        Frame f = blank();
+        const Rect mares{20, 20, 80, 16}, refletem{108, 20, 60, 16};
+        paint(f, {22, 18, 3, 16}, 0xFFFFFF); // the note: stem...
+        paint(f, {20, 28, 8, 7}, 0xFFFFFF);  // ...and head
+        for (const Rect& r : {Rect{40, 20, 60, 16}, refletem})
+            for (int x = r.x; x < r.x + r.width; x += 5) paint(f, {x, r.y, 2, r.height}, 0x28E628);
+        OcrLine line = make_line({{"Mares", mares}, {"refletem", refletem}});
+        line.text_rgb = 0x28E628;
+        std::vector<OcrLine> lines{line};
+        check(find_icons(f, lines).size() == 1 && lines[0].text == "{1} Mares refletem",
+              "a note boxed into the first word is found");
+        check(lines[0].box.x >= 28, "and the word's box keeps only its letters");
+    }
+    {
+        // Hades II item cards: "· Found using the...": the purple bullet is too small to be a picture.
+        Frame f = blank();
+        const Rect dot{20, 26, 4, 4}, found{30, 20, 50, 16};
+        paint(f, dot, 0x9070B0);
+        letters(f, found);
+        std::vector<OcrLine> lines{make_line({{"\xc2\xb7", dot}, {"Found", found}})};
+        check(find_icons(f, lines).empty() && lines[0].text == "\xc2\xb7 Found", "a bullet stays text");
+    }
+    {
+        // A note with a scenery speck beside it: the picture is the note alone, at its own size.
+        Frame f = blank();
+        const Rect mares{60, 20, 50, 16};
+        letters(f, mares);
+        paint(f, {36, 19, 12, 18}, 0xFFFFFF); // the note
+        paint(f, {26, 24, 5, 5}, 0x707070);   // a speck of scenery, left of it
+        std::vector<OcrLine> lines{make_line({{"Mares", mares}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && icons[0].x == 36 && icons[0].width == 12, "the note is cut alone, without the speck");
     }
     check(icon_placeholder(0) == "{1}" && icon_placeholder(9) == "{10}", "placeholders count from 1");
 

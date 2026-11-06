@@ -11,11 +11,13 @@
 //    the line's text color nor its background (a green button with a white A
 //    on it), or a short word much taller than the line's letters (a key drawn
 //    as a box). A whole word in another color is a highlighted word, not a picture;
-//  - a short junk "word" whose box is mostly filled (a key's face with its letter);
+//  - a one-character junk "word" whose box is mostly filled (a key's face with
+//    its letter); two letters can be a real word ("on"), so they never count;
 //  - a gap between two words, wider than a space, with something drawn in it;
 //  - or something small drawn right before the first word or after the last
 //    one (song notes around lyrics, a key before its label), on its own: not
-//    touching a portrait, the box's frame or another line.
+//    touching a portrait, the box's frame or another line; or boxed by OCR
+//    into that word ("♫Mares" read as "Mares") in a color of its own.
 #pragma once
 
 #include <cstdint>

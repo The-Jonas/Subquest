@@ -1,6 +1,6 @@
 // Tests for icons.ts: placeholders for pictures inside the game's text.
 import { describe, expect, it } from "vitest";
-import { forMeasure, missingIcons, pieces, withAllIcons } from "./icons";
+import { extentOf, forMeasure, missingIcons, pieces, withAllIcons } from "./icons";
 
 describe("pieces", () => {
   it("splits text and pictures in order", () => {
@@ -25,5 +25,16 @@ describe("missingIcons / withAllIcons", () => {
 describe("forMeasure", () => {
   it("gives each picture the room of two wide letters", () => {
     expect(forMeasure("Aperte {1} já")).toBe("Aperte MM já");
+  });
+});
+
+describe("extentOf", () => {
+  const key = { rect: [180, 200, 24, 24] as [number, number, number, number], url: "" };
+  it("widens a line to the icons it names, keeping the letters' height", () => {
+    expect(extentOf("{1} GIFT", [210, 204, 60, 16], [key])).toEqual([180, 204, 90, 16]);
+  });
+
+  it("leaves a line without icons as it is", () => {
+    expect(extentOf("GIFT", [210, 204, 60, 16], [key])).toEqual([210, 204, 60, 16]);
   });
 });

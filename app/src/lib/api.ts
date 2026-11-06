@@ -125,6 +125,7 @@ export interface OcrLine {
   words?: OcrWord[]; // the line's words, so one can be picked over the game
   effect?: TextEffect | null; // outline or shadow the game draws around these letters
   letterCase?: string; // "upper" | "smallCaps" | "" as seen on the picture
+  extent?: Region; // set by the overlay: the line with its icons, sideways (placement); `rect` stays the letters (size)
 }
 
 // An effect around a line's letters (mirrors TextEffect in effects.rs). Sizes in window pixels.

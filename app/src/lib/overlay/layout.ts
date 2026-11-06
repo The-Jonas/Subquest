@@ -44,6 +44,13 @@ const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original
 const FALLBACK_INK = 0.72; // ink height / font size when the original can't be measured
 const EDGE = 0.98; // keep 2% of the room free at the screen edges
 
+// Where a line is placed: sideways with its icons (`extent`), top and height
+// of its letters (`rect`, which gives the size).
+function placement(line: OcrLine): Region {
+  const e = line.extent ?? line.rect;
+  return [e[0], line.rect[1], e[2], line.rect[3]];
+}
+
 // Pairs translated lines with original lines. When the model kept the line
 // count (the normal case), each translation goes over its own line; otherwise
 // the whole translation becomes one block over all the lines.
@@ -136,7 +143,7 @@ export function layout(
   const scale = view.height / frame.height; // CSS px per capture px
   const minX = bounds?.left ?? 0;
   const maxX = bounds?.right ?? view.width;
-  const rects = pairs.map((p) => p.line.rect);
+  const rects = pairs.map((p) => placement(p.line));
   const align: Align[] = [];
   for (const group of blocks(rects)) {
     const a = detectAlign(group.map((i) => rects[i]), single);
@@ -147,7 +154,7 @@ export function layout(
   pairs.forEach(({ line, text }, i) => {
     if (!text) return;
     const measure = measureFor(line);
-    let [x, y, w, h] = line.rect.map((v) => v * scale);
+    let [x, y, w, h] = placement(line).map((v) => v * scale);
 
     // A button icon at the start stays visible: the patch starts after it.
     const keycap = splitKeycap(line.text);
@@ -292,7 +299,7 @@ export function layoutArea(
   // ends (splitParagraphs). With the model's line count matching the original,
   // each paragraph gets its own lines' translation; with one line per
   // paragraph, each gets its line; otherwise everything is one paragraph.
-  const rects = lines.map((l) => l.rect);
+  const rects = lines.map(placement);
   let groups = blocks(rects)
     .map((g) => [...g].sort((a, b) => rects[a][1] - rects[b][1]))
     .flatMap((g) => splitParagraphs(lines, g));

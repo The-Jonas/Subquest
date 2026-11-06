@@ -44,7 +44,7 @@
   import AreaEditor from "./AreaEditor.svelte";
   import TermPicker from "./TermPicker.svelte";
   import IconText from "../components/IconText.svelte";
-  import { forMeasure, withAllIcons } from "../text/icons";
+  import { extentOf, forMeasure, withAllIcons } from "../text/icons";
   import { effectShadow, layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
@@ -224,18 +224,40 @@
       };
       // Pictures the translator dropped still show, at the start.
       const translation = withAllIcons(v.current.text, v.translation);
+      // Lines are placed with their icons ("[G] Gift" centered as a whole).
+      const icons = v.current.icons ?? [];
+      const lines = v.current.lines.map((l) => ({ ...l, extent: extentOf(l.text, l.rect, icons) }));
       // A marked box keeps the translation inside it; loose text on the whole
       // screen is placed line by line over the original.
       const placed =
         a.mode !== "screen" && a.region
-          ? layoutArea(v.current.lines, translation, a.region, frame, view, measureFor)
-          : layout(pairLines(v.current.lines, translation), frame, view, measureFor, "center");
+          ? layoutArea(lines, translation, a.region, frame, view, measureFor)
+          : layout(pairLines(lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
-      const icons = v.current.icons ?? [];
       for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase), patch, frame: v.current.frameId, bg, scale, icons });
     }
     return withoutOverlaps(out);
+  });
+
+  // Where the game's icons were (a key, song notes): the clean background goes
+  // over each, since the translation draws them again where it puts them. The
+  // line's own patch only covers its letters (its size is measured on them).
+  const iconCovers = $derived.by(() => {
+    const out: { cover: { left: number; top: number; width: number; height: number }; bg: CleanPiece }[] = [];
+    if (classic || viewHeight <= 0) return out;
+    const view = { width: viewWidth, height: viewHeight };
+    for (const v of Object.values(views)) {
+      if (!v.current || !v.translation || !v.current.icons?.length) continue;
+      const bg = cleanPiece(v.current, view);
+      if (!bg) continue;
+      const scale = view.height / v.current.frameHeight;
+      for (const icon of v.current.icons) {
+        const [x, y, w, h] = icon.rect;
+        out.push({ cover: { left: x * scale, top: y * scale, width: w * scale, height: h * scale }, bg });
+      }
+    }
+    return out;
   });
 
   // Two areas can read the same text (a marked box inside a whole-screen area),
@@ -532,6 +554,20 @@
       {/if}
     </div>
   {/if}
+  {#each iconCovers as { cover: c, bg }, i (i)}
+    {@const pad = 2}
+    <div
+      class="cover clean"
+      style:left="{c.left}px"
+      style:top="{c.top}px"
+      style:width="{c.width}px"
+      style:height="{c.height}px"
+      style:--pad="{pad}px"
+      style:background-image="url({bg.url})"
+      style:background-size="{bg.width}px {bg.height}px"
+      style:background-position="{bg.left - (c.left - pad)}px {bg.top - (c.top - pad)}px"
+    ></div>
+  {/each}
   {#each patches as { look, patch: p, bg, scale, icons }, i (i)}
     {@const pad = bg ? Math.max(3, p.fontPx * 0.3) : Math.max(2, p.fontPx * 0.18)}
     <!-- The cover hides the original line: with the game's picture without the
@@ -563,7 +599,7 @@
       style:color={p.textColor}
       style:text-shadow={effectShadow(p.effect, scale)}
     >
-      <IconText text={applyCase(p.text, look.caps)} {icons} />
+      <IconText text={applyCase(p.text, look.caps)} {icons} {scale} />
     </div>
   {/each}
 

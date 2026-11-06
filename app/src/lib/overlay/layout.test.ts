@@ -239,6 +239,16 @@ describe("lone lines in a marked area (menu buttons)", () => {
     expect(Math.abs(middle - (1430 + 41))).toBeLessThan(1);
   });
 
+  it("centers a key and its label as a whole, like the game ('[G] Gift')", () => {
+    // The menu's middle is 1471. Letters of "Gift" at 1456..1516; with the key
+    // from 1426, the block is 1426..1516: centered on the menu, as in the game.
+    const gift = { ...line("{1} GIFT", [1456, 447, 60, 14]), extent: [1426, 447, 90, 14] as Region };
+    const [p] = layoutArea([gift], "{1} PRESENTE", area, screen, screen, () => measure);
+    const middle = p.textLeft + measure(p.text, p.fontPx).width / 2;
+    expect(Math.abs(middle - 1471)).toBeLessThan(1); // centered as a block (the letters alone would say 1486)
+    expect(p.fontPx).toBeCloseTo(14 / 0.9); // the size still comes from the letters alone
+  });
+
   it("stays inside the area, shrinking a little if it must", () => {
     const patches = layoutArea([addOns], "Complementos e extensões", area, screen, screen, () => measure);
     const p = patches[0];

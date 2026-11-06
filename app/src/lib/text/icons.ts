@@ -4,6 +4,8 @@
 // "{1}", "{2}"... (core/src/vision/icons.h); the translator keeps them where
 // they belong ("Aperte {1} para pular") and the app draws the picture there.
 
+import type { IconPicture, Region } from "../api";
+
 const TOKEN = /\{(\d+)\}/g;
 
 // A piece of text: plain text, or the picture of placeholder `icon` (0 = {1}).
@@ -39,4 +41,20 @@ export function withAllIcons(original: string, translation: string): string {
 // The text as it is measured for layout: each picture takes about the room of two wide letters.
 export function forMeasure(text: string): string {
   return text.replace(TOKEN, "MM");
+}
+
+// Where a line sits sideways with its pictures: its letters' box (`rect`)
+// widened to the icons its text names ("{1} GIFT": the key and the word). The
+// translation is placed by this (a centered "[G] Gift" stays centered as a
+// whole), while its size still comes from the letters alone.
+export function extentOf(text: string, rect: Region, icons: IconPicture[]): Region {
+  let x0 = rect[0];
+  let x1 = rect[0] + rect[2];
+  for (const match of text.matchAll(TOKEN)) {
+    const icon = icons[Number(match[1]) - 1];
+    if (!icon) continue;
+    x0 = Math.min(x0, icon.rect[0]);
+    x1 = Math.max(x1, icon.rect[0] + icon.rect[2]);
+  }
+  return [x0, rect[1], x1 - x0, rect[3]];
 }
