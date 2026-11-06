@@ -9,6 +9,11 @@
 
 namespace subquest {
 
+// Id of the next OCR result, for the whole life of the process: a session that
+// restarts (new areas, pause and resume) must never reuse an id, because the
+// app keys its lines, translations and history by it.
+static std::atomic<uint64_t> g_next_event_id{1};
+
 // Takes the concrete implementations (dependency injection makes testing easier).
 Pipeline::Pipeline(std::unique_ptr<ICaptureSource> capture, std::unique_ptr<IOcrEngine> ocr)
     : capture_(std::move(capture)), ocr_(std::move(ocr)) {}
@@ -50,7 +55,6 @@ StartError Pipeline::start(const PipelineConfig& config, TextCallback on_text) {
     detectors_.assign(areas_.size(), ChangeDetector(config.detector));
     last_texts_.assign(areas_.size(), std::string());
     ocr_slots_.reset(areas_.size());
-    next_event_id_ = 1;
     on_text_ = std::move(on_text);
     running_ = true;
     ocr_thread_ = std::thread(&Pipeline::ocr_loop, this);
@@ -113,7 +117,7 @@ void Pipeline::ocr_loop() {
                 line.box.y += frame.origin_y;
             }
         }
-        result.frame_id = next_event_id_++; // areas share frames, so frame ids aren't unique per result
+        result.frame_id = g_next_event_id++; // areas share frames, so frame ids aren't unique per result
         result.area_index = uint32_t(area);
         result.frame_width = frame.source_width > 0 ? frame.source_width : frame.width;
         result.frame_height = frame.source_height > 0 ? frame.source_height : frame.height;

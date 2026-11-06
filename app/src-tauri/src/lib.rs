@@ -31,6 +31,7 @@ use translation::TranslationState;
 
 const MIN_WIDTH: f64 = 960.0; // same as minWidth in tauri.conf.json
 const MIN_HEIGHT: f64 = 640.0; // same as minHeight in tauri.conf.json
+const MAX_LINE_SHARE: f32 = 0.1; // an OCR line taller than this share of the window is artwork, not text
 const THUMBNAIL_WIDTH: i32 = 360; // game list pictures: enough to recognize a game, cheap to send
 
 /// Channel the preview reaches the UI through, as raw bytes (no JSON).
@@ -137,6 +138,48 @@ fn css_color(rgb: u32) -> String {
 /// Copies a C string into an owned String (lossy on invalid UTF-8).
 unsafe fn owned(text: *const c_char) -> String {
     CStr::from_ptr(text).to_string_lossy().into_owned()
+}
+
+/// Tray icon (next to the clock): click it to bring Subquest back; its menu
+/// opens Subquest or quits for good. Labels follow the UI language.
+fn tray(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    let language = app.state::<AppState>().settings.lock().unwrap().ui_language.clone();
+    let (open_label, quit_label) = match language.as_str() {
+        "en" => ("Open Subquest", "Quit"),
+        "es" => ("Abrir Subquest", "Salir"),
+        _ => ("Abrir o Subquest", "Sair"),
+    };
+    let open = MenuItem::with_id(app, "open", open_label, true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&open, &quit_item])?;
+    let mut builder = TrayIconBuilder::with_id("subquest")
+        .tooltip("Subquest")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_main(app.clone(), None),
+            "quit" => quit(app),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                show_main(tray.app_handle().clone(), None);
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
+/// Quits for good: ends the session (capture, overlay, shortcuts) and closes
+/// every window, the hidden ones included.
+fn quit(app: &AppHandle) {
+    let _ = end_session(app);
+    app.exit(0);
 }
 
 /// Opens the main window big enough for the screen it is on: 80% of it,
@@ -247,12 +290,25 @@ unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut 
 unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void) {
     let app = &*(user as *const AppHandle);
     let e = &*event;
-    let raw_lines = if e.lines.is_null() || e.line_count == 0 {
+    let all_lines = if e.lines.is_null() || e.line_count == 0 {
         &[][..]
     } else {
         std::slice::from_raw_parts(e.lines, e.line_count as usize)
     };
-    let mut text = owned(e.utf8_text);
+    // Huge "lines" are artwork read as letters (a logo, big numbers on a
+    // menu): translated, they came back as giant subtitles over the screen.
+    let tallest = e.frame_height as f32 * MAX_LINE_SHARE;
+    let kept: Vec<core_ffi::SqLine> = all_lines
+        .iter()
+        .filter(|l| e.frame_height <= 0 || (l.rect.height as f32) <= tallest)
+        .copied()
+        .collect();
+    let raw_lines = &kept[..];
+    let mut text = if kept.len() == all_lines.len() {
+        owned(e.utf8_text)
+    } else {
+        raw_lines.iter().map(|l| owned(l.utf8_text)).collect::<Vec<_>>().join("\n")
+    };
     let meaningful = similar::meaningful(&text);
 
     // Text styles: each line takes the user's style its letters look like
@@ -904,6 +960,7 @@ pub fn run() {
                 active_profile: Mutex::new(None),
             });
             fit_main_window(app.handle());
+            tray(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -944,6 +1001,24 @@ pub fn run() {
             get_settings,
             save_settings
         ])
+        .on_window_event(|window, event| {
+            // The main window's X: during a translation the game keeps being
+            // translated and Subquest waits in the tray (next to the clock);
+            // otherwise it really quits. Before, the hidden overlay window kept
+            // the process alive, and installing again said it was still running.
+            if window.label() != "main" {
+                return;
+            }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let app = window.app_handle();
+                if app.state::<AppState>().session_window.lock().unwrap().is_some() {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else {
+                    quit(app);
+                }
+            }
+        })
         .build(tauri::generate_context!())
         .expect("failed to start Subquest")
         .run(|app, event| {

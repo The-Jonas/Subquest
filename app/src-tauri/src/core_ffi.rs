@@ -37,6 +37,7 @@ pub struct SqSessionConfig {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)] // plain data (the text pointer stays owned by the core)
 pub struct SqLine {
     pub utf8_text: *const c_char,
     pub rect: SqRect,

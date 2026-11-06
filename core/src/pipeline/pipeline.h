@@ -58,7 +58,6 @@ private:
     std::thread ocr_thread_;
     std::atomic<bool> running_{false};
     std::vector<std::string> last_texts_; // one per area, only touched on the OCR thread
-    uint64_t next_event_id_ = 1;          // OCR thread: unique, increasing id for each result
 };
 
 Rect bounding_rect(const std::vector<Rect>& areas); // rectangle the capture must cover (empty = whole window)
