@@ -8,7 +8,11 @@ Play any game in your language. Subquest reads the dialogue on your screen, tran
 
 > 🇧🇷 [Leia em português](README.pt-BR.md)
 
-**Status:** first test version. Capture, OCR, two-layer translation, the in-game overlay with the game's own fonts, the in-game toolbar and shortcuts work end to end; see the [Roadmap](#roadmap) for what's next.
+<p align="center">
+  <img src="docs/screenshots/demo.webp" width="820" alt="A tip in The Battle for Wesnoth: the English text, then Subquest's Portuguese translation drawn in its place, in the game's own box and font" />
+</p>
+
+**Status:** first version (v0.1.0), Windows only. See the [Roadmap](#roadmap) for what's next.
 
 ## Install
 
@@ -18,6 +22,23 @@ Play any game in your language. Subquest reads the dialogue on your screen, tran
 4. Run the game **windowed or borderless** (exclusive fullscreen blocks the capture), pick it in **Play**, mark where the text appears and start.
 
 Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or Korean games also need that language's pack installed in Windows (Settings → Time & language → Language).
+
+## What it looks like
+
+*Screenshots with [The Battle for Wesnoth](https://www.wesnoth.org/), a free and open-source game.*
+
+| | |
+|---|---|
+| ![The Wesnoth main menu fully translated: the tip box and the menu buttons in Portuguese](docs/screenshots/in-game.jpg) | ![Before and after: the same tip in English and in Portuguese, in the same box](docs/screenshots/before-after.jpg) |
+| **In the game.** The tip and the menu, translated where they were. | **Before and after.** The translation stays inside the box, in the game's size and spacing. |
+| ![Picking the game: open windows shown as live thumbnails](docs/screenshots/play-list.jpg) | ![Marking areas over a live preview of the game](docs/screenshots/areas.jpg) |
+| **Pick the game** by its picture. | **Mark the areas** where text appears: move, resize, rename. |
+| ![The Games tab: areas and a text style with its font](docs/screenshots/games-tab.jpg) | ![Settings, Look: four color themes and how the translation is drawn](docs/screenshots/themes.jpg) |
+| **Games:** areas and styles (a print of the game's text and the font that matches it). | **Themes** and the choice between drawn-in-place or a classic subtitle. |
+
+The in-game bar (shortcut Ctrl+Shift+B) marks areas, takes style prints, pauses and hides the translation without leaving the game:
+
+<p align="center"><img src="docs/screenshots/toolbar-bar.jpg" width="404" alt="Subquest's in-game bar with its buttons" /></p>
 
 ## Why another translator?
 
@@ -91,15 +112,19 @@ The installer is written to `app/src-tauri/target/release/bundle/nsis/`. It carr
 
 ## Roadmap
 
-1. ~~**MVP:** WGC capture, Windows OCR (English), area marking, LLM translation, overlay, per-stage latency.~~ Done.
-2. **Asian languages:** PaddleOCR via ONNX Runtime + DirectML (Japanese, Chinese, Korean). *Not started; Windows OCR already reads them when the Windows language pack is installed. It is also the base for other systems (item 7): one OCR that works the same everywhere.*
-3. **Quality:** ~~context~~, ~~persistent cache~~ (a JSON file instead of SQLite), ~~streaming~~, ~~game profiles~~, ~~a quick second translator~~, ~~text styles with the game's fonts~~. *Left: the per-game glossary.*
-4. ~~**Full-screen mode:** text detection over the whole window, translation drawn in place.~~ Done.
-5. **Polish:** ~~hotkeys~~, ~~in-game toolbar~~, ~~guided tour~~, ~~themes~~, installer *(first build)*, text hooking for supported engines.
-6. **Other screens:** a second-screen mode for consoles and phones, and Android.
-7. **Other systems.** Only the C++ core (capture, OCR, window list) and keeping the overlay on top are Windows-only; the interface and the Rust side already build anywhere. With PaddleOCR in place (item 2), each system needs its own capture and overlay:
-   - **Linux**, aimed at the Steam Deck: X11 first (capture and an always-on-top overlay work without trouble); Wayland later, since capture goes through a permission prompt and an app can't place itself over another app's window.
-   - **macOS**: ScreenCaptureKit for capture and the Vision framework for OCR (already reads Japanese, Chinese and Korean); needs the Screen Recording permission once.
+**Done in v0.1.0:** window capture, OCR, two translation layers (a fast one first, the language model replaces it), translation drawn in place with the game's own fonts (text styles), marked areas and whole-screen mode, the in-game bar and shortcuts, history, guided tour, themes and the installer.
+
+From here, the essentials first: what everything else builds on, so it never has to be redone.
+
+1. **Foundation.** Automated tests for the overlay layout and the change detector; versioned game profiles with migration, so updates never lose what a player set up; a pluggable OCR engine.
+2. **Translation quality.** A per-game glossary (names always translated the same way) and lower latency from line to translation.
+3. **Perfect boxes.** Rebuild the box's own background behind the translation instead of a flat patch; reproduce effects (typewriter, shaking letters, colored words) and keep icons in place.
+4. **Perfect whole screen.** The same, for text anywhere on screen.
+5. **Expansion.**
+   - **PaddleOCR** (ONNX Runtime + DirectML): better Japanese, Chinese and Korean, and the base for other systems. Windows OCR already reads them when the Windows language pack is installed.
+   - **Linux**, aimed at the Steam Deck: X11 first, Wayland later (capture asks for permission and apps can't place themselves over other windows there).
+   - **macOS**: ScreenCaptureKit and the Vision framework.
+   - A second-screen mode for consoles and phones, Android, and text hooking for supported engines.
 
 ## Contributing
 

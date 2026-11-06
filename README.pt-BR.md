@@ -8,7 +8,11 @@ Jogue qualquer jogo no seu idioma. O Subquest lê os diálogos da tela, traduz c
 
 > 🇺🇸 [Read in English](README.md)
 
-**Situação:** primeira versão de testes. Captura, OCR, tradução em duas camadas, a tradução por cima do jogo com as fontes do próprio jogo, a barrinha e os atalhos já funcionam de ponta a ponta; veja o [roteiro](#roteiro) para os próximos passos.
+<p align="center">
+  <img src="docs/screenshots/demo.webp" width="820" alt="Uma dica de The Battle for Wesnoth: o texto em inglês e depois a tradução do Subquest desenhada no lugar dele, na caixa e na fonte do próprio jogo" />
+</p>
+
+**Situação:** primeira versão (v0.1.0), só para Windows. Veja o [roteiro](#roteiro) para os próximos passos.
 
 ## Instalar
 
@@ -18,6 +22,23 @@ Jogue qualquer jogo no seu idioma. O Subquest lê os diálogos da tela, traduz c
 4. Deixe o jogo **em janela ou janela sem borda** (a tela cheia exclusiva bloqueia a captura), escolha ele em **Jogar**, marque onde os textos aparecem e comece.
 
 Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Jogos em japonês, chinês ou coreano também precisam do pacote desse idioma instalado no Windows (Configurações → Hora e idioma → Idioma).
+
+## Como é
+
+*Capturas com [The Battle for Wesnoth](https://www.wesnoth.org/), um jogo livre e de código aberto.*
+
+| | |
+|---|---|
+| ![O menu principal do Wesnoth todo traduzido: a caixa de dica e os botões em português](docs/screenshots/in-game.jpg) | ![Antes e depois: a mesma dica em inglês e em português, na mesma caixa](docs/screenshots/before-after.jpg) |
+| **No jogo.** A dica e o menu traduzidos no lugar onde estavam. | **Antes e depois.** A tradução fica dentro da caixa, no tamanho e no espaçamento do jogo. |
+| ![Escolhendo o jogo: as janelas abertas como miniaturas ao vivo](docs/screenshots/play-list.jpg) | ![Marcando as áreas sobre a prévia ao vivo do jogo](docs/screenshots/areas.jpg) |
+| **Escolha o jogo** pela imagem. | **Marque as áreas** onde o texto aparece: mova, redimensione, renomeie. |
+| ![A aba Jogos: áreas e um estilo de texto com a fonte dele](docs/screenshots/games-tab.jpg) | ![Ajustes, Aparência: quatro temas de cores e como a tradução é desenhada](docs/screenshots/themes.jpg) |
+| **Jogos:** áreas e estilos (um print do texto do jogo com a fonte que combina com ele). | **Temas** e a escolha entre desenhar no lugar ou legenda clássica. |
+
+A barrinha no jogo (atalho Ctrl+Shift+B) marca áreas, tira prints de estilo, pausa e esconde a tradução sem sair do jogo:
+
+<p align="center"><img src="docs/screenshots/toolbar-bar.jpg" width="404" alt="A barrinha do Subquest no jogo, com seus botões" /></p>
 
 ## Por que mais um tradutor?
 
@@ -63,15 +84,19 @@ O instalador fica em `app/src-tauri/target/release/bundle/nsis/`. Ele leva a DLL
 
 ## Roteiro
 
-1. ~~**MVP:** captura WGC, OCR do Windows (inglês), marcação da área, tradução com LLM, overlay e latência por etapa.~~ Pronto.
-2. **Idiomas asiáticos:** PaddleOCR via ONNX Runtime + DirectML (japonês, chinês e coreano). *Não começado; o OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado. Ele também é a base para outros sistemas (item 7): um OCR que funciona igual em todos.*
-3. **Qualidade:** ~~contexto~~, ~~cache persistente~~ (um arquivo JSON em vez de SQLite), ~~streaming~~, ~~perfis por jogo~~, ~~um segundo tradutor rápido~~, ~~estilos com as fontes do jogo~~. *Falta: o glossário por jogo.*
-4. ~~**Modo tela inteira:** detecção de texto na janela toda, com a tradução desenhada no lugar.~~ Pronto.
-5. **Acabamento:** ~~atalhos~~, ~~barrinha no jogo~~, ~~tour guiado~~, ~~temas~~, instalador *(primeira versão)* e *text hooking* para engines suportadas.
-6. **Outras telas:** modo segunda tela para consoles e celulares, e Android.
-7. **Outros sistemas.** Só o núcleo em C++ (captura, OCR, lista de janelas) e o jeito de manter a tradução por cima do jogo são exclusivos do Windows; a interface e a parte em Rust já compilam em qualquer sistema. Com o PaddleOCR pronto (item 2), cada sistema precisa da sua captura e da sua camada por cima:
-   - **Linux**, pensando no Steam Deck: primeiro X11 (captura e janela sempre por cima funcionam sem drama); depois Wayland, onde a captura passa por um aviso de permissão e um app não pode se posicionar em cima da janela de outro.
-   - **macOS**: ScreenCaptureKit para capturar e o framework Vision para o OCR (já lê japonês, chinês e coreano); precisa liberar a permissão de Gravação de tela uma vez.
+**Pronto na v0.1.0:** captura da janela, OCR, duas camadas de tradução (uma rápida primeiro, o modelo de linguagem substitui), tradução desenhada no lugar com as fontes do próprio jogo (estilos de texto), áreas marcadas e modo tela inteira, a barrinha e os atalhos, histórico, tour guiado, temas e o instalador.
+
+Daqui para frente, o essencial primeiro: o que todo o resto usa, para nunca precisar ser refeito.
+
+1. **Base.** Testes automáticos do posicionamento da tradução e do detector de mudança; perfis de jogo com versão e migração, para atualizações nunca perderem o que o jogador configurou; OCR trocável.
+2. **Qualidade da tradução.** Glossário por jogo (nomes sempre traduzidos do mesmo jeito) e menos tempo entre a fala e a tradução.
+3. **Caixas perfeitas.** Reconstruir o fundo da própria caixa atrás da tradução, em vez de uma mancha de cor; reproduzir efeitos (digitação, letras tremendo, palavras coloridas) e manter os ícones no lugar.
+4. **Tela inteira perfeita.** O mesmo, para texto em qualquer lugar da tela.
+5. **Expansão.**
+   - **PaddleOCR** (ONNX Runtime + DirectML): japonês, chinês e coreano melhores, e a base para outros sistemas. O OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado.
+   - **Linux**, pensando no Steam Deck: primeiro X11, depois Wayland (lá a captura pede permissão e um app não pode ficar por cima de outras janelas).
+   - **macOS**: ScreenCaptureKit e o framework Vision.
+   - Modo segunda tela para consoles e celulares, Android e *text hooking* para engines suportadas.
 
 ## Licença
 
