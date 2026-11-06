@@ -68,6 +68,8 @@
             <span class="area">{areaName(h)}</span>
             {#if h.missed}<span class="tag missed-tag">{t("history.missed")}</span>{/if}
             {#if h.quick && h.done}<span class="tag">{t("history.quick")}</span>{/if}
+            {#if h.cached && h.done}<span class="tag">{t("history.cached")}</span>{/if}
+            {#if h.terms.length}<span class="tag glossary-tag">{t("history.glossary", { terms: h.terms.join(", ") })}</span>{/if}
           </div>
           <LinePair
             original={h.original}
@@ -159,6 +161,10 @@
   .missed-tag {
     border-color: var(--gold);
     color: var(--gold);
+  }
+  .glossary-tag {
+    border-color: var(--live);
+    color: var(--live);
   }
   .empty,
   .empty-filter {

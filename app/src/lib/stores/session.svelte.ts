@@ -33,6 +33,8 @@ export interface HistoryEntry {
   original: string;
   translation: string;
   quick: boolean; // the translation on screen came from the quick layer
+  cached: boolean; // came straight from the cache (seen before)
+  terms: string[]; // glossary terms found in the line
   done: boolean;
   failed: boolean;
   missed: boolean; // the game moved on before any translation was ready
@@ -80,6 +82,8 @@ function onLine(e: OcrTextEvent) {
     original: e.text,
     translation: "",
     quick: false,
+    cached: false,
+    terms: [],
     done: false,
     failed: false,
     missed: false,
@@ -100,6 +104,8 @@ function onProgress(e: TranslationEvent) {
   }
   entry.translation = e.text;
   entry.quick = e.quick;
+  entry.cached = e.cached;
+  entry.terms = e.terms ?? [];
   entry.done = e.done;
 }
 

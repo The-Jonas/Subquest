@@ -66,7 +66,8 @@
       "toolbarHint": "No jogo, {keys} mostra ou esconde a barrinha para marcar áreas e tirar prints de estilo.",
       "toolbarHintNoKey": "A barrinha do jogo não tem atalho; use o botão abaixo ou defina um em Atalhos.",
       "toolbarShow": "Mostrar barrinha no jogo",
-      "toolbarHide": "Esconder barrinha do jogo"
+      "toolbarHide": "Esconder barrinha do jogo",
+      "glossary": "Glossário: {terms}"
     },
     "back": "Voltar",
     "next": "Continuar",
@@ -229,7 +230,9 @@
     "nothingMatches": "Nenhuma fala com esse filtro.",
     "empty": "Nenhuma fala ainda. Comece a traduzir um jogo e tudo o que aparecer fica guardado aqui.",
     "missedBadge": "Falas que passaram antes da tradução ficar pronta",
-    "clear": "Limpar"
+    "clear": "Limpar",
+    "cached": "Do cache",
+    "glossary": "Glossário: {terms}"
   },
   "styles": {
     "title": "Estilos do jogo",
@@ -332,7 +335,7 @@
   },
   "games": {
     "title": "Jogos",
-    "intro": "Tudo que fica salvo de cada jogo: onde estão as caixas de texto e os estilos. Um estilo é o print de uma frase do jogo com a fonte que combina com ela: toda linha com letras parecidas passa a usar essa fonte.",
+    "intro": "Tudo que fica salvo de cada jogo: onde estão as caixas de texto, o glossário e os estilos. Um estilo é o print de uma frase do jogo com a fonte que combina com ela: toda linha com letras parecidas passa a usar essa fonte.",
     "empty": "Nenhum jogo ainda. Quando você traduzir um jogo, as áreas e os estilos dele aparecem aqui.",
     "forget": "Esquecer este jogo (áreas, estilos e prints)",
     "switch": "Trocar de jogo",
@@ -389,5 +392,21 @@
   },
   "strip": {
     "label": "Última fala traduzida"
+  },
+  "glossary": {
+    "title": "Glossário",
+    "help": "Nomes, lugares e termos que devem sair sempre do mesmo jeito. O Subquest procura essas palavras no texto lido (sem ligar para maiúsculas ou quebras de linha) e manda só as encontradas para o tradutor principal.",
+    "add": "Adicionar termo",
+    "source": "Como aparece no jogo",
+    "sourcePlaceholder": "Ex.: Pale King",
+    "target": "Tradução",
+    "targetPlaceholder": "Ex.: Rei Pálido",
+    "keep": "Não traduzir",
+    "keepHelp": "Nomes próprios: ficam como estão no jogo",
+    "kept": "fica como está",
+    "remove": "Tirar do glossário",
+    "empty": "Nenhum termo ainda.",
+    "quickNote": "A tradução rápida (Google ou DeepL) não segue o glossário: ela aparece primeiro e a tradução principal, que segue, toma o lugar dela quando fica pronta.",
+    "saved": "Salvo"
   }
 }

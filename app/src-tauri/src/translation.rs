@@ -24,6 +24,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::watch;
 
+use crate::glossary;
 use crate::settings::{Settings, TranslatorSettings};
 use crate::translate::cache::TranslationCache;
 use crate::translate::openai_compat::OpenAiCompatTranslator;
@@ -165,6 +166,7 @@ struct TranslationEvent {
     quick: bool,                // text from the quick layer (the main one is late or failed)
     elapsed_ms: f64,            // since the OCR text arrived
     error_kind: Option<String>, // set when the translation failed
+    terms: Vec<String>,         // glossary terms found in the line (sent to the translator)
 }
 
 /// Translates one OCR line and streams the result to the UI. Runs on the async
@@ -174,6 +176,12 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
     let translation = &state.translation;
     let started = Instant::now();
     let settings: Settings = state.settings.lock().unwrap().clone();
+
+    // Glossary terms found in this line (only these go to the translator).
+    let game = state.active_profile.lock().unwrap().clone();
+    let entries = game.map(|key| state.profiles.glossary(&key)).unwrap_or_default();
+    let terms = glossary::matching(&entries, &text);
+    let term_names: Vec<String> = terms.iter().map(|(source, _)| source.clone()).collect();
 
     // Emits an event for this line, filling in the fields every event shares.
     let emit = |text: &str, done: bool, cached: bool, quick: bool, error_kind: Option<String>| {
@@ -187,6 +195,7 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
                 quick,
                 elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
                 error_kind,
+                terms: term_names.clone(),
             },
         );
     };
@@ -204,8 +213,14 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
         }
     };
 
+    // The glossary terms are part of the key: changing a term retranslates the
+    // lines that have it; lines without terms keep their cached translations.
+    let translator_id = match glossary::signature(&terms) {
+        sig if sig.is_empty() => settings.translator.model.clone(),
+        sig => format!("{}\u{1e}{sig}", settings.translator.model),
+    };
     let key = TranslationCache::key(
-        &settings.translator.model,
+        &translator_id,
         &settings.source_language,
         &settings.target_language,
         &text,
@@ -243,7 +258,7 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
             .iter()
             .cloned()
             .collect(),
-        glossary: Vec::new(), // TODO(phase 3): per-game glossary from the profile
+        glossary: terms,
     };
     // Quick layer: shown as soon as it answers, unless the LLM already started writing.
     let shown = Mutex::new(Shown::Nothing);

@@ -1,6 +1,6 @@
 <!--
   Games — everything Subquest keeps about a game, in one place: where its text
-  boxes are, and its styles (a print of a phrase + the font for it). Take a
+  boxes are, its glossary, and its styles (a print of a phrase + the font for it). Take a
   print in the game (toolbar or shortcut), pick its font here, and from then on
   every line whose letters look like it uses that font, whatever its size.
 -->
@@ -27,6 +27,7 @@
   import FontPicker from "../components/FontPicker.svelte";
   import FontDetect from "../components/FontDetect.svelte";
   import RemoveButton from "../components/RemoveButton.svelte";
+  import GlossaryEditor from "../components/GlossaryEditor.svelte";
 
   let imported = $state<ImportedFont[]>([]);
   let prints = $state<Record<string, string>>({}); // "game/id" -> object URL of its print
@@ -174,6 +175,8 @@
         {#if !translatingThis}<p class="hint">{t("games.areasHint")}</p>{/if}
       </div>
     </section>
+
+    <GlossaryEditor gameKey={key} />
 
     <section class="block">
       <div class="styles-head">

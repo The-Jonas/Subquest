@@ -66,7 +66,8 @@
       "toolbarHint": "In the game, {keys} shows or hides the bar for marking areas and taking style prints.",
       "toolbarHintNoKey": "The in-game bar has no shortcut; use the button below or set one in Shortcuts.",
       "toolbarShow": "Show in-game bar",
-      "toolbarHide": "Hide in-game bar"
+      "toolbarHide": "Hide in-game bar",
+      "glossary": "Glossary: {terms}"
     },
     "back": "Back",
     "next": "Continue",
@@ -229,7 +230,9 @@
     "nothingMatches": "No lines match this filter.",
     "empty": "No lines yet. Start translating a game and everything that shows up is kept here.",
     "missedBadge": "Lines that passed before their translation was ready",
-    "clear": "Clear"
+    "clear": "Clear",
+    "cached": "From cache",
+    "glossary": "Glossary: {terms}"
   },
   "styles": {
     "title": "Game styles",
@@ -332,7 +335,7 @@
   },
   "games": {
     "title": "Games",
-    "intro": "Everything saved for each game: where its text boxes are, and its styles. A style is a print of a phrase from the game with the font that matches it: every line with similar letters then uses that font.",
+    "intro": "Everything saved for each game: where its text boxes are, its glossary and its styles. A style is a print of a phrase from the game with the font that matches it: every line with similar letters then uses that font.",
     "empty": "No games yet. When you translate a game, its areas and styles show up here.",
     "forget": "Forget this game (areas, styles and prints)",
     "switch": "Switch game",
@@ -389,5 +392,21 @@
   },
   "strip": {
     "label": "Latest translated line"
+  },
+  "glossary": {
+    "title": "Glossary",
+    "help": "Names, places and terms that must always come out the same way. Subquest looks for these words in the text it reads (ignoring case and line breaks) and sends only the ones found to the main translator.",
+    "add": "Add term",
+    "source": "As it appears in the game",
+    "sourcePlaceholder": "E.g. Pale King",
+    "target": "Translation",
+    "targetPlaceholder": "E.g. Rei Pálido",
+    "keep": "Don't translate",
+    "keepHelp": "Proper names: kept as the game writes them",
+    "kept": "kept as is",
+    "remove": "Remove from the glossary",
+    "empty": "No terms yet.",
+    "quickNote": "The quick translation (Google or DeepL) doesn't follow the glossary: it shows first, and the main translation, which does, takes its place when ready.",
+    "saved": "Saved"
   }
 }

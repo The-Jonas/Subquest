@@ -298,6 +298,31 @@ export async function showMain(screen?: string) {
   await invoke("show_main", { screen: screen ?? null });
 }
 
+// One entry of a game's glossary (mirrors GlossaryEntry in glossary.rs).
+export interface GlossaryEntry {
+  source: string; // as the game writes it
+  target: string; // fixed translation (ignored when keep)
+  keep: boolean; // never translated (names)
+}
+
+// Browser mode: glossaries kept in memory only.
+const browserGlossaries: Record<string, GlossaryEntry[]> = {};
+
+// A game's glossary.
+export async function getGlossary(profileKey: string): Promise<GlossaryEntry[]> {
+  if (!inTauri) return structuredClone(browserGlossaries[profileKey] ?? []);
+  return invoke("get_glossary", { profileKey });
+}
+
+// Saves a game's glossary; the next lines use it right away.
+export async function saveGlossary(profileKey: string, entries: GlossaryEntry[]) {
+  if (!inTauri) {
+    browserGlossaries[profileKey] = structuredClone(entries);
+    return;
+  }
+  await invoke("save_glossary", { profileKey, entries });
+}
+
 // Browser mode: profiles kept in memory only.
 const browserProfiles: Profiles = {};
 
@@ -576,6 +601,7 @@ export interface TranslationEvent {
   quick: boolean; // from the quick layer (the main translator is late or failed)
   elapsedMs: number; // since the OCR text arrived
   errorKind: string | null;
+  terms: string[]; // glossary terms found in the line (sent to the translator)
 }
 
 // Ready-made addresses for the services people actually use. All of them speak
@@ -639,6 +665,7 @@ function fakeTranslate(frameId: number, source: string) {
         quick: false,
         elapsedMs: 180 + i * 90,
         errorKind: null,
+        terms: source.includes("Crossroads") ? ["Crossroads"] : [],
       });
     }, 180 + i * 90),
   );

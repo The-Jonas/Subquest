@@ -5,6 +5,7 @@ mod core_ffi;
 mod error;
 mod font_detect;
 mod fonts;
+mod glossary;
 mod ingame;
 mod overlay;
 mod profiles;
@@ -863,7 +864,24 @@ fn save_profile(
     Ok(())
 }
 
-/// Forgets a game: its profile, styles and prints.
+/// A game's glossary: terms with a fixed translation.
+#[tauri::command]
+fn get_glossary(state: State<'_, AppState>, profile_key: String) -> Vec<glossary::GlossaryEntry> {
+    state.profiles.glossary(&profile_key)
+}
+
+/// Saves a game's glossary. The next lines use it right away; lines already
+/// translated with other terms are translated again when they come back.
+#[tauri::command]
+fn save_glossary(
+    state: State<'_, AppState>,
+    profile_key: String,
+    entries: Vec<glossary::GlossaryEntry>,
+) -> Result<(), AppError> {
+    state.profiles.save_glossary(&profile_key, entries)
+}
+
+/// Forgets a game: its profile, glossary, styles and prints.
 #[tauri::command]
 fn forget_profile(app: AppHandle, state: State<'_, AppState>, profile_key: String) {
     state.styles.forget(&profile_key);
@@ -1046,6 +1064,8 @@ pub fn run() {
             list_profiles,
             save_profile,
             forget_profile,
+            get_glossary,
+            save_glossary,
             window_thumbnail,
             ui_log,
             peek_window,

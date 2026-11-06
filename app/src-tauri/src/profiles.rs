@@ -1,7 +1,8 @@
 //! What Subquest remembers about each game, so it starts ready next time.
 //!
 //! Every game has its own folder, `<app data>/games/<game>/`:
-//! - `profile.json`: the screen areas (this file);
+//! - `profile.json`: the screen areas;
+//! - `glossary.json`: terms with a fixed translation (see glossary.rs);
 //! - `styles.json` and `prints/`: the text styles (see styles.rs).
 //!
 //! Keeping a game's data together (and apart from settings.json, which holds
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::AppError;
+use crate::glossary::GlossaryEntry;
 use crate::versioned::{self, Migration};
 
 /// A game's profile: how its screen is read.
@@ -92,6 +94,17 @@ fn v0_areas_list(v: &mut Value) {
 
 pub const PROFILE_MIGRATIONS: &[Migration] = &[v0_areas_list];
 
+/// glossary.json on disk.
+#[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
+struct GlossaryFile {
+    entries: Vec<GlossaryEntry>,
+}
+
+// --- Format history of glossary.json ---
+// v0: the first one ("entries": source, target, keep). No migrations yet.
+const GLOSSARY_MIGRATIONS: &[Migration] = &[];
+
 /// File-safe version of a game key ("hades2.exe" stays, odd characters become "_").
 pub fn file_key(key: &str) -> String {
     key.chars()
@@ -114,6 +127,7 @@ pub fn game_dir(data_dir: &Path, key: &str) -> PathBuf {
 pub struct ProfileStore {
     data_dir: PathBuf,
     profiles: Mutex<BTreeMap<String, GameProfile>>,
+    glossaries: Mutex<BTreeMap<String, Vec<GlossaryEntry>>>, // read on first use: every line needs it
 }
 
 impl ProfileStore {
@@ -127,7 +141,11 @@ impl ProfileStore {
                 profiles.insert(key, file.profile);
             }
         }
-        Self { data_dir: data_dir.to_path_buf(), profiles: Mutex::new(profiles) }
+        Self {
+            data_dir: data_dir.to_path_buf(),
+            profiles: Mutex::new(profiles),
+            glossaries: Mutex::new(BTreeMap::new()),
+        }
     }
 
     fn write(&self, key: &str, profile: &GameProfile) -> Result<(), AppError> {
@@ -163,9 +181,31 @@ impl ProfileStore {
         Ok(())
     }
 
-    /// Forgets a game: its whole folder (profile, styles and prints) goes.
+    /// A game's glossary (empty when it has none).
+    pub fn glossary(&self, key: &str) -> Vec<GlossaryEntry> {
+        let mut glossaries = self.glossaries.lock().unwrap();
+        glossaries
+            .entry(key.to_string())
+            .or_insert_with(|| {
+                let path = game_dir(&self.data_dir, key).join("glossary.json");
+                versioned::read::<GlossaryFile>(&path, GLOSSARY_MIGRATIONS).unwrap_or_default().entries
+            })
+            .clone()
+    }
+
+    /// Replaces a game's glossary and saves it.
+    pub fn save_glossary(&self, key: &str, entries: Vec<GlossaryEntry>) -> Result<(), AppError> {
+        let path = game_dir(&self.data_dir, key).join("glossary.json");
+        let file = GlossaryFile { entries };
+        versioned::write(&path, &file, GLOSSARY_MIGRATIONS).map_err(AppError::other)?;
+        self.glossaries.lock().unwrap().insert(key.to_string(), file.entries);
+        Ok(())
+    }
+
+    /// Forgets a game: its whole folder (profile, glossary, styles and prints) goes.
     pub fn forget(&self, key: &str) {
         self.profiles.lock().unwrap().remove(key);
+        self.glossaries.lock().unwrap().remove(key);
         let _ = std::fs::remove_dir_all(game_dir(&self.data_dir, key));
     }
 }
@@ -254,6 +294,18 @@ mod tests {
         assert!(again.get("odd name?.exe").is_some()); // the real key, not the folder name
         let text = std::fs::read_to_string(dir.join("games/hades2.exe/profile.json")).unwrap();
         assert!(text.contains("\"version\": 1"));
+    }
+
+    #[test]
+    fn glossaries_are_saved_in_the_game_folder() {
+        let dir = temp_dir("profiles-glossary");
+        let store = ProfileStore::load(&dir);
+        assert!(store.glossary("hades2.exe").is_empty());
+        let entries = vec![GlossaryEntry { source: "Melinoë".into(), target: String::new(), keep: true }];
+        store.save_glossary("hades2.exe", entries.clone()).unwrap();
+        assert_eq!(ProfileStore::load(&dir).glossary("hades2.exe"), entries);
+        let text = std::fs::read_to_string(dir.join("games/hades2.exe/glossary.json")).unwrap();
+        assert!(text.contains("\"version\": 0"));
     }
 
     #[test]
