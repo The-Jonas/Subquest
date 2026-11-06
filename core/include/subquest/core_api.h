@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 13u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 14u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -101,6 +101,11 @@ typedef struct SqOcrEvent {
      * background. NULL when there is none. Valid only during the callback. */
     const uint8_t* clean_bgra;
     SqRect clean_box;        /* where it goes, in window pixels */
+    /* Pictures inside the lines (a gamepad button, a key): the text has "{1}"
+     * where the first one was, "{2}" for the second... Window pixels; their
+     * pixels are in image_bgra. */
+    const SqRect* icons;
+    uint32_t icon_count;
 } SqOcrEvent;
 
 /* Called on the OCR thread when an area shows NEW text, and once with empty

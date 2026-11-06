@@ -60,6 +60,13 @@ impl OpenAiCompatTranslator {
             src = language_name(&request.source_lang),
             dst = language_name(&request.target_lang),
         );
+        if request.text.contains('{') {
+            // Pictures the game draws inside the text (a gamepad button) come as {1}, {2}...
+            prompt.push_str(
+                "\nPlaceholders like {1} or {2} are buttons or icons drawn by the game: \
+                 keep each one exactly as written, where it belongs in the translated sentence.",
+            );
+        }
         if !request.glossary.is_empty() {
             prompt.push_str("\nAlways translate these terms exactly as given:\n");
             for (term, translation) in &request.glossary {
@@ -332,6 +339,14 @@ mod tests {
         let prompt = OpenAiCompatTranslator::system_prompt(&request());
         assert!(prompt.contains("from English to Brazilian Portuguese"));
         assert!(prompt.contains("Pale King => Rei Pálido"));
+    }
+
+    #[test]
+    fn prompt_explains_icon_placeholders_only_when_there_are_some() {
+        let mut with_icon = request();
+        with_icon.text = "Press {1} to skip".into();
+        assert!(OpenAiCompatTranslator::system_prompt(&with_icon).contains("Placeholders like {1}"));
+        assert!(!OpenAiCompatTranslator::system_prompt(&request()).contains("Placeholders"));
     }
 
     #[test]

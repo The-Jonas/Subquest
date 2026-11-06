@@ -88,6 +88,8 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
 
     const StartError result = s.pipeline->start(pc, [callback, user_data](const OcrResult& r) {
         // Plain C view of the result; the strings stay owned by `r` during the call.
+        std::vector<SqRect> icons;
+        for (const Rect& i : r.icons) icons.push_back({i.x, i.y, i.width, i.height});
         std::vector<std::vector<SqWord>> words(r.lines.size());
         std::vector<SqLine> lines;
         lines.reserve(r.lines.size());
@@ -106,7 +108,8 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
                                r.image ? r.image->width : 0, r.image ? r.image->height : 0,
                                r.image ? r.image->stride : 0, r.settle_ms,
                                r.clean.empty() ? nullptr : r.clean.data(),
-                               {r.clean_rect.x, r.clean_rect.y, r.clean_rect.width, r.clean_rect.height}};
+                               {r.clean_rect.x, r.clean_rect.y, r.clean_rect.width, r.clean_rect.height},
+                               icons.empty() ? nullptr : icons.data(), uint32_t(icons.size())};
         callback(&event, user_data);
     });
     switch (result) {

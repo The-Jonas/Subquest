@@ -100,6 +100,16 @@ export function styleCase(style: { caps: LetterCase; seenCase?: string | null })
   return style.caps === "none" ? "" : style.caps;
 }
 
+// Letter case to draw a line in: the one chosen (area or style) wins;
+// automatic ("") follows what was seen on the line's picture (small capitals,
+// all capitals), since OCR reads small capitals as plain ones; "none" keeps
+// the translation as written.
+export function caseFor(chosen: LetterCase, seen?: string | null): LetterCase {
+  if (chosen === "none") return "";
+  if (chosen) return chosen;
+  return seen === "smallCaps" || seen === "upper" ? seen : "";
+}
+
 // Text as it is drawn in a letter case. Small capitals: the translation keeps
 // its own capitals (CSS small-caps draws the lowercase letters as small
 // capitals), except a translation all in capitals, which comes from OCR

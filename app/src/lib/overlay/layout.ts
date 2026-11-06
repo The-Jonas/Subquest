@@ -37,6 +37,7 @@ export interface Patch {
   boxColor: string;
   textColor: string;
   effect?: TextEffect | null; // the game's outline or shadow, in window pixels
+  letterCase?: string | null; // case seen on the original line ("smallCaps", "upper")
 }
 
 const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original size, not less
@@ -199,6 +200,7 @@ export function layout(
       boxColor: line.boxColor,
       textColor: line.textColor,
       effect: line.effect ?? null,
+      letterCase: line.letterCase ?? null,
     });
   });
   return patches;
@@ -390,6 +392,7 @@ export function layoutArea(
         boxColor: first.boxColor,
         textColor: first.textColor,
         effect: first.effect ?? null,
+        letterCase: first.letterCase ?? null,
       });
     });
   }

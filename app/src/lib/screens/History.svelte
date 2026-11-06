@@ -124,6 +124,7 @@
             translation={h.translation}
             streaming={!h.done && !!h.translation}
             failed={h.failed ? t("history.failed") : ""}
+            icons={h.icons}
           />
         </li>
       {:else}

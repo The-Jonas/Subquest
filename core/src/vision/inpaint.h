@@ -33,15 +33,18 @@ struct CleanImage {
 
 // Which pixels of `region` (frame pixels) are letters of `lines`: one byte per
 // pixel, 255 = letter. Exposed for tests.
-std::vector<uint8_t> text_mask(const Frame& frame, Rect region, const std::vector<OcrLine>& lines);
+std::vector<uint8_t> text_mask(const Frame& frame, Rect region, const std::vector<OcrLine>& lines,
+                               const std::vector<Rect>& pictures = {});
 
 // Fills the masked pixels of a packed BGRA picture from the others. Exposed for tests.
 void fill_holes(std::vector<uint8_t>& bgra, int32_t width, int32_t height, const std::vector<uint8_t>& mask);
 
-// The frame without the text of `lines`: the whole frame when `whole` (a marked
-// area: the translation may be laid out anywhere in it), otherwise just around
-// the lines (the whole window: only what the lines cover is needed). False when
-// there is nothing to clean.
-bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool whole, CleanImage& out);
+// The frame without the text of `lines`, nor the `pictures` inside them (see
+// icons.h: the overlay draws them again where the translation puts them): the
+// whole frame when `whole` (a marked area: the translation may be laid out
+// anywhere in it), otherwise just around the lines (the whole window: only
+// what the lines cover is needed). False when there is nothing to clean.
+bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool whole, CleanImage& out,
+                 const std::vector<Rect>& pictures = {});
 
 } // namespace subquest

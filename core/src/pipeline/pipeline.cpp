@@ -5,6 +5,7 @@
 #include <climits>
 
 #include "ocr/line_cleanup.h"
+#include "vision/icons.h"
 #include "vision/image_ops.h"
 #include "vision/inpaint.h"
 #include "vision/palette.h"
@@ -127,10 +128,21 @@ void Pipeline::ocr_loop() {
                 line.background_rgb = c.background;
                 line.text_rgb = c.text;
             }
-            // The picture without the text, so the overlay can hide the original
-            // with the game's own background instead of a patch of color.
+            // Pictures inside the lines (a gamepad button) become "{1}" in the
+            // text, so the translation keeps them; the overlay draws them back.
+            const std::vector<Rect> icons = find_icons(frame, result.lines);
+            if (!icons.empty()) {
+                result.full_text.clear();
+                for (const OcrLine& line : result.lines) {
+                    if (!result.full_text.empty()) result.full_text += '\n';
+                    result.full_text += line.text;
+                }
+            }
+            for (const Rect& r : icons) result.icons.push_back({r.x + frame.origin_x, r.y + frame.origin_y, r.width, r.height});
+            // The picture without the text (nor the icons), so the overlay can hide
+            // the original with the game's own background instead of a patch of color.
             CleanImage clean;
-            if (remove_text(frame, result.lines, !areas_[area].empty(), clean)) {
+            if (remove_text(frame, result.lines, !areas_[area].empty(), clean, icons)) {
                 result.clean_rect = {clean.rect.x + frame.origin_x, clean.rect.y + frame.origin_y, clean.rect.width,
                                      clean.rect.height};
                 result.clean = std::move(clean.bgra);

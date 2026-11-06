@@ -230,6 +230,7 @@
               streaming={!!tr && !tr.done}
               failed={tr?.errorKind ? t(`errors.${tr.errorKind}`) : ""}
               large={i === 0}
+              icons={l.icons ?? []}
             />
             <p class="timing">{timing(l, tr)}</p>
           </li>

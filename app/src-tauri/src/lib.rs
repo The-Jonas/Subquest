@@ -93,6 +93,51 @@ struct OcrTextEvent {
     area: u32,            // index of the profile area this text came from
     same_as: Option<u64>, // this is that earlier line read again: keep its translation
     background: Option<CleanBackground>, // the area without its text, to hide the original lines with
+    icons: Vec<IconPicture>, // pictures inside the lines: "{1}" in the text is the first
+}
+
+/// A picture the game draws inside a line (a gamepad button), cut from the
+/// game so the overlay can put it where the translation has its placeholder.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct IconPicture {
+    rect: [i32; 4], // [x, y, width, height] in window pixels, where it was
+    url: String,    // PNG as a data: URL
+}
+
+/// The event's icons, cut from its area pixels (only valid during this callback).
+unsafe fn icon_pictures(e: &core_ffi::SqOcrEvent) -> Vec<IconPicture> {
+    use base64::Engine as _;
+    if e.icons.is_null() || e.icon_count == 0 || e.image_bgra.is_null() || e.image_stride <= 0 {
+        return Vec::new();
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    std::slice::from_raw_parts(e.icons, e.icon_count as usize)
+        .iter()
+        .filter_map(|r| {
+            // Inside the area's picture.
+            let x0 = (r.x - e.image_x).clamp(0, e.image_width);
+            let y0 = (r.y - e.image_y).clamp(0, e.image_height);
+            let x1 = (r.x - e.image_x + r.width).clamp(0, e.image_width);
+            let y1 = (r.y - e.image_y + r.height).clamp(0, e.image_height);
+            if x1 <= x0 || y1 <= y0 {
+                return None;
+            }
+            let mut pixels = Vec::with_capacity(((x1 - x0) * (y1 - y0) * 4) as usize);
+            for y in y0..y1 {
+                let row = y as usize * e.image_stride as usize;
+                for x in x0..x1 {
+                    let i = row + x as usize * 4;
+                    pixels.extend_from_slice(&[image[i + 2], image[i + 1], image[i], 255]);
+                }
+            }
+            let png = styles::Rgba { pixels, width: x1 - x0, height: y1 - y0 }.png()?;
+            Some(IconPicture {
+                rect: [x0 + e.image_x, y0 + e.image_y, x1 - x0, y1 - y0],
+                url: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)),
+            })
+        })
+        .collect()
 }
 
 /// The game's picture without the text, for the overlay to put under the
@@ -135,6 +180,7 @@ struct OcrLineEvent {
     style: Option<String>, // id of the game's text style this line belongs to
     words: Vec<OcrWordEvent>, // so a word can be picked over the game (glossary)
     effect: Option<effects::TextEffect>, // outline or shadow around the letters (window pixels)
+    letter_case: &'static str, // "upper" | "smallCaps" | "" as seen on the picture (OCR reads small capitals as capitals)
 }
 
 /// One word of a recognized line.
@@ -189,6 +235,28 @@ unsafe fn line_shape(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Optio
         u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
     };
     shape::Shape::measure(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
+}
+
+/// How a line's letters are cased on the picture (see shape::letter_case),
+/// measured on the event's area pixels (only valid during this callback).
+unsafe fn line_case(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> &'static str {
+    if e.image_bgra.is_null() || e.image_stride <= 0 {
+        return "";
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    let x0 = (line.rect.x - e.image_x).clamp(0, e.image_width) as usize;
+    let y0 = (line.rect.y - e.image_y).clamp(0, e.image_height) as usize;
+    let x1 = (line.rect.x - e.image_x + line.rect.width).clamp(0, e.image_width) as usize;
+    let y1 = (line.rect.y - e.image_y + line.rect.height).clamp(0, e.image_height) as usize;
+    if x1 <= x0 || y1 <= y0 {
+        return "";
+    }
+    let stride = e.image_stride as usize;
+    let pixel = |x: usize, y: usize| {
+        let i = (y0 + y) * stride + (x0 + x) * 4;
+        u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
+    };
+    shape::letter_case(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
 }
 
 /// Outline or shadow around a line's letters, measured on the event's area
@@ -413,6 +481,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             style: style_ids.get(i).cloned().flatten(),
             words: line_words(l),
             effect: if meaningful { line_effect(e, l) } else { None },
+            letter_case: if meaningful { line_case(e, l) } else { "" },
         })
         .collect();
     // A text of the game has one effect, but it hardly shows where a line
@@ -450,6 +519,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             same_as,
             // Only for new text: a re-reading keeps the picture of the line it repeats.
             background: if meaningful && same_as.is_none() { clean_background(e) } else { None },
+            icons: if meaningful { icon_pictures(e) } else { Vec::new() },
         },
     );
     if let Some(plan) = plan {

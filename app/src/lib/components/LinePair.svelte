@@ -9,6 +9,9 @@
 -->
 <script lang="ts">
   import { asParagraphs } from "../text/paragraphs";
+  import { withAllIcons } from "../text/icons";
+  import IconText from "./IconText.svelte";
+  import type { IconPicture } from "../api";
 
   interface Props {
     original: string;
@@ -16,18 +19,19 @@
     streaming?: boolean; // the translation is still arriving
     failed?: string; // message shown instead of the translation
     large?: boolean; // the newest line, at full size
+    icons?: IconPicture[]; // pictures inside the line ("{1}" in the texts)
   }
-  let { original, translation = "", streaming = false, failed = "", large = false }: Props = $props();
+  let { original, translation = "", streaming = false, failed = "", large = false, icons = [] }: Props = $props();
 
-  const text = $derived(asParagraphs(original, translation));
+  const text = $derived(asParagraphs(original, translation && withAllIcons(original, translation)));
 </script>
 
 <div class="pair" class:large>
-  <p class="original">{text.original}</p>
+  <p class="original"><IconText text={text.original} {icons} /></p>
   {#if failed}
     <p class="translation failed">{failed}</p>
   {:else if translation}
-    <p class="translation" class:streaming>{text.translation}</p>
+    <p class="translation" class:streaming><IconText text={text.translation} {icons} /></p>
   {:else}
     <p class="translation pending" aria-label="…"><span></span><span></span><span></span></p>
   {/if}

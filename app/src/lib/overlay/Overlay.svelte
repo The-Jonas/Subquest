@@ -36,12 +36,15 @@
     type Profiles,
     type TranslationEvent,
     type OcrTextEvent,
+    type IconPicture,
   } from "../api";
-  import { applyCase, cssFamily, ensureFont, styleCase } from "../fonts";
+  import { applyCase, caseFor, cssFamily, ensureFont, styleCase } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
   import TermPicker from "./TermPicker.svelte";
+  import IconText from "../components/IconText.svelte";
+  import { forMeasure, withAllIcons } from "../text/icons";
   import { effectShadow, layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
@@ -55,6 +58,7 @@
     translation: string; // its translation so far
     classicText: string;
     classicOriginal: string;
+    classicIcons: IconPicture[]; // pictures of the classic box's line
   }
 
   // Bookkeeping of one area (not shown, so not reactive).
@@ -134,6 +138,7 @@
       translation: "",
       classicText: "",
       classicOriginal: "",
+      classicIcons: [],
     };
     return views[i];
   }
@@ -149,11 +154,16 @@
   // looks like), else its area's, else the default.
   // A line's font and letter case: its style's; or, for a line like none of
   // them ("~id"), only the font of the nearest style; or the area's own.
-  function lookFor(a: GameArea, styleId: string | null | undefined): { font: string; caps: LetterCase } {
+  // `seen`: the case measured on the line's picture, used when none was chosen.
+  function lookFor(a: GameArea, styleId: string | null | undefined, seen?: string | null): { font: string; caps: LetterCase } {
     const nearest = !!styleId?.startsWith("~");
     const style = styleId ? gameStyles[nearest ? styleId.slice(1) : styleId] : undefined;
-    if (style?.font) return { font: style.font, caps: nearest ? a.caps : styleCase(style) };
-    return { font: a.font, caps: a.caps };
+    if (style?.font) {
+      // The style's case (its print's, when "as in the game"); "none" stays "as translated".
+      const chosen = nearest ? a.caps : style.caps === "none" ? "none" : styleCase(style);
+      return { font: style.font, caps: caseFor(chosen, seen) };
+    }
+    return { font: a.font, caps: caseFor(a.caps, seen) };
   }
 
   // Measures texts in a font and letter case.
@@ -194,22 +204,36 @@
   // whole screen (menus, signs) stay centered on the original.
   const patches = $derived.by(() => {
     if (viewHeight <= 0 || !fontReady) return [];
-    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number; bg: CleanPiece | null; scale: number }[] = [];
+    const out: {
+      look: { font: string; caps: LetterCase };
+      patch: Patch;
+      frame: number;
+      bg: CleanPiece | null;
+      scale: number;
+      icons: IconPicture[];
+    }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
       if (classic || !v.current || !v.translation) continue;
       const frame = { width: v.current.frameWidth, height: v.current.frameHeight };
       const view = { width: viewWidth, height: viewHeight };
-      const measureFor = (line: OcrLine) => measurer(lookFor(a, line.style));
+      // A picture ({1}) takes about the room of two wide letters when measured.
+      const measureFor = (line: OcrLine) => {
+        const measure = measurer(lookFor(a, line.style, line.letterCase));
+        return (text: string, px: number) => measure(forMeasure(text), px);
+      };
+      // Pictures the translator dropped still show, at the start.
+      const translation = withAllIcons(v.current.text, v.translation);
       // A marked box keeps the translation inside it; loose text on the whole
       // screen is placed line by line over the original.
       const placed =
         a.mode !== "screen" && a.region
-          ? layoutArea(v.current.lines, v.translation, a.region, frame, view, measureFor)
-          : layout(pairLines(v.current.lines, v.translation), frame, view, measureFor, "center");
+          ? layoutArea(v.current.lines, translation, a.region, frame, view, measureFor)
+          : layout(pairLines(v.current.lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId, bg, scale });
+      const icons = v.current.icons ?? [];
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase), patch, frame: v.current.frameId, bg, scale, icons });
     }
     return withoutOverlaps(out);
   });
@@ -338,8 +362,9 @@
     else if (v.current && e.frameId < v.current.frameId) return; // an older line finished late
     if (e.frameId < m.shownFrame) return;
     m.shownFrame = e.frameId;
-    v.classicText = e.text;
+    v.classicText = withAllIcons(line.text, e.text);
     v.classicOriginal = line.text;
+    v.classicIcons = line.icons ?? [];
   }
 
   // A few lines about what the overlay knows when translations arrive, to
@@ -507,7 +532,7 @@
       {/if}
     </div>
   {/if}
-  {#each patches as { look, patch: p, bg, scale }, i (i)}
+  {#each patches as { look, patch: p, bg, scale, icons }, i (i)}
     {@const pad = bg ? Math.max(3, p.fontPx * 0.3) : Math.max(2, p.fontPx * 0.18)}
     <!-- The cover hides the original line: with the game's picture without the
          text when there is one (no visible patch), else with the color around it -->
@@ -538,7 +563,7 @@
       style:color={p.textColor}
       style:text-shadow={effectShadow(p.effect, scale)}
     >
-      {applyCase(p.text, look.caps)}
+      <IconText text={applyCase(p.text, look.caps)} {icons} />
     </div>
   {/each}
 
@@ -555,7 +580,7 @@
       {#if settings.overlay.showOriginal && v.classicOriginal}
         <small>{v.classicOriginal}</small>
       {/if}
-      <p>{v.classicText}</p>
+      <p><IconText text={v.classicText} icons={v.classicIcons} /></p>
     </div>
   {/each}
 </div>

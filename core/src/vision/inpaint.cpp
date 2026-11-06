@@ -119,7 +119,8 @@ void fill_from(Level& fine, const Level& coarse) {
 // Letters of each line: inside its box (a little larger, for letters the OCR
 // box clips), the pixels closer to its text color than to its background,
 // then widened by a fifth of the line height for edges, shadows and outlines.
-std::vector<uint8_t> text_mask(const Frame& frame, Rect region, const std::vector<OcrLine>& lines) {
+std::vector<uint8_t> text_mask(const Frame& frame, Rect region, const std::vector<OcrLine>& lines,
+                               const std::vector<Rect>& pictures) {
     std::vector<uint8_t> mask(size_t(std::max(0, region.width)) * std::max(0, region.height), 0);
     if (region.empty()) return mask;
     int32_t widest_pad = 1;
@@ -138,6 +139,12 @@ std::vector<uint8_t> text_mask(const Frame& frame, Rect region, const std::vecto
                 if (distance2(px, line.text_rgb) < distance2(px, line.background_rgb)) out[x - region.x] = 255;
             }
         }
+    }
+    // Pictures go whole (their colors are not the text's), with a pixel of margin.
+    for (const Rect& p : pictures) {
+        const Rect box = grown(p, 1, region);
+        for (int32_t y = box.y; y < box.y + box.height; ++y)
+            std::fill_n(mask.begin() + size_t(y - region.y) * region.width + (box.x - region.x), box.width, uint8_t(255));
     }
     dilate(mask, region.width, region.height, widest_pad);
     return mask;
@@ -202,7 +209,8 @@ void fill_holes(std::vector<uint8_t>& bgra, int32_t width, int32_t height, const
 }
 
 // Cuts the region out of the frame, masks the letters and fills them in.
-bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool whole, CleanImage& out) {
+bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool whole, CleanImage& out,
+                 const std::vector<Rect>& pictures) {
     if (lines.empty() || frame.width <= 0 || frame.height <= 0) return false;
     const Rect bounds{0, 0, frame.width, frame.height};
     Rect region = bounds;
@@ -217,6 +225,12 @@ bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool who
             y1 = std::max(y1, line.box.y + line.box.height);
             tallest = std::max(tallest, line.box.height);
         }
+        for (const Rect& p : pictures) {
+            x0 = std::min(x0, p.x);
+            y0 = std::min(y0, p.y);
+            x1 = std::max(x1, p.x + p.width);
+            y1 = std::max(y1, p.y + p.height);
+        }
         region = grown(Rect{x0, y0, x1 - x0, y1 - y0}, tallest, bounds);
     }
     if (region.empty()) return false;
@@ -227,7 +241,7 @@ bool remove_text(const Frame& frame, const std::vector<OcrLine>& lines, bool who
         const uint8_t* src = frame.bgra.data() + size_t(region.y + y) * frame.stride + size_t(region.x) * 4;
         std::copy(src, src + size_t(region.width) * 4, out.bgra.data() + size_t(y) * region.width * 4);
     }
-    fill_holes(out.bgra, region.width, region.height, text_mask(frame, region, lines));
+    fill_holes(out.bgra, region.width, region.height, text_mask(frame, region, lines, pictures));
     return true;
 }
 

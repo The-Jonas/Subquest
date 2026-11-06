@@ -100,6 +100,13 @@ export interface OcrTextEvent {
   area: number; // index of the profile area this text came from
   sameAs?: number | null; // this is that earlier line read again: keep its translation
   background?: CleanBackground | null; // the area without its text, to hide the original lines with
+  icons?: IconPicture[]; // pictures inside the lines: "{1}" in the text is the first
+}
+
+// A picture the game draws inside a line (a gamepad button), cut from the game.
+export interface IconPicture {
+  rect: Region; // where it was, in window pixels
+  url: string; // PNG data URL
 }
 
 // The game's picture without the text (see core/src/vision/inpaint.h).
@@ -117,6 +124,7 @@ export interface OcrLine {
   style?: string | null; // id of the game's text style this line belongs to
   words?: OcrWord[]; // the line's words, so one can be picked over the game
   effect?: TextEffect | null; // outline or shadow the game draws around these letters
+  letterCase?: string; // "upper" | "smallCaps" | "" as seen on the picture
 }
 
 // An effect around a line's letters (mirrors TextEffect in effects.rs). Sizes in window pixels.

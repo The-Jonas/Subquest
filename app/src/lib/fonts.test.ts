@@ -1,7 +1,7 @@
 // Tests for the letter-case rules in fonts.ts (how a translation is written
 // to look like the game's text).
 import { describe, expect, it } from "vitest";
-import { applyCase, styleCase } from "./fonts";
+import { applyCase, caseFor, styleCase } from "./fonts";
 
 describe("styleCase", () => {
   it("'as in the game' takes the case seen on the print", () => {
@@ -35,5 +35,23 @@ describe("applyCase", () => {
 
   it("leaves numbers and symbols alone", () => {
     expect(applyCase("123!", "smallCaps")).toBe("123!");
+  });
+});
+
+describe("caseFor", () => {
+  it("follows the picture when left automatic (Hades' small-capital menus)", () => {
+    expect(caseFor("", "smallCaps")).toBe("smallCaps");
+    expect(caseFor("", "upper")).toBe("upper");
+    expect(caseFor("", "")).toBe("");
+    expect(caseFor("", undefined)).toBe("");
+  });
+
+  it("lets a chosen case win", () => {
+    expect(caseFor("upper", "smallCaps")).toBe("upper");
+    expect(caseFor("none", "smallCaps")).toBe("");
+  });
+
+  it("turns an all-capitals translation into small capitals like the game", () => {
+    expect(applyCase("PRESENTE", caseFor("", "smallCaps"))).toBe("Presente");
   });
 });

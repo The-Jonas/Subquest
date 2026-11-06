@@ -19,6 +19,7 @@ import {
   startSession,
   stopSession,
   type GameWindow,
+  type IconPicture,
   type OcrTextEvent,
   type TranslationEvent,
 } from "../api";
@@ -38,6 +39,7 @@ export interface HistoryEntry {
   terms: string[]; // glossary terms found in the line
   rereads: number; // times OCR read this line again (the same translation was used)
   timing: LineTiming; // where the wait for its translation went
+  icons: IconPicture[]; // pictures inside the line ("{1}" in its texts)
   done: boolean;
   failed: boolean;
   missed: boolean; // the game moved on before any translation was ready
@@ -94,6 +96,7 @@ function onLine(e: OcrTextEvent) {
     terms: [],
     rereads: 0,
     timing: { settle: e.settleMs ?? 0, read: e.totalMs },
+    icons: e.icons ?? [],
     done: false,
     failed: false,
     missed: false,
