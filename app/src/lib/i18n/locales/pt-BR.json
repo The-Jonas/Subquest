@@ -296,6 +296,7 @@
       "count": "{n} de {total}",
       "back": "Voltar",
       "next": "Próximo",
+      "done": "Fechar",
       "close": {
         "title": "Guardar a barrinha",
         "text": "Esconde a barrinha. Ela volta pelo atalho ou pelo app."

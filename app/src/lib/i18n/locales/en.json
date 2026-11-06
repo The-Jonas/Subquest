@@ -296,6 +296,7 @@
       "count": "{n} of {total}",
       "back": "Back",
       "next": "Next",
+      "done": "Close",
       "close": {
         "title": "Put the toolbar away",
         "text": "Hides the toolbar. It comes back with its shortcut or from the app."

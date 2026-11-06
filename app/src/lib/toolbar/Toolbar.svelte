@@ -202,13 +202,13 @@
       <p class="text">{t(`toolbar.guide.${step}.text`)}</p>
       {#if step === "intro"}<p class="hint">{t("toolbar.guide.tapHint")}</p>{/if}
       <div class="actions">
-        <button class="text-btn" onclick={() => setGuide(false)}>{t("toolbar.guide.close")}</button>
+        <button class="text-btn" onclick={() => setGuide(false)}>{t("toolbar.guide.done")}</button>
         <span class="space"></span>
         {#if guide! > 0}<button class="text-btn" onclick={() => (guide = guide! - 1)}>{t("toolbar.guide.back")}</button>{/if}
         {#if guide! < GUIDE.length - 1}
           <button class="text-btn primary" onclick={() => (guide = guide! + 1)}>{t("toolbar.guide.next")}</button>
         {:else}
-          <button class="text-btn primary" onclick={() => setGuide(false)}>{t("toolbar.guide.close")}</button>
+          <button class="text-btn primary" onclick={() => setGuide(false)}>{t("toolbar.guide.done")}</button>
         {/if}
       </div>
     </div>

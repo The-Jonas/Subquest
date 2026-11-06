@@ -296,6 +296,7 @@
       "count": "{n} de {total}",
       "back": "Atrás",
       "next": "Siguiente",
+      "done": "Cerrar",
       "close": {
         "title": "Guardar la barrita",
         "text": "Oculta la barrita. Vuelve con su atajo o desde la app."
