@@ -165,6 +165,11 @@ OcrResult WinOcrEngine::recognize(const Frame& frame) {
         }
     } catch (const winrt::hresult_error&) {
         // A failed frame just yields no text; the next stable frame tries again.
+    } catch (...) {
+        // Anything else (out of memory on a huge frame...) must not escape the
+        // OCR thread: an uncaught exception there ends the whole app.
+        result = OcrResult{};
+        result.frame_id = frame.id;
     }
     result.elapsed_ms =
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();

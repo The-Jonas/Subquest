@@ -179,6 +179,9 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
         if (on_frame) on_frame(std::move(out));
     } catch (const winrt::hresult_error&) {
         // Frame lost (e.g. GPU device reset). The next one tries again.
+    } catch (...) {
+        // Same for anything else thrown while copying or cropping the frame:
+        // an exception leaving this WinRT callback would end the whole app.
     }
 }
 

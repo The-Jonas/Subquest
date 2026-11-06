@@ -135,6 +135,30 @@ unsafe fn owned(text: *const c_char) -> String {
     CStr::from_ptr(text).to_string_lossy().into_owned()
 }
 
+/// Writes every panic (with where it happened) to `<app data>/crash.log`, so a
+/// crash during a test leaves a trace. A panic inside a core callback aborts
+/// the whole app (it can't unwind into C++), so this is often the only clue.
+fn log_panics(data_dir: &std::path::Path) {
+    let path = data_dir.join("crash.log");
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        use std::io::Write;
+        let when = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let thread = std::thread::current().name().unwrap_or("unnamed").to_string();
+        let trace = std::backtrace::Backtrace::force_capture();
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+            let _ = writeln!(file, "[unix {when}] panic on thread '{thread}': {info}\n{trace}\n");
+        }
+        previous(info);
+    }));
+}
+
 /// Returns the loaded core or the `coreMissing` error.
 pub(crate) fn core(state: &AppState) -> Result<&Core, AppError> {
     state
@@ -166,10 +190,17 @@ fn list_windows(state: State<'_, AppState>) -> Result<Vec<WindowEntry>, AppError
     core(&state)?.list_windows()
 }
 
-/// Callback called by the core (OCR thread): forwards the text to the UI and
-/// hands it to the translator on the async runtime, so the OCR thread never waits
-/// on the network. The overlay window listens to the same events.
+/// Callback called by the core (OCR thread). A panic must not cross into C++
+/// (that aborts the app): it is caught here, logged (see log_panics), and only
+/// this one reading is lost.
 unsafe extern "C" fn on_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void) {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle_ocr_text(event, user)));
+}
+
+/// Forwards one OCR reading to the UI and hands it to the translator on the
+/// async runtime, so the OCR thread never waits on the network. The overlay
+/// window listens to the same events.
+unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void) {
     let app = &*(user as *const AppHandle);
     let e = &*event;
     let raw_lines = if e.lines.is_null() || e.line_count == 0 {
@@ -774,6 +805,7 @@ pub fn run() {
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
             let data_dir = app.path().app_data_dir()?;
+            log_panics(&data_dir);
             let resource_dir = app.path().resource_dir().ok();
 
             let mut errors = Vec::new();
