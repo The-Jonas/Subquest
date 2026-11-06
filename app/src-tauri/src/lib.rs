@@ -324,7 +324,18 @@ async fn start_session(
 /// the overlay and the translation context stay. Nothing to do without a session.
 #[tauri::command]
 async fn apply_areas(app: AppHandle) -> Result<(), AppError> {
-    restart_reading(&app)
+    // Stop the editor's preview first: two captures of the same window being
+    // torn down and started together is what froze "Apply" mid-session.
+    {
+        let state = app.state::<AppState>();
+        if let Ok(core) = core(&state) {
+            release_preview(core, &mut state.preview_user_data.lock().unwrap());
+        }
+    }
+    // Stopping waits for the OCR thread: keep that off the async runtime's workers.
+    tauri::async_runtime::spawn_blocking(move || restart_reading(&app))
+        .await
+        .map_err(|e| AppError::other(e.to_string()))?
 }
 
 /// Restarts the core on the session's game with the profile's current areas
@@ -338,7 +349,11 @@ pub(crate) fn restart_reading(app: &AppHandle) -> Result<(), AppError> {
         return Ok(());
     };
     if !state.paused.load(Ordering::SeqCst) {
-        stop_core(&state)?;
+        match stop_core(&state) {
+            Ok(()) => {}
+            Err(e) if e.kind == "notRunning" => {} // already stopped (game closed, a failed start): just start again
+            Err(e) => return Err(e),
+        }
     }
     state.paused.store(false, Ordering::SeqCst);
     // Area indexes may have changed: the overlay starts the game's areas over.

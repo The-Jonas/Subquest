@@ -31,10 +31,10 @@
     },
     "area": {
       "question": "Where does the text show up?",
-      "dialogue": "In a dialogue box",
-      "dialogueHelp": "Faster and more accurate. Mark the area once and it is saved in the game's profile.",
-      "screen": "Anywhere on screen",
-      "screenHelp": "Menus, items and signs. Slower: text is searched across the whole window.",
+      "dialogue": "Only in marked areas",
+      "dialogueHelp": "Faster and more precise. Mark one or more areas: dialogue, song lyrics, names…",
+      "screen": "Across the whole screen",
+      "screenHelp": "For menus, items and signs all over. Slower: looks for text in the whole window.",
       "marked": "Area marked: {width} × {height} px",
       "previewLabel": "Live image of the game window",
       "previewWaiting": "Connecting to the game window…",
@@ -45,7 +45,8 @@
       "defaultName": "Area {n}",
       "name": "Area name",
       "namePlaceholder": "E.g. Dialogue, Song lyrics, Names",
-      "remove": "Remove area"
+      "remove": "Remove area",
+      "unmarked": "\"{name}\" has no rectangle yet: mark it on the preview or remove the area."
     },
     "start": {
       "question": "All set.",
@@ -67,7 +68,8 @@
     "back": "Back",
     "next": "Continue",
     "cancel": "Cancel",
-    "apply": "Apply"
+    "apply": "Apply",
+    "applyTimeout": "The areas were saved, but reading took too long to restart. Stop and start translating again."
   },
   "profiles": {
     "title": "Game profiles",

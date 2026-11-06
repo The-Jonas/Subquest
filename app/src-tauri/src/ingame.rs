@@ -245,6 +245,9 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
             let settings = {
                 let mut settings = state.settings.lock().unwrap();
                 let profile = settings.profiles.entry(key).or_default();
+                // A game is read through marked areas or as a whole window, never
+                // both: marking an area over a whole-window game switches it to areas.
+                profile.areas.retain(|a| a.mode != "screen");
                 profile.areas.push(GameArea {
                     region: Some(rect),
                     ..GameArea::default()

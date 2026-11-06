@@ -31,10 +31,10 @@
     },
     "area": {
       "question": "Onde aparecem os textos?",
-      "dialogue": "Numa caixa de diálogo",
-      "dialogueHelp": "Mais rápido e mais preciso. Você marca a área uma vez e ela fica salva no perfil do jogo.",
-      "screen": "Em qualquer lugar da tela",
-      "screenHelp": "Menus, itens e placas. Mais lento: o texto é procurado na janela inteira.",
+      "dialogue": "Só nas áreas marcadas",
+      "dialogueHelp": "Mais rápido e preciso. Marque uma ou mais áreas: diálogo, letra da música, nomes…",
+      "screen": "Na tela inteira",
+      "screenHelp": "Para menus, itens e placas espalhados. Mais lento: procura texto na janela toda.",
       "marked": "Área marcada: {width} × {height} px",
       "previewLabel": "Imagem ao vivo da janela do jogo",
       "previewWaiting": "Conectando à janela do jogo…",
@@ -45,7 +45,8 @@
       "defaultName": "Área {n}",
       "name": "Nome da área",
       "namePlaceholder": "Ex.: Diálogo, Letra da música, Nomes",
-      "remove": "Remover área"
+      "remove": "Remover área",
+      "unmarked": "\"{name}\" ainda não tem retângulo: marque na prévia ou remova a área."
     },
     "start": {
       "question": "Tudo pronto.",
@@ -67,7 +68,8 @@
     "back": "Voltar",
     "next": "Continuar",
     "cancel": "Cancelar",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "applyTimeout": "As áreas foram salvas, mas a leitura demorou demais para reiniciar. Pare e comece a tradução de novo."
   },
   "profiles": {
     "title": "Perfis de jogo",

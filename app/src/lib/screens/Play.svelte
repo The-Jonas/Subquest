@@ -7,7 +7,6 @@
 <script lang="ts">
   import DialogueBox from "../components/DialogueBox.svelte";
   import GamePreview from "../components/GamePreview.svelte";
-  import FontDetect from "../components/FontDetect.svelte";
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
   import { session, startTranslating, stopTranslating, applyAreas } from "../stores/session.svelte";
@@ -18,7 +17,6 @@
     errorKind,
     profileKey,
     newArea,
-    type AreaMode,
     type GameArea,
     type GameWindow,
     type OcrTextEvent,
@@ -34,7 +32,6 @@
   let game = $state<GameWindow | null>(session.game);
   let areas = $state<GameArea[]>([newArea()]); // the game's screen areas, edited in the area step
   let selected = $state(0); // area being edited
-  let preview = $state<GamePreview>();
   let editing = $state(false); // adjusting the areas of the running session
   let applying = $state(false);
   let error = $state<string | null>(null);
@@ -43,10 +40,13 @@
   const showFeed = $derived(running && !editing);
 
   const stepKeys = ["game", "area", "start"] as const;
-  const areaModes: AreaMode[] = ["dialogue", "screen"];
+  const readModes = ["dialogue", "screen"] as const; // marked areas, or the whole window (never both)
   const MAX_AREAS = 16; // same limit as the core (SQ_MAX_AREAS)
+  const APPLY_TIMEOUT_MS = 8000; // applying new areas never takes this long when all is well
 
   const area = $derived(areas[selected] ?? areas[0]);
+  // The game is read either through its marked areas or as one whole window.
+  const wholeScreen = $derived(areas.length === 1 && areas[0].mode === "screen");
 
   // In the real app, without the core DLL there is nothing to list or translate.
   const coreMissing = $derived(inTauri && !app.core.loaded);
@@ -71,18 +71,36 @@
     }
   }
 
-  // Every dialogue-mode area needs a marked rectangle; screen mode doesn't.
-  const canContinue = $derived(areas.every((a) => a.mode === "screen" || a.region !== null));
+  // Every marked area needs its rectangle; the whole-window mode needs none.
+  const canContinue = $derived(areas.every((a) => a.mode === "screen" || !!a.region));
+  // First dialogue area still without a rectangle (it blocks Continue / Apply).
+  const unmarked = $derived(areas.findIndex((a) => a.mode !== "screen" && !a.region));
 
   // Name shown for an area: the user's, or "Area N".
   function areaLabel(a: GameArea, i: number): string {
     return a.name.trim() || t("play.area.defaultName", { n: String(i + 1) });
   }
 
-  // Loads a game's saved areas (or one new area) into the editor.
+  // Loads a game's saved areas (or one new area) into the editor. Older profiles
+  // could mix a whole-window area with marked ones: the marked ones win.
   function loadAreas(w: GameWindow) {
-    const saved = app.settings.profiles[profileKey(w)]?.areas;
-    areas = saved?.length ? $state.snapshot(saved) : [newArea()];
+    const saved = $state.snapshot(app.settings.profiles[profileKey(w)]?.areas ?? []);
+    const marked = saved.filter((a) => a.mode !== "screen");
+    areas = marked.length ? marked : saved.length ? [saved[0]] : [newArea()];
+    selected = 0;
+  }
+
+  // Switches how the game is read. Going back to areas restores the ones marked
+  // before (still saved in the profile), so trying "whole window" loses nothing.
+  function setReadMode(mode: (typeof readModes)[number]) {
+    if (mode === "screen" ? wholeScreen : !wholeScreen) return;
+    if (mode === "screen") {
+      areas = [{ ...newArea(), mode: "screen" }];
+    } else {
+      const saved = game ? (app.settings.profiles[profileKey(game)]?.areas ?? []) : [];
+      const marked = $state.snapshot(saved).filter((a) => a.mode !== "screen");
+      areas = marked.length ? marked : [newArea()];
+    }
     selected = 0;
   }
 
@@ -109,10 +127,12 @@
     error = null;
     try {
       await saveAreas();
-      await applyAreas();
-      editing = false;
+      editing = false; // closes the preview first: the game is then captured by the session alone
+      // Restarting reading takes a fraction of a second; if it ever hangs, say so instead of freezing.
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), APPLY_TIMEOUT_MS));
+      await Promise.race([applyAreas(), timeout]);
     } catch (e) {
-      error = t(`errors.${errorKind(e)}`);
+      error = e instanceof Error && e.message === "timeout" ? t("play.applyTimeout") : t(`errors.${errorKind(e)}`);
     } finally {
       applying = false;
     }
@@ -211,13 +231,25 @@
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
       </div>
     {:else if editing || step === 1}
+      <!-- How the game is read: its marked areas, or the whole window. Never both. -->
+      <div class="read-mode" role="radiogroup" aria-label={t("play.area.question")}>
+        {#each readModes as mode (mode)}
+          {@const on = mode === "screen" ? wholeScreen : !wholeScreen}
+          <label class="mode" class:selected={on}>
+            <input type="radio" name="read-mode" checked={on} onchange={() => setReadMode(mode)} />
+            <strong>{t(`play.area.${mode}`)}</strong>
+            <span>{t(`play.area.${mode}Help`)}</span>
+          </label>
+        {/each}
+      </div>
+      {#if !wholeScreen}
       <!-- One tab per area of the game: dialogue, song lyrics, names... -->
       <div class="area-tabs" role="tablist">
         {#each areas as a, i (i)}
           <button
             class="area-tab"
             class:selected={i === selected}
-            class:missing={a.mode === "dialogue" && !a.region}
+            class:missing={!a.region}
             role="tab"
             aria-selected={i === selected}
             onclick={() => (selected = i)}
@@ -229,28 +261,29 @@
           + {t("play.area.add")}
         </button>
       </div>
+      {/if}
       {#if game}
         <GamePreview
-          bind:this={preview}
           windowHandle={game.handle}
-          selectable={area.mode === "dialogue"}
+          selectable={!wholeScreen}
           bind:region={areas[selected].region}
           label={String(selected + 1)}
           others={areas
-            .map((a, i) => ({ region: a.mode === "dialogue" ? a.region : null, label: String(i + 1) }))
+            .map((a, i) => ({ region: a.mode === "screen" ? null : a.region, label: String(i + 1) }))
             .filter((_, i) => i !== selected)}
         />
       {/if}
       <div class="area-hint">
-        {#if area.mode === "dialogue" && area.region}
+        {#if wholeScreen}
+          <p>{t("play.area.wholeWindow")}</p>
+        {:else if area.region}
           <p>{t("play.area.marked", { width: String(area.region[2]), height: String(area.region[3]) })}</p>
           <button class="btn btn-ghost" onclick={() => (areas[selected].region = null)}>{t("play.area.clear")}</button>
-        {:else if area.mode === "dialogue"}
-          <p>{t("play.area.drag")}</p>
         {:else}
-          <p>{t("play.area.wholeWindow")}</p>
+          <p>{t("play.area.drag")}</p>
         {/if}
       </div>
+      {#if !wholeScreen}
       <div class="area-name">
         <label class="field">
           <span>{t("play.area.name")}</span>
@@ -265,23 +298,11 @@
           <button class="btn btn-ghost" onclick={removeArea}>{t("play.area.remove")}</button>
         {/if}
       </div>
-      <div class="choices" role="radiogroup">
-        {#each areaModes as mode (mode)}
-          <label class="choice" class:selected={area.mode === mode}>
-            <input type="radio" name="area" value={mode} bind:group={areas[selected].mode} />
-            <strong>{t(`play.area.${mode}`)}</strong>
-            <span>{t(`play.area.${mode}Help`)}</span>
-          </label>
-        {/each}
-      </div>
-      <!-- Each area has its own font: keyed so a new area starts without the old results -->
-      {#key selected}
-        <FontDetect
-          snapshot={() => preview!.snapshot(area.mode === "dialogue" ? area.region : null)}
-          bind:value={areas[selected].font}
-          bind:caps={areas[selected].caps}
-        />
-      {/key}
+      {/if}
+      {#if unmarked >= 0}
+        <!-- Why Continue / Apply is off: one area has no rectangle yet -->
+        <p class="unmarked">{t("play.area.unmarked", { name: areaLabel(areas[unmarked], unmarked) })}</p>
+      {/if}
       <div class="actions">
         {#if editing}
           <!-- Live session: changes go to the game only when applied -->
@@ -406,36 +427,38 @@
     border-color: var(--gold);
   }
 
-  .choices {
+  /* Read mode: two slim cards side by side, above everything it governs */
+  .read-mode {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+    margin-bottom: 14px;
   }
-  .choice {
+  .mode {
     position: relative; /* keeps the hidden radio inside the card */
     display: grid;
-    gap: 6px;
+    gap: 2px;
     align-content: start;
-    padding: 14px 16px;
+    padding: 10px 14px;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     background: var(--night-deep);
     cursor: pointer;
   }
-  .choice span {
+  .mode span {
     color: var(--ink-dim);
     font-size: var(--text-sm);
   }
-  .choice.selected {
+  .mode.selected {
     border-color: var(--gold);
     box-shadow: inset 0 0 0 1px var(--gold);
   }
-  .choice input {
+  .mode input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
   }
-  .choice:has(input:focus-visible) {
+  .mode:has(input:focus-visible) {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
@@ -510,6 +533,11 @@
     font-size: var(--text-sm);
   }
 
+  .unmarked {
+    margin: 14px 0 0;
+    color: var(--gold);
+    font-size: var(--text-sm);
+  }
   .toolbar-hint {
     margin: 14px 0 0;
     color: var(--ink-dim);
@@ -521,7 +549,7 @@
   }
 
   .play.wide {
-    max-width: 1120px;
+    max-width: 1320px;
   }
 
   /* Newest line on top, at full size; older ones fade back */

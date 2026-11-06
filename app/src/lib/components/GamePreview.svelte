@@ -239,12 +239,12 @@
     cursor: crosshair;
   }
 
-  /* As big as the box allows, but short enough that the choices and buttons
-     below still fit in the window (~460px is everything else on the screen) */
+  /* As big as the box allows, but short enough that the mode switch, tabs and
+     buttons around it still fit in the window (~380px is everything else) */
   canvas {
     display: block;
     max-width: 100%;
-    max-height: max(240px, calc(100vh - 460px));
+    max-height: max(300px, calc(100vh - 380px));
     width: auto;
     height: auto;
   }
