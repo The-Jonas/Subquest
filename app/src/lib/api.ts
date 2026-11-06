@@ -265,6 +265,13 @@ export function applyTheme(theme: string | undefined) {
   document.documentElement.dataset.theme = theme || "graphite";
 }
 
+// Shows the game above Subquest for a moment, so a game that stopped drawing
+// behind Subquest's window draws again and the preview gets a picture.
+export async function peekWindow(handle: number) {
+  if (!inTauri) return;
+  await invoke("peek_window", { windowHandle: handle });
+}
+
 // Small picture of a window for the game list (null when none came: minimized...).
 export async function windowThumbnail(handle: number): Promise<Blob | null> {
   if (!inTauri) {

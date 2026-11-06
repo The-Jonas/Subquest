@@ -110,6 +110,40 @@ pub fn focus_game(game: u64) {
 #[cfg(not(windows))]
 pub fn focus_game(_game: u64) {}
 
+/// Puts the game above `main` for a moment, without taking the keyboard, then
+/// Subquest back on top. Many games stop drawing while fully hidden behind
+/// another window, and Windows only hands out a picture of a window when it
+/// draws: a game left behind Subquest's window never shows in the preview.
+#[cfg(windows)]
+pub fn peek_game(game: u64, main: &WebviewWindow) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        IsIconic, SetWindowPos, ShowWindow, HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_SHOWNOACTIVATE,
+    };
+    let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+    // SAFETY: plain z-order changes on a window handle from the core (a stale
+    // one just fails) and on our own main window.
+    unsafe {
+        let hwnd = game as usize as _;
+        if IsIconic(hwnd) != 0 {
+            ShowWindow(hwnd, SW_SHOWNOACTIVATE); // a minimized game draws nothing at all
+        }
+        SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, flags);
+    }
+    std::thread::sleep(PEEK_TIME);
+    if let Ok(ours) = main.hwnd() {
+        // SAFETY: our own window; only the z-order changes.
+        unsafe {
+            SetWindowPos(ours.0 as _, HWND_TOP, 0, 0, 0, 0, flags);
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn peek_game(_game: u64, _main: &WebviewWindow) {}
+
+#[cfg(windows)]
+const PEEK_TIME: std::time::Duration = std::time::Duration::from_millis(700); // long enough for a frame or two
+
 /// Shows (above the overlay) or hides the in-game toolbar, if it exists.
 fn set_toolbar(app: &AppHandle, show: bool) {
     let Some(toolbar) = app.get_webview_window(crate::ingame::TOOLBAR) else {

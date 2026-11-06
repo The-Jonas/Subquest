@@ -7,7 +7,7 @@
   Clicking another area's outline asks to switch to it (`onpick`).
 -->
 <script lang="ts">
-  import { startPreview, errorKind, type PreviewFrame, type Region } from "../api";
+  import { peekWindow, startPreview, errorKind, type PreviewFrame, type Region } from "../api";
   import { t } from "../i18n/index.svelte";
 
   let {
@@ -38,7 +38,11 @@
   const MAX_GROW = 3; // ...but never more than 3x
   const MIN_SIZE = 12; // smallest area accepted, in capture pixels (filters out accidental clicks)
 
+  const PEEK_AFTER_MS = 1200; // no picture by then: the game is probably hidden behind Subquest
+  const STUCK_AFTER_MS = 4000; // still none after peeking: say so, and offer to try again
+
   let canvas = $state<HTMLCanvasElement>();
+  let waiting = $state<"connecting" | "peeking" | "stuck">("connecting");
   let stage = $state<HTMLDivElement>();
   let live = $state(false);
   let error = $state<string | null>(null);
@@ -118,6 +122,18 @@
       live = false;
     }
     error = null;
+    waiting = "connecting";
+
+    // Many games stop drawing while hidden behind another window, and then
+    // no picture ever comes: show the game for a moment so it draws again.
+    const peekTimer = setTimeout(() => {
+      if (live || cancelled) return;
+      waiting = "peeking";
+      void peekWindow(handle);
+    }, PEEK_AFTER_MS);
+    const stuckTimer = setTimeout(() => {
+      if (!live && !cancelled) waiting = "stuck";
+    }, PEEK_AFTER_MS + STUCK_AFTER_MS);
 
     startPreview(handle, maxWidth, draw)
       .then((fn) => {
@@ -128,6 +144,8 @@
 
     return () => {
       cancelled = true;
+      clearTimeout(peekTimer);
+      clearTimeout(stuckTimer);
       stop?.();
     };
   });
@@ -268,7 +286,16 @@
   {#if error}
     <figcaption class="error" role="alert">{error}</figcaption>
   {:else if !live}
-    <figcaption class="waiting">{t("play.area.previewWaiting")}</figcaption>
+    <figcaption class="waiting">
+      {#if waiting === "stuck"}
+        <span>{t("play.area.previewStuck")}</span>
+        <button class="btn btn-ghost" onclick={() => { waiting = "peeking"; void peekWindow(windowHandle); }}>
+          {t("play.area.previewShowGame")}
+        </button>
+      {:else}
+        {waiting === "peeking" ? t("play.area.previewPeeking") : t("play.area.previewWaiting")}
+      {/if}
+    </figcaption>
   {/if}
 </figure>
 
@@ -314,6 +341,7 @@
     position: absolute;
     inset: 0;
     opacity: 0;
+    pointer-events: none; /* the waiting message (and its button) stays clickable */
   }
 
   /* Everything outside the marked area is dimmed; the area itself gets a gold outline */
@@ -393,6 +421,9 @@
     font-size: var(--text-sm);
   }
   .waiting {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
     color: var(--ink-faint);
   }
   .error {

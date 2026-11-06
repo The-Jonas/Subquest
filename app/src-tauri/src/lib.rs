@@ -770,6 +770,14 @@ fn list_styles(state: State<'_, AppState>, profile_key: String) -> Vec<styles::T
     state.styles.list(&profile_key)
 }
 
+/// Shows the game above Subquest for a moment so it draws again (the preview
+/// stays empty while a game hides behind Subquest and stops drawing).
+#[tauri::command]
+async fn peek_window(app: AppHandle, window_handle: u64) {
+    let Some(main) = app.get_webview_window("main") else { return };
+    let _ = tauri::async_runtime::spawn_blocking(move || overlay::peek_game(window_handle, &main)).await;
+}
+
 /// PNG thumbnail of a window, for the game list (a short capture of it).
 #[tauri::command]
 async fn window_thumbnail(app: AppHandle, window_handle: u64) -> Result<tauri::ipc::Response, AppError> {
@@ -980,6 +988,7 @@ pub fn run() {
             forget_styles,
             window_thumbnail,
             ui_log,
+            peek_window,
             session_flags,
             show_main,
             start_preview,

@@ -45,7 +45,10 @@
       "remove": "Remove area",
       "unmarked": "\"{name}\" has no rectangle yet: mark it on the preview or remove the area.",
       "editHint": "Drag inside to move, the small squares to resize, or outside to mark it again.",
-      "pick": "Edit this area"
+      "pick": "Edit this area",
+      "previewPeeking": "Showing the game for a moment so it draws its screen…",
+      "previewStuck": "The game isn't drawing its screen. It may be minimized, or paused while in the background.",
+      "previewShowGame": "Show the game again"
     },
     "start": {
       "question": "All set.",

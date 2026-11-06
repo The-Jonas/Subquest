@@ -45,7 +45,10 @@
       "remove": "Remover área",
       "unmarked": "\"{name}\" ainda não tem retângulo: marque na prévia ou remova a área.",
       "editHint": "Arraste dentro para mover, pelos quadradinhos para mudar o tamanho, ou fora para marcar de novo.",
-      "pick": "Editar esta área"
+      "pick": "Editar esta área",
+      "previewPeeking": "Mostrando o jogo por um instante para ele desenhar a tela…",
+      "previewStuck": "O jogo não está desenhando a tela. Ele pode estar minimizado ou pausado por estar em segundo plano.",
+      "previewShowGame": "Mostrar o jogo de novo"
     },
     "start": {
       "question": "Tudo pronto.",
