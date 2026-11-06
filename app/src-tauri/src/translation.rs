@@ -29,6 +29,11 @@ use crate::settings::{Settings, TranslatorSettings};
 use crate::translate::cache::TranslationCache;
 use crate::translate::openai_compat::OpenAiCompatTranslator;
 use crate::translate::quick::QuickTranslator;
+
+/// Until when the quick translator is left out after it answered "too many
+/// requests" (HTTP 429); None when it is in use.
+static QUICK_PAUSED: Mutex<Option<Instant>> = Mutex::new(None);
+const QUICK_PAUSE: Duration = Duration::from_secs(10 * 60);
 use crate::translate::similar;
 use crate::translate::{ContextLine, TranslateError, TranslationRequest};
 use crate::AppState;
@@ -272,10 +277,23 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
     let quick = QuickTranslator::from_settings(&settings.quick.engine, &settings.quick.deepl_key);
     let quick_line = async {
         let quick = quick.as_ref()?;
+        if QUICK_PAUSED.lock().unwrap().is_some_and(|until| Instant::now() < until) {
+            return None; // the service asked us to slow down: the LLM alone for a while
+        }
         let text = quick
-            .translate(&translation.http, &text, &request.source_lang, &request.target_lang)
+            .translate(&translation.http, &crate::highlights::strip(&text), &request.source_lang, &request.target_lang)
             .await
-            .map_err(|e| log::warn(&format!("quick translation failed: {e}")))
+            .map_err(|e| {
+                let message = e.to_string();
+                if message.contains("429") {
+                    // Too many requests (Google's free endpoint limits by IP):
+                    // asking again on every line only keeps the limit on.
+                    *QUICK_PAUSED.lock().unwrap() = Some(Instant::now() + QUICK_PAUSE);
+                    log::warn(&format!("quick translation paused for {} min: {message}", QUICK_PAUSE.as_secs() / 60));
+                } else {
+                    log::warn(&format!("quick translation failed: {message}"));
+                }
+            })
             .ok()?;
         let first = {
             let mut shown = shown.lock().unwrap();

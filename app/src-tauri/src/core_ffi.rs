@@ -14,7 +14,7 @@ use libloading::Library;
 use crate::error::AppError;
 
 /// ABI version this code expects (`SQ_API_VERSION` in the header).
-pub const EXPECTED_API_VERSION: u32 = 14;
+pub const EXPECTED_API_VERSION: u32 = 15;
 pub const MAX_AREAS: usize = 16; // SQ_MAX_AREAS
 
 #[repr(C)]
@@ -80,6 +80,8 @@ pub struct SqOcrEvent {
     pub clean_box: SqRect,     // where it goes, in window pixels
     pub icons: *const SqRect,  // pictures inside the lines ("{1}" is the first), window pixels
     pub icon_count: u32,
+    pub loose: *const SqRect,  // text OCR left out in a marked area ("· ? ? ?"), window pixels
+    pub loose_count: u32,
 }
 
 pub type SqTextCallback = unsafe extern "C" fn(*const SqOcrEvent, *mut c_void);

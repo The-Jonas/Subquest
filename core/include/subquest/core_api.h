@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 14u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 15u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -106,6 +106,11 @@ typedef struct SqOcrEvent {
      * pixels are in image_bgra. */
     const SqRect* icons;
     uint32_t icon_count;
+    /* Text OCR left out in a marked area ("· ? ? ?"): the overlay moves it
+     * along with the translation; it is already out of clean_bgra. Window
+     * pixels; their pixels are in image_bgra. */
+    const SqRect* loose;
+    uint32_t loose_count;
 } SqOcrEvent;
 
 /* Called on the OCR thread when an area shows NEW text, and once with empty

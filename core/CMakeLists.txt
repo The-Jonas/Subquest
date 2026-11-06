@@ -18,6 +18,7 @@ add_library(subquest_portable STATIC
     src/vision/palette.cpp
     src/vision/inpaint.cpp
     src/vision/icons.cpp
+    src/vision/loose.cpp
     src/ocr/line_cleanup.cpp
     src/pipeline/pipeline.cpp
 )
@@ -93,6 +94,9 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(icons_test tests/icons_test.cpp)
     target_link_libraries(icons_test PRIVATE subquest_portable)
     add_test(NAME icons COMMAND icons_test)
+    add_executable(loose_test tests/loose_test.cpp)
+    target_link_libraries(loose_test PRIVATE subquest_portable)
+    add_test(NAME loose COMMAND loose_test)
 
     add_executable(pipeline_test tests/pipeline_test.cpp)
     target_link_libraries(pipeline_test PRIVATE subquest_portable)

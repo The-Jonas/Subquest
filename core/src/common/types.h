@@ -60,6 +60,7 @@ struct OcrResult {
     uint32_t text_rgb = 0xFFFFFF;       // text color (0xRRGGBB), sampled from the letters
     const Frame* image = nullptr;       // the area's pixels; valid only during the text callback
     std::vector<Rect> icons;            // pictures inside the lines, in window pixels: {1} is the first (see icons.h)
+    std::vector<Rect> loose;            // text OCR left out ("· ? ? ?"), in window pixels (see loose.h)
     Rect clean_rect;                    // where `clean` goes, in window pixels (empty = none)
     std::vector<uint8_t> clean;         // the area's pixels without the text (BGRA, rows packed), see inpaint.h
 };

@@ -55,3 +55,10 @@ describe("caseFor", () => {
     expect(applyCase("PRESENTE", caseFor("", "smallCaps"))).toBe("Presente");
   });
 });
+
+describe("applyCase with color tags", () => {
+  it("brings small capitals read as capitals back to sentence case, tags untouched", () => {
+    expect(applyCase("<c1>RAIZ</c1> DE MANDRÁGORA", "smallCaps")).toBe("<c1>Raiz</c1> de mandrágora");
+  });
+});
+

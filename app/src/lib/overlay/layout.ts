@@ -11,6 +11,7 @@
 // Positions are CSS pixels of the overlay, which covers exactly the captured area.
 import type { OcrLine, Region, TextEffect } from "../api";
 import { continues } from "../text/paragraphs";
+import { balanceTags } from "../text/icons";
 
 export type Align = "left" | "center" | "right";
 
@@ -42,6 +43,7 @@ export interface Patch {
 }
 
 const MIN_SHRINK = 0.55; // a long translation may shrink to 55% of the original size, not less
+const ANCHORED = 2.5; // text this many line heights below the one above is placed on its own (a flavor text at the foot), not in its flow
 const TITLE_SHRINK = 0.75; // a lone line shrinks this far to stay on one line before it breaks
 const FALLBACK_INK = 0.72; // ink height / font size when the original can't be measured
 const EDGE = 0.98; // keep 2% of the room free at the screen edges
@@ -57,7 +59,7 @@ function placement(line: OcrLine): Region {
 // count (the normal case), each translation goes over its own line; otherwise
 // the whole translation becomes one block over all the lines.
 export function pairLines(lines: OcrLine[], translation: string): { line: OcrLine; text: string }[] {
-  const parts = translation.split("\n").map((s) => s.trim());
+  const parts = balanceTags(translation.split("\n").map((s) => s.trim()));
   while (parts.length > 1 && parts[parts.length - 1] === "") parts.pop(); // trailing blank lines from the model
   if (lines.length > 0 && parts.length === lines.length) {
     return lines.map((line, i) => ({ line, text: parts[i] }));
@@ -232,7 +234,7 @@ export function wrap(text: string, width: number, px: number, measure: Measure):
     }
   }
   if (current) lines.push(current);
-  return lines;
+  return balanceTags(lines); // a colored run cut in two keeps its color on both lines
 }
 
 // Middle value of a list of numbers (0 for an empty list).
@@ -376,6 +378,8 @@ export function layoutArea(
   frame: { width: number; height: number },
   view: { width: number; height: number },
   measureFor: (line: OcrLine) => Measure,
+  loose: { rect: Region }[] = [], // text OCR left out ("· ? ? ?"), moved along as pictures
+  looseIndex = 0, // placeholder number of the first loose picture minus one ("{looseIndex + 1}")
 ): Patch[] {
   if (!lines.length) return [];
   const scale = view.height / frame.height; // CSS px per capture px
@@ -409,6 +413,60 @@ export function layoutArea(
   // Paragraphs already placed, to push the next ones down when one grew
   // (Portuguese runs longer): the gap the game left under it is kept.
   const placed: { left: number; right: number; bottom0: number; bottom: number }[] = [];
+  // The usual gap between paragraphs here: one far beyond it sets apart a
+  // text placed on its own (a flavor text at the foot of the box).
+  const extents = groups.map((g) => {
+    const ys = g.map((i) => rects[i]);
+    return [Math.min(...ys.map((r) => r[1])) * scale, Math.max(...ys.map((r) => r[1] + r[3])) * scale];
+  });
+  const gaps = extents.slice(1).map((e, k) => e[0] - extents[k][1]).filter((v) => v > 0).sort((a, b) => a - b);
+  const usualGap = gaps.length >= 2 ? gaps[Math.floor((gaps.length - 1) / 2)] : 0; // the lower middle: a far one doesn't count
+  // How far down something goes (a paragraph, a loose picture), given where
+  // it was: as far as a paragraph close above it (side by side with it) grew
+  // past its own bottom, so the game's spacing stays. A few pixels more
+  // (other letters' metrics), or text far below, only move if they would touch. Never out
+  // of the marked area: something already at its bottom stays put.
+  const shiftFor = (left: number, right0: number, top: number, bottom0: number, lineH: number) =>
+    Math.min(
+      Math.max(0, ay + ah - bottom0),
+      Math.max(
+        0,
+        ...placed
+          .filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right)
+          .map((p) => {
+            const grew = p.bottom - p.bottom0;
+            const gap = top - p.bottom0;
+            // Close below (the next list item): it follows, at the game's spacing.
+            if (grew > lineH / 3 && gap <= Math.max(lineH * ANCHORED, usualGap * 2)) return grew;
+            // Far below (a flavor text at the foot of the box) or barely
+            // grown: it stays, unless the text above would reach it.
+            return p.bottom + Math.min(gap / 2, lineH / 3) - top;
+          }),
+      ),
+    );
+  // Loose pictures, top to bottom, each placed when the flow reaches it.
+  const waiting = loose.map((l, k) => ({ rect: l.rect.map((v) => v * scale), index: looseIndex + k + 1 }));
+  waiting.sort((a, b) => a.rect[1] - b.rect[1]);
+  const placeLoose = (until: number) => {
+    while (waiting.length && waiting[0].rect[1] < until) {
+      const { rect, index } = waiting.shift()!;
+      const [x, y, w, h] = rect;
+      const shift = shiftFor(x, x + w, y, y + h, h);
+      // Its old place shows the game without it; the picture goes to the new one.
+      patches.push({
+        text: `{${index}}`,
+        style: null,
+        cover: { left: x, top: y, width: w, height: h + shift },
+        textLeft: x,
+        textTop: y + shift,
+        lineHeight: h,
+        fontPx: h,
+        boxColor: lines[0].boxColor,
+        textColor: lines[0].textColor,
+      });
+      placed.push({ left: x, right: x + w, bottom0: y + h, bottom: y + h + shift });
+    }
+  };
   for (const [g, group] of groups.entries()) {
     const own = matched ? group.map((i) => parts[i]) : shared ? shared[g] : parts;
     const text = own.join(" ").replace(/\s+/g, " ").trim();
@@ -420,21 +478,8 @@ export function layoutArea(
     const top = Math.min(...boxes.map((b) => b[1]));
     const right0 = Math.max(...boxes.map((b) => b[0] + b[2]));
     const bottom0 = Math.max(...boxes.map((b) => b[1] + b[3]));
-    // How far down this paragraph goes: only as far as a paragraph above it
-    // (side by side with it) now reaches into it, keeping a little room
-    // between them (half the game's gap, or a third of a line if that is less).
-    // Growing into the free space below is fine: nothing else moves. Never
-    // out of the marked area: a paragraph already at its bottom stays put.
-    const lineH = median(boxes.map((b) => b[3]));
-    const shift = Math.min(
-      Math.max(0, ay + ah - bottom0),
-      Math.max(
-        0,
-        ...placed
-          .filter((p) => p.bottom0 <= top + 1 && p.left < right0 && left < p.right)
-          .map((p) => p.bottom + Math.min((top - p.bottom0) / 2, lineH / 3) - top),
-      ),
-    );
+    placeLoose(top); // loose pictures above this paragraph come first
+    const shift = shiftFor(left, right0, top, bottom0, median(boxes.map((b) => b[3])));
     const from = patches.length;
     const settle = () => {
       const mine = patches.slice(from);
@@ -542,6 +587,7 @@ export function layoutArea(
     });
     settle();
   }
+  placeLoose(Infinity);
   return patches;
 }
 

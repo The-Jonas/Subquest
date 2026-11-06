@@ -16,9 +16,11 @@ constexpr size_t SHORT_WORD = 3;     // characters at most for the "tall word" r
 constexpr size_t ICON_READING = 1;   // OCR reads a picture as one character ("A", "®"); two letters can be a word ("on")
 constexpr float WIDE_GAP = 0.9f;     // a gap wider than this share of the line height can hold a picture
 constexpr float TALLER = 0.75f;      // pictures may reach this share of the line height above and below the letters
-constexpr float OTHER_INK = 0.5f;    // short junk whose ink is mostly another color than the text's (a white note in a green line)
+constexpr float OTHER_INK = 0.35f;   // short junk with this much of its ink in another color than the text's (a white
+                                     // note in a green line; Hades' clock: a dark face, only its rim and hand show, 41%)
 constexpr float FILLED_KEY = 0.6f;   // short junk whose box is at least this full is a key's face (letters fill 20-40%)
-constexpr float EDGE_REACH = 3.0f;   // pictures before the first word / after the last: within this many line heights
+constexpr float EDGE_REACH = 5.0f;   // pictures before the first word / after the last: within this many line heights
+                                     // (a skipped number with its coins after it takes four)
 constexpr float SMALLEST = 0.4f;     // a picture is at least this share of the line height, both ways
 constexpr float GAP_TALL = 0.8f;     // a drawing alone in a wide gap this tall (share of the line height) is a picture
 constexpr float ICON_SPAN = 1.4f;    // pieces of one picture fit in this many line heights, both ways
@@ -178,7 +180,8 @@ struct Drawing {
 };
 
 Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, bool own_only = false,
-                         bool largest_only = false, bool vivid_ink = false, bool gather = false) {
+                         bool largest_only = false, bool vivid_ink = false, bool gather = false,
+                         float span = ICON_SPAN) {
     Drawing out;
     area = clipped(area, frame);
     if (area.width < 3 || area.height < 3) return out;
@@ -261,8 +264,8 @@ Drawing isolated_drawing(const Frame& frame, Rect area, const OcrLine& line, boo
         std::sort(pieces.begin(), pieces.end(), [](const Piece& a, const Piece& b) { return a.count > b.count; });
         const Piece& big = pieces.front();
         x0 = big.x0, y0 = big.y0, x1 = big.x1, y1 = big.y1, kept = big.count, kept_own = big.own;
-        const int32_t near = std::max(2, letters / 4);
-        const int32_t widest = std::max(x1 - x0 + 1, int32_t(letters * ICON_SPAN));
+        const int32_t near = std::max(2, letters / 3);
+        const int32_t widest = std::max(x1 - x0 + 1, int32_t(letters * span));
         const int32_t tallest = std::max(y1 - y0 + 1, int32_t(letters * ICON_SPAN));
         std::vector<bool> used(pieces.size(), false);
         used[0] = true;
@@ -301,7 +304,10 @@ Rect edge_picture(const Frame& frame, const OcrLine& line, const std::vector<Ocr
     const Rect area = clipped({x, line.box.y - reach_y, reach_x - inset, line.box.height + 2 * reach_y}, frame);
     if (area.empty()) return {};
     // The biggest piece only: a note, not the scenery specks beside it.
-    const Rect d = isolated_drawing(frame, area, line, false, true, false, true).box;
+    // Its pieces together, as wide as the search: what OCR skipped there is
+    // kept whole as one picture ("spend [1000 + coins]": the bold number was
+    // not read, and taking only its biggest pieces left "00").
+    const Rect d = isolated_drawing(frame, area, line, false, true, false, true, EDGE_REACH).box;
     if (d.empty() || d.width < height * SMALLEST || d.height < height * SMALLEST) return {};
     // Nor part of another line: its letters or its own pictures (the line's
     // box may have been cut to its letters already).
@@ -314,28 +320,98 @@ Rect edge_picture(const Frame& frame, const OcrLine& line, const std::vector<Ocr
     return d;
 }
 
+// Color of the letters in a box: the average of the pixels at least half as
+// far from the background as the farthest one (their cores, not their edges).
+uint32_t ink_of(const Frame& frame, Rect box, uint32_t background) {
+    box = clipped(box, frame);
+    float far = 0;
+    for (int32_t y = box.y; y < box.y + box.height; ++y)
+        for (int32_t x = box.x; x < box.x + box.width; ++x)
+            far = std::max(far, distance(frame.bgra.data() + size_t(y) * frame.stride + size_t(x) * 4, background));
+    uint64_t r = 0, g = 0, b = 0, n = 0;
+    for (int32_t y = box.y; y < box.y + box.height; ++y)
+        for (int32_t x = box.x; x < box.x + box.width; ++x) {
+            const uint8_t* px = frame.bgra.data() + size_t(y) * frame.stride + size_t(x) * 4;
+            if (distance(px, background) * 2 < far) continue;
+            b += px[0], g += px[1], r += px[2], ++n;
+        }
+    if (n == 0) return background;
+    return uint32_t(r / n) << 16 | uint32_t(g / n) << 8 | uint32_t(b / n);
+}
+
 // A picture OCR boxed together with the first (or last) word but left out of
-// its text ("♫Mares" read as "Mares"): something of a color of its own at that
-// end of the word's box. Empty box when there is none.
+// its text ("♫Mares" read as "Mares") or read as junk glued to it ("274" and
+// coins read "2746B", "20" and a clock read "20C"): something of a color of
+// its own at that end of the word's box. Colors are judged against the rest
+// of the word's own color, not the line's: in a purple line with white
+// numbers, the white digits are the word, the gold coins the picture. Empty
+// box when there is none.
 Rect inner_picture(const Frame& frame, const OcrLine& line, const OcrWord& word, bool before) {
     const int32_t height = std::max(1, usual_height(line.words));
     const int32_t inset = std::max(1, height / 6);
     const int32_t reach_y = int32_t(height * TALLER);
     const int32_t span = std::min(word.box.width, int32_t(height * 1.5f));
+    if (word.box.width - span < height / 2) return {}; // no room left for letters
+    const Rect letters = before ? Rect{word.box.x + span, word.box.y, word.box.width - span, word.box.height}
+                                : Rect{word.box.x, word.box.y, word.box.width - span, word.box.height};
+    OcrLine own_color = line;
+    own_color.words.clear();
+    own_color.text_rgb = ink_of(frame, letters, line.background_rgb);
     const int32_t x = before ? word.box.x - inset : word.box.x + word.box.width - span;
     const Rect area{x, line.box.y - reach_y, span + inset, line.box.height + 2 * reach_y};
-    const Drawing found = isolated_drawing(frame, area, line, true, true);
+    const Drawing found = isolated_drawing(frame, area, own_color, true, true, true, true);
     const Rect d = found.box;
-    // One piece (a note, a key), not the letters of a word in another color.
-    if (d.empty() || found.pieces != 1 || d.width < height * SMALLEST || d.height < height * SMALLEST) return {};
-    // The rest of the word must be letters in the text's color ("Mares" after
+    if (d.empty() || d.width < height * SMALLEST || d.height < height * SMALLEST) return {};
+    // The rest of the word must be letters in its own color ("Mares" after
     // the note), or the word is a highlighted one, not a picture plus letters.
     const Rect rest = before ? Rect{d.x + d.width, word.box.y, word.box.x + word.box.width - (d.x + d.width), word.box.height}
                              : Rect{word.box.x, word.box.y, d.x - word.box.x, word.box.height};
     if (rest.width < height / 2) return {};
-    const Look letters = look_at(frame, rest, line.text_rgb, line.background_rgb);
-    if (letters.filled < 0.05f || letters.ink_other >= 0.3f) return {};
+    const Look seen = look_at(frame, rest, own_color.text_rgb, line.background_rgb);
+    if (seen.filled < 0.05f || seen.ink_other >= 0.3f) return {};
     return d;
+}
+
+// A word cut down to the part before (or after) a picture found inside it:
+// its box ends at the picture. OCR may have read the picture as characters
+// ("2746B": the coins as "6B") or left it out ("♫Mares" read "Mares"): the
+// text keeps as many characters as fit the letters' part at the line's usual
+// width per character (`char_width`, 0 = unknown: the text stays).
+void cut_word(OcrWord& word, Rect picture, bool before, float char_width) {
+    const int32_t old_width = word.box.width;
+    if (before) {
+        const int32_t end = word.box.x + word.box.width;
+        word.box.x = std::min(end - 1, picture.x + picture.width);
+        word.box.width = end - word.box.x;
+    } else {
+        word.box.width = std::max(1, picture.x - word.box.x);
+    }
+    // Characters (UTF-8) dropped from the picture's side, at least one left.
+    std::vector<size_t> starts;
+    for (size_t i = 0; i < word.text.size(); ++i)
+        if ((static_cast<unsigned char>(word.text[i]) & 0xC0) != 0x80) starts.push_back(i);
+    const size_t n = starts.size();
+    if (n < 2) return;
+    // A number with a picture read as one more digit or letter ("2746" for
+    // 274 and coins): its characters share the box evenly, so it keeps the
+    // share of them the letters' part had (bold digits run wider than the
+    // line's other letters, so the usual width would keep the "6").
+    size_t digits = 0;
+    for (char c : word.text) digits += std::isdigit(static_cast<unsigned char>(c)) ? 1 : 0;
+    if (digits * 2 >= n && old_width > 0) {
+        const size_t keep = std::clamp<size_t>(size_t(std::lround(float(n) * float(word.box.width) / float(old_width))), 1, n);
+        word.text = before ? word.text.substr(starts[n - keep]) : word.text.substr(0, keep < n ? starts[keep] : word.text.size());
+        return;
+    }
+    if (char_width <= 0) return;
+    size_t drop = 0;
+    float best = std::fabs(float(word.box.width) - float(n) * char_width);
+    for (size_t k = 1; k < n; ++k) {
+        const float miss = std::fabs(float(word.box.width) - float(n - k) * char_width);
+        if (miss < best) best = miss, drop = k;
+    }
+    if (drop == 0) return;
+    word.text = before ? word.text.substr(starts[drop]) : word.text.substr(0, starts[n - drop]);
 }
 
 } // namespace
@@ -362,22 +438,38 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
         std::vector<OcrWord> source = line.words;
         Rect before = edge_picture(frame, line, lines, true);
         // (A word that is itself junk, "J" for a note, is left to the word rules below.)
+        // Usual width of a character on this line, from its other words.
+        const auto char_width = [&](size_t skip) {
+            float px = 0, chars = 0;
+            for (size_t k = 0; k < line.words.size(); ++k) {
+                if (k == skip) continue;
+                px += float(line.words[k].box.width);
+                chars += float(char_count(line.words[k].text));
+            }
+            return chars >= 4 ? px / chars : 0.0f;
+        };
         const auto real_word = [](const OcrWord& w) { return char_count(w.text) > ICON_READING && has_letters(w.text); };
         if (before.empty() && source.size() > 1 && real_word(source.front())) {
             before = inner_picture(frame, line, source.front(), true);
-            if (!before.empty()) {
-                OcrWord& first = source.front();
-                const int32_t end = first.box.x + first.box.width;
-                first.box.x = std::min(end - 1, before.x + before.width);
-                first.box.width = end - first.box.x;
-            }
+            if (!before.empty()) cut_word(source.front(), before, true, char_width(0));
         }
         Rect after = edge_picture(frame, line, lines, false);
-        if (after.empty() && source.size() > 1 && real_word(source.back())) {
-            after = inner_picture(frame, line, source.back(), false);
-            if (!after.empty()) {
-                OcrWord& last = source.back();
-                last.box.width = std::max(1, after.x - last.box.x);
+        // Even with a picture found after the last word, part of it may be
+        // inside that word, read as characters ("2746B": the coins): cut
+        // there, and the picture is both parts.
+        if (source.size() > 1 && real_word(source.back())) {
+            const Rect inner = inner_picture(frame, line, source.back(), false);
+            const int32_t gap = after.empty() ? 0 : after.x - (inner.x + inner.width);
+            if (!inner.empty() && (after.empty() || gap <= line_height / 2)) {
+                cut_word(source.back(), inner, false, char_width(line.words.size() - 1));
+                if (!after.empty()) {
+                    const int32_t x0 = std::min(inner.x, after.x), y0 = std::min(inner.y, after.y);
+                    const int32_t x1 = std::max(inner.x + inner.width, after.x + after.width);
+                    const int32_t y1 = std::max(inner.y + inner.height, after.y + after.height);
+                    after = {x0, y0, x1 - x0, y1 - y0};
+                } else {
+                    after = inner;
+                }
             }
         }
         if (!before.empty()) add_edge(before);

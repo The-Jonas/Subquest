@@ -387,16 +387,47 @@ describe("item descriptions (Hades II)", () => {
     expect(last.textTop + last.lineHeight).toBeLessThanOrEqual(300 + 5); // the line box runs a little past the letters
   });
 
-  it("leaves the next paragraph where it was when the one above grows into free space", () => {
+  it("keeps the game's spacing when a paragraph grows by a line", () => {
     const card = [
       line("Mostly used with incantations", [40, 60, 400, 20]),
       line("involving power and protection.", [40, 86, 420, 20]),
-      line("· Grown in the Crossroads", [40, 220, 400, 20]),
+      line("· Grown in the Crossroads", [40, 140, 400, 20]),
     ];
     const translation = "Muito usado em encantamentos envolvendo poder e proteção e mais um pouco de texto\naqui\n• Cultivado na Encruzilhada";
     const patches = layoutArea(card, translation, [20, 0, 460, 400], screen, screen, () => measure);
+    const body = patches.filter((p) => !p.text.startsWith("•"));
     const bullet = patches.find((p) => p.text.startsWith("•"))!;
-    expect(bullet.textTop).toBeLessThan(220); // its own place (the ink sits in the box), not pushed
+    const bodyLast = body[body.length - 1];
+    // The game had 34 px between the paragraphs' letters; about the same is left.
+    const bulletInkTop = bullet.textTop + bullet.lineHeight * (0.9 - 0.7) / 1.15;
+    const bodyInkBottom = bodyLast.textTop + bodyLast.lineHeight * (0.9 + 0.2) / 1.15;
+    expect(bulletInkTop - bodyInkBottom).toBeGreaterThan(25);
+  });
+
+  it("moves text OCR left out along with the paragraph above it", () => {
+    const card = [
+      line("Mostly used with incantations", [40, 60, 400, 20]),
+      line("involving power and protection.", [40, 86, 420, 20]),
+      line("A concentrated bit of the very nature", [40, 300, 420, 20]),
+    ];
+    const translation = "Muito usado em encantamentos envolvendo poder e proteção e mais um pouco de texto\naqui\nUm pedaço concentrado";
+    const patches = layoutArea(card, translation, [20, 0, 460, 400], screen, screen, () => measure, [{ rect: [40, 140, 40, 18] }], 2);
+    const unread = patches.find((p) => p.text === "{3}")!;
+    expect(unread).toBeDefined();
+    expect(unread.textTop).toBeGreaterThan(140); // moved down with the grown paragraph
+    expect(unread.cover.top).toBe(140); // its old place is cleaned
+  });
+
+  it("leaves text at the foot of the box in place when the list above grows", () => {
+    const card = [
+      line("· Communal visits to the Crossroads", [40, 60, 400, 20]),
+      line("Taverna pass 20", [40, 86, 200, 20]),
+      line("The delicacy of Olympus has a flavor unique", [40, 300, 420, 20]),
+    ];
+    const translation = "• Visitas comunitárias à Taverna da Encruzilhada passam 20 e mais um pouco de texto\naqui\nA iguaria do Olimpo";
+    const patches = layoutArea(card, translation, [20, 0, 460, 360], screen, screen, () => measure);
+    const flavor = patches.find((p) => p.text.startsWith("A iguaria"))!;
+    expect(flavor.textTop).toBeLessThan(300); // where it was (the ink sits in its box), not pushed onto the frame
   });
 });
 

@@ -5,6 +5,7 @@
 //  - system:   fonts that ship with Windows
 //  - imported: files the user added in the Fonts screen ("imported:<file>")
 import { candidateFont, listFonts, readFont, type ImportedFont, type LetterCase } from "./api";
+import { untagged } from "./text/icons";
 
 export interface FontOption {
   value: string; // what is stored in the area ("" = default)
@@ -123,9 +124,17 @@ export function caseFor(chosen: LetterCase, seen?: string | null): LetterCase {
 // to sentence case ("Jogar"), so it looks like the game's "Play".
 export function applyCase(text: string, caps: LetterCase): string {
   if (caps === "upper") return text.toLocaleUpperCase();
-  if (caps === "smallCaps" && text === text.toLocaleUpperCase() && text !== text.toLocaleLowerCase()) {
+  const plain = untagged(text); // color tags ("<c1>") aren't letters
+  if (caps === "smallCaps" && plain === plain.toLocaleUpperCase() && plain !== plain.toLocaleLowerCase()) {
     const lower = text.toLocaleLowerCase();
-    return lower.replace(/\p{L}/u, (first) => first.toLocaleUpperCase());
+    // First letter outside a tag back to a capital.
+    let inTag = false;
+    for (let i = 0; i < lower.length; i++) {
+      if (lower[i] === "<") inTag = true;
+      else if (lower[i] === ">") inTag = false;
+      else if (!inTag && /\p{L}/u.test(lower[i])) return lower.slice(0, i) + lower[i].toLocaleUpperCase() + lower.slice(i + 1);
+    }
+    return lower;
   }
   return text;
 }

@@ -155,6 +155,42 @@ int main() {
         check(find_icons(f, lines).empty() && lines[0].text == "for a variety", "a dim letter brighter than its line's color stays text");
     }
     {
+        // Hades II: "To earn the next one, spend 274[coins]" read as "spend
+        // 2746B": white digits in a purple line, the gold coins glued to them.
+        Frame f = blank();
+        const uint32_t purple = 0x8A7299;
+        const Rect spend{20, 20, 50, 16}, one{80, 20, 40, 16}, number{130, 18, 50, 20};
+        for (const Rect& r : {spend, one})
+            for (int x = r.x; x < r.x + r.width; x += 5) paint(f, {x, r.y, 2, r.height}, purple);
+        for (int x = 130; x < 160; x += 5) paint(f, {x, 20, 2, 16}, TEXT); // "274", white
+        paint(f, {162, 24, 9, 9}, 0xD4A020);                             // two gold coins
+        paint(f, {169, 28, 9, 9}, 0xC89018);
+        OcrLine line = make_line({{"spend", spend}, {"one,", one}, {"2746B", number}});
+        line.text_rgb = purple;
+        std::vector<OcrLine> lines{line};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && lines[0].text == "spend one, 274 {1}", "coins read as letters glued to a number are cut off it");
+    }
+    {
+        // Hades II: "Earned each time you spend [1000][coins]": OCR skipped the
+        // bold number. What follows the last word is kept whole as one
+        // picture, not just its two biggest digits.
+        Frame f = blank();
+        const uint32_t purple = 0x8A7299;
+        const Rect time{20, 20, 40, 16}, spend{68, 20, 50, 16};
+        for (const Rect& r : {time, spend})
+            for (int x = r.x; x < r.x + r.width; x += 5) paint(f, {x, r.y, 2, r.height}, purple);
+        for (int k = 0; k < 4; ++k) paint(f, {126 + k * 9, 20, 6, 16}, TEXT); // "1000", digits apart
+        paint(f, {163, 24, 9, 9}, 0xD4A020), paint(f, {170, 28, 9, 9}, 0xC89018); // the coins
+        OcrLine line = make_line({{"time", time}, {"spend", spend}});
+        line.text_rgb = purple;
+        std::vector<OcrLine> lines{line};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.size() == 1 && lines[0].text == "time spend {1}" && !icons.empty() && icons[0].x <= 126 &&
+                  icons[0].x + icons[0].width >= 179,
+              "a skipped number and its coins after the last word are one picture");
+    }
+    {
         // Plain text, with normal spaces: nothing changes.
         Frame f = blank();
         const Rect hello{20, 20, 50, 16}, there{78, 20, 50, 16};

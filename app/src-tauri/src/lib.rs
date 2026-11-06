@@ -7,6 +7,7 @@ mod error;
 mod font_detect;
 mod fonts;
 mod glossary;
+mod highlights;
 mod ingame;
 mod overlay;
 mod profiles;
@@ -94,6 +95,8 @@ struct OcrTextEvent {
     same_as: Option<u64>, // this is that earlier line read again: keep its translation
     background: Option<CleanBackground>, // the area without its text, to hide the original lines with
     icons: Vec<IconPicture>, // pictures inside the lines: "{1}" in the text is the first
+    highlights: Vec<String>, // colors of the "<c1>...</c1>" tags in the text (words in another color), "#rrggbb"
+    loose: Vec<IconPicture>, // text OCR left out ("· ? ? ?"): moved along with the translation, see-through around its ink
 }
 
 /// A picture the game draws inside a line (a gamepad button), cut from the
@@ -129,6 +132,58 @@ unsafe fn icon_pictures(e: &core_ffi::SqOcrEvent) -> Vec<IconPicture> {
                 for x in x0..x1 {
                     let i = row + x as usize * 4;
                     pixels.extend_from_slice(&[image[i + 2], image[i + 1], image[i], 255]);
+                }
+            }
+            let png = styles::Rgba { pixels, width: x1 - x0, height: y1 - y0 }.png()?;
+            Some(IconPicture {
+                rect: [x0 + e.image_x, y0 + e.image_y, x1 - x0, y1 - y0],
+                url: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)),
+            })
+        })
+        .collect()
+}
+
+/// Text OCR left out, cut from the game so the overlay can move it with the
+/// translation. Only its ink is kept: each pixel is as opaque as it differs
+/// from the clean picture (the game without it), so it carries no patch of
+/// background along.
+unsafe fn loose_pictures(e: &core_ffi::SqOcrEvent) -> Vec<IconPicture> {
+    use base64::Engine as _;
+    if e.loose.is_null() || e.loose_count == 0 || e.image_bgra.is_null() || e.image_stride <= 0 {
+        return Vec::new();
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    let c = e.clean_box;
+    let clean = (!e.clean_bgra.is_null() && c.width > 0 && c.height > 0)
+        .then(|| std::slice::from_raw_parts(e.clean_bgra, (c.width * c.height * 4) as usize));
+    std::slice::from_raw_parts(e.loose, e.loose_count as usize)
+        .iter()
+        .filter_map(|r| {
+            let x0 = (r.x - e.image_x).clamp(0, e.image_width);
+            let y0 = (r.y - e.image_y).clamp(0, e.image_height);
+            let x1 = (r.x - e.image_x + r.width).clamp(0, e.image_width);
+            let y1 = (r.y - e.image_y + r.height).clamp(0, e.image_height);
+            if x1 <= x0 || y1 <= y0 {
+                return None;
+            }
+            let mut pixels = Vec::with_capacity(((x1 - x0) * (y1 - y0) * 4) as usize);
+            for y in y0..y1 {
+                let row = y as usize * e.image_stride as usize;
+                for x in x0..x1 {
+                    let i = row + x as usize * 4;
+                    let (b, g, r) = (image[i], image[i + 1], image[i + 2]);
+                    // The clean picture's pixel at the same window point.
+                    let (wx, wy) = (x + e.image_x - c.x, y + e.image_y - c.y);
+                    let alpha = match clean {
+                        Some(clean) if wx >= 0 && wy >= 0 && wx < c.width && wy < c.height => {
+                            let j = ((wy * c.width + wx) * 4) as usize;
+                            let d = |a: u8, b: u8| (i32::from(a) - i32::from(b)).abs();
+                            let diff = d(b, clean[j]).max(d(g, clean[j + 1])).max(d(r, clean[j + 2]));
+                            (diff * 4).min(255) as u8
+                        }
+                        _ => 255,
+                    };
+                    pixels.extend_from_slice(&[r, g, b, alpha]);
                 }
             }
             let png = styles::Rgba { pixels, width: x1 - x0, height: y1 - y0 }.png()?;
@@ -259,6 +314,39 @@ unsafe fn line_case(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> &'stat
         u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
     };
     shape::letter_case(x1 - x0, y1 - y0, pixel, line.text_rgb, line.background_rgb)
+}
+
+/// Color of each of a line's words, measured on the event's area pixels
+/// (only valid during this callback); None for pictures ("{1}") and for words
+/// too faint to tell.
+unsafe fn word_colors(e: &core_ffi::SqOcrEvent, line: &core_ffi::SqLine) -> Vec<(String, Option<u32>)> {
+    let words = line_words(line);
+    if e.image_bgra.is_null() || e.image_stride <= 0 {
+        return words.into_iter().map(|w| (w.text, None)).collect();
+    }
+    let image = std::slice::from_raw_parts(e.image_bgra, (e.image_stride * e.image_height) as usize);
+    let stride = e.image_stride as usize;
+    words
+        .into_iter()
+        .map(|w| {
+            let [x, y, width, height] = w.rect;
+            let x0 = (x - e.image_x).clamp(0, e.image_width) as usize;
+            let y0 = (y - e.image_y).clamp(0, e.image_height) as usize;
+            let x1 = (x - e.image_x + width).clamp(0, e.image_width) as usize;
+            let y1 = (y - e.image_y + height).clamp(0, e.image_height) as usize;
+            let picture = w.text.starts_with('{') && w.text.ends_with('}');
+            let color = if picture || x1 <= x0 || y1 <= y0 {
+                None
+            } else {
+                let pixel = |px: usize, py: usize| {
+                    let i = (y0 + py) * stride + (x0 + px) * 4;
+                    u32::from(image[i + 2]) << 16 | u32::from(image[i + 1]) << 8 | u32::from(image[i])
+                };
+                highlights::word_color(x1 - x0, y1 - y0, pixel, line.background_rgb)
+            };
+            (w.text, color)
+        })
+        .collect()
 }
 
 /// Weight of a line's letters (see shape::stroke_weight), measured on the
@@ -509,6 +597,28 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             weight: if meaningful { line_weight(e, l) } else { None },
         })
         .collect();
+    // Words in another color than their line ("Grasp" in green): tagged in
+    // the text, so the translation keeps them apart and the overlay colors
+    // them; each line takes the color most of its letters have.
+    let mut highlight_colors: Vec<u32> = Vec::new();
+    if meaningful {
+        let mut tagged = false;
+        let measured: Vec<Vec<(String, Option<u32>)>> = raw_lines.iter().map(|l| word_colors(e, l)).collect();
+        let main = highlights::main_color(&measured);
+        for (line, words) in lines.iter_mut().zip(&measured) {
+            if !line.text.contains(' ') {
+                continue; // no spaces between words (Japanese, Chinese): written as OCR gave it
+            }
+            if let Some(m) = highlights::mark(words, main, &mut highlight_colors) {
+                line.text = m.text;
+                line.text_color = css_color(m.base);
+                tagged = true;
+            }
+        }
+        if tagged {
+            text = lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join("\n");
+        }
+    }
     // A text of the game has one effect, but it hardly shows where a line
     // crosses a background like its own: the most common one goes to every line.
     let found: Vec<Option<effects::TextEffect>> = lines.iter().map(|l| l.effect.clone()).collect();
@@ -545,6 +655,8 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             // Only for new text: a re-reading keeps the picture of the line it repeats.
             background: if meaningful && same_as.is_none() { clean_background(e) } else { None },
             icons: if meaningful { icon_pictures(e) } else { Vec::new() },
+            highlights: highlight_colors.iter().map(|&c| css_color(c)).collect(),
+            loose: if meaningful { loose_pictures(e) } else { Vec::new() },
         },
     );
     if let Some(plan) = plan {

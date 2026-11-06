@@ -6,6 +6,7 @@
 
 #include "ocr/line_cleanup.h"
 #include "vision/icons.h"
+#include "vision/loose.h"
 #include "vision/image_ops.h"
 #include "vision/inpaint.h"
 #include "vision/palette.h"
@@ -141,8 +142,18 @@ void Pipeline::ocr_loop() {
             for (const Rect& r : icons) result.icons.push_back({r.x + frame.origin_x, r.y + frame.origin_y, r.width, r.height});
             // The picture without the text (nor the icons), so the overlay can hide
             // the original with the game's own background instead of a patch of color.
+            // In a marked area, text OCR left out moves with the translation
+            // (the overlay draws it again): it leaves the clean picture too.
+            std::vector<Rect> taken_out = icons;
+            if (!areas_[area].empty()) {
+                const std::vector<Rect> loose = find_loose_text(frame, result.lines, icons);
+                for (const Rect& r : loose) {
+                    result.loose.push_back({r.x + frame.origin_x, r.y + frame.origin_y, r.width, r.height});
+                    taken_out.push_back(r);
+                }
+            }
             CleanImage clean;
-            if (remove_text(frame, result.lines, !areas_[area].empty(), clean, icons)) {
+            if (remove_text(frame, result.lines, !areas_[area].empty(), clean, taken_out)) {
                 result.clean_rect = {clean.rect.x + frame.origin_x, clean.rect.y + frame.origin_y, clean.rect.width,
                                      clean.rect.height};
                 result.clean = std::move(clean.bgra);

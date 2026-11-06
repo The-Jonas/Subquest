@@ -67,6 +67,14 @@ impl OpenAiCompatTranslator {
                  keep each one exactly as written, where it belongs in the translated sentence.",
             );
         }
+        if request.text.contains("<c") {
+            // Words the game writes in another color (names, terms) come tagged.
+            prompt.push_str(
+                "\nTags like <c1>...</c1> mark words the game writes in another color: \
+                 put the same tag, with the same number, around just the words that translate them \
+                 (not an article, preposition or punctuation added around them).",
+            );
+        }
         if !request.glossary.is_empty() {
             prompt.push_str("\nAlways translate these terms exactly as given:\n");
             for (term, translation) in &request.glossary {

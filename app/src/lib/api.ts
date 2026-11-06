@@ -101,6 +101,8 @@ export interface OcrTextEvent {
   sameAs?: number | null; // this is that earlier line read again: keep its translation
   background?: CleanBackground | null; // the area without its text, to hide the original lines with
   icons?: IconPicture[]; // pictures inside the lines: "{1}" in the text is the first
+  highlights?: string[]; // colors of the "<c1>...</c1>" tags in the text (words in another color)
+  loose?: IconPicture[]; // text OCR left out ("· ? ? ?"), moved with the translation as pictures
 }
 
 // A picture the game draws inside a line (a gamepad button), cut from the game.

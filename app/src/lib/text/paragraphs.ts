@@ -7,6 +7,8 @@
 // "inimigos"). A break is kept only when it looks meant: menu items, a new
 // sentence starting in capitals, a list.
 
+import { untagged } from "./icons";
+
 // Line ends that mean the sentence goes on in the next line.
 const GOES_ON = /[\p{L}\p{N},;:\-–—(]$/u;
 // Line ends that close a sentence.
@@ -14,8 +16,8 @@ const ENDS = /[.!?…"”»)\]]$/u;
 
 // Whether line `a` continues into line `b` (the break is just the box's edge).
 export function continues(a: string, b: string): boolean {
-  const end = a.trimEnd();
-  const next = b.trimStart();
+  const end = untagged(a).trimEnd(); // color tags ("<c1>") aren't punctuation
+  const next = untagged(b).trimStart();
   if (!end || !next) return false;
   if (/[-–—]$/u.test(end)) return true; // "— or a strong or" / "dextrous unit"
   if (ENDS.test(end)) return false;

@@ -1,6 +1,6 @@
 // Tests for icons.ts: placeholders for pictures inside the game's text.
 import { describe, expect, it } from "vitest";
-import { extentOf, forMeasure, missingIcons, pieces, withAllIcons } from "./icons";
+import { balanceTags, extentOf, forMeasure, missingIcons, pieces, untagged, withAllIcons } from "./icons";
 
 describe("pieces", () => {
   it("splits text and pictures in order", () => {
@@ -36,5 +36,27 @@ describe("extentOf", () => {
 
   it("leaves a line without icons as it is", () => {
     expect(extentOf("GIFT", [210, 204, 60, 16], [key])).toEqual([210, 204, 60, 16]);
+  });
+});
+
+describe("color tags (words the game writes in another color)", () => {
+  it("marks the pieces inside a tag, pictures included", () => {
+    expect(pieces("raise {1} <c1>Grasp</c1>, to")).toEqual([
+      { text: "raise " },
+      { icon: 0 },
+      { text: " " },
+      { text: "Grasp", mark: 0 },
+      { text: ", to" },
+    ]);
+    expect(pieces("RAISE <C2>GRASP</C2>")).toEqual([{ text: "RAISE " }, { text: "GRASP", mark: 1 }]);
+  });
+
+  it("keeps a run's color when a line break cuts it", () => {
+    expect(balanceTags(["mais <c2>Cartas", "de Arcana</c2>."])).toEqual(["mais <c2>Cartas</c2>", "<c2>de Arcana</c2>."]);
+  });
+
+  it("measures and reads the text without its tags", () => {
+    expect(untagged("a <c1>Compreensão</c1>, para")).toBe("a Compreensão, para");
+    expect(forMeasure("{1} <c1>Grasp</c1>")).toBe("MM Grasp");
   });
 });

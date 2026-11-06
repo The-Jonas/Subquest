@@ -229,6 +229,7 @@
       bg: CleanPiece | null;
       scale: number;
       icons: IconPicture[];
+      colors: string[];
     }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
@@ -244,16 +245,19 @@
       const translation = withAllIcons(v.current.text, v.translation);
       // Lines are placed with their icons ("[G] Gift" centered as a whole).
       const icons = v.current.icons ?? [];
+      // Text OCR left out comes after the icons: "{n}" past them draws it.
+      const loose = v.current.loose ?? [];
+      const pictures = [...icons, ...loose];
       const lines = v.current.lines.map((l) => ({ ...l, extent: extentOf(l.text, l.rect, icons) }));
       // A marked box keeps the translation inside it; loose text on the whole
       // screen is placed line by line over the original.
       const placed =
         a.mode !== "screen" && a.region
-          ? layoutArea(lines, translation, a.region, frame, view, measureFor)
+          ? layoutArea(lines, translation, a.region, frame, view, measureFor, loose, icons.length)
           : layout(pairLines(lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, bg, scale, icons });
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, bg, scale, icons: pictures, colors: v.current.highlights ?? [] });
     }
     return withoutOverlaps(out);
   });
@@ -610,7 +614,7 @@
   <!-- ...and the translations take their place: same size, baseline and
        alignment. Every cover goes first, so no line's cover hides the line
        above it (a paragraph pushed down, tight line spacing). -->
-  {#each patches as { look, patch: p, scale, icons }, i (i)}
+  {#each patches as { look, patch: p, scale, icons, colors }, i (i)}
     <div
       class="line"
       class:upper={look.caps === "upper"}
@@ -625,7 +629,7 @@
       style:color={p.textColor}
       style:text-shadow={effectShadow(p.effect, scale)}
     >
-      <IconText text={applyCase(p.text, look.caps)} {icons} {scale} />
+      <IconText text={applyCase(p.text, look.caps)} {icons} {scale} {colors} />
     </div>
   {/each}
 
