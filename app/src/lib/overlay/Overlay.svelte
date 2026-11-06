@@ -37,7 +37,7 @@
   } from "../api";
   import { applyCase, cssFamily, ensureFont, styleCase } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
-  import { applyTheme, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
+  import { applyTheme, uiLog, finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
   import AreaEditor from "./AreaEditor.svelte";
   import { layout, pairLines, type Metrics, type Patch } from "./layout";
 
@@ -302,6 +302,7 @@
   // Translation progress: in place follows the area's newest line; classic
   // keeps the previous text until the new one has its first words.
   function onTranslation(e: TranslationEvent) {
+    setTimeout(() => diagnose(e), 200); // after the patches were recomputed
     if (!e.text || e.errorKind) return;
     const line = lines[e.frameId];
     if (!line) return;
@@ -314,6 +315,22 @@
     m.shownFrame = e.frameId;
     v.classicText = e.text;
     v.classicOriginal = line.text;
+  }
+
+  // A few lines about what the overlay knows when translations arrive, to
+  // ui.log: enough to see why a translation isn't drawn in the installed app.
+  let diagnostics = 12;
+  function diagnose(e: TranslationEvent) {
+    if (!e.done || diagnostics <= 0) return;
+    diagnostics -= 1;
+    const line = lines[e.frameId];
+    const v = line ? views[line.area ?? 0] : undefined;
+    uiLog(
+      "overlay",
+      `translation ${e.frameId}: line=${!!line} area=${line?.area} view=${!!v} current=${v?.current?.frameId} ` +
+        `hasTranslation=${!!v?.translation} classic=${classic} fontReady=${fontReady} view=${viewWidth}x${viewHeight} ` +
+        `profile=${profileKey} areas=${areas.length} patches=${patches.length} error=${e.errorKind}`,
+    );
   }
 
   // Loads every font the game's areas and styles use, then lets the layout measure with them.
@@ -341,7 +358,10 @@
 
   // Reloads the game's text styles (a new one was found, or a font changed).
   async function loadStyles() {
-    if (!profileKey) return;
+    if (!profileKey) {
+      await loadFonts(); // no game known yet: the default fonts still have to count as ready
+      return;
+    }
     const list = await listStyles(profileKey).catch(() => [] as TextStyle[]);
     gameStyles = Object.fromEntries(list.map((s) => [s.id, s]));
     await loadFonts();

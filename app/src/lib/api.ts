@@ -219,6 +219,21 @@ export async function sessionFlags(): Promise<[boolean, boolean]> {
   return invoke("session_flags");
 }
 
+// Writes a line to <app data>/ui.log (the installed app has no console).
+export function uiLog(source: string, message: string) {
+  if (!inTauri) return console.warn(`[${source}] ${message}`);
+  void invoke("ui_log", { source, message }).catch(() => {});
+}
+
+// Sends every uncaught error and rejected promise of a page to ui.log.
+export function watchErrors(source: string) {
+  window.addEventListener("error", (e) => uiLog(source, `error: ${e.message} at ${e.filename}:${e.lineno}`));
+  window.addEventListener("unhandledrejection", (e) => {
+    const reason = e.reason instanceof Error ? `${e.reason.message}\n${e.reason.stack ?? ""}` : String(e.reason);
+    uiLog(source, `unhandled rejection: ${reason}`);
+  });
+}
+
 // Raw bytes from Rust as an ArrayBuffer, whatever shape they arrive in.
 // Normally an ArrayBuffer; but when the webview can't use Tauri's fast IPC
 // path, the fallback delivers them as a plain array of numbers, and code

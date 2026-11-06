@@ -7,6 +7,9 @@ import "@fontsource-variable/crimson-pro";
 import "@fontsource-variable/pixelify-sans";
 import "./app.css";
 import { mount } from "svelte";
+import { watchErrors } from "./lib/api";
+
+watchErrors("main"); // problems of the installed app end up in ui.log
 import App from "./App.svelte";
 
 const app = mount(App, { target: document.getElementById("app")! });

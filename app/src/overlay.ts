@@ -7,6 +7,9 @@ import "@fontsource-variable/pixelify-sans";
 // Theme colors only (app.css would paint the page, and the overlay must stay see-through)
 import "./theme.css";
 import { mount } from "svelte";
+import { watchErrors } from "./lib/api";
+
+watchErrors("overlay"); // problems of the installed app end up in ui.log
 import Overlay from "./lib/overlay/Overlay.svelte";
 
 const overlay = mount(Overlay, { target: document.getElementById("overlay")! });

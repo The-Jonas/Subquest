@@ -153,6 +153,32 @@ fn fit_main_window(app: &AppHandle) {
     let _ = main.center();
 }
 
+/// Appends a line from one of the UI pages (errors, and a few diagnostics) to
+/// `<app data>/ui.log`. The installed app has no developer console, so this is
+/// where its JavaScript problems become visible. Kept small: past 512 KB the
+/// file starts over.
+#[tauri::command]
+fn ui_log(state: State<'_, AppState>, source: String, message: String) {
+    use std::io::Write;
+    const MAX_BYTES: u64 = 512 * 1024;
+    let path = state.data_dir.join("ui.log");
+    let _ = std::fs::create_dir_all(&state.data_dir);
+    let too_big = std::fs::metadata(&path).map(|m| m.len() > MAX_BYTES).unwrap_or(false);
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(!too_big)
+        .truncate(too_big)
+        .open(&path);
+    if let Ok(mut file) = file {
+        let when = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let _ = writeln!(file, "[{when}] {source}: {message}");
+    }
+}
+
 /// Writes every panic (with where it happened) to `<app data>/crash.log`, so a
 /// crash during a test leaves a trace. A panic inside a core callback aborts
 /// the whole app (it can't unwind into C++), so this is often the only clue.
@@ -826,6 +852,16 @@ fn save_settings(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Opening Subquest again (a second click on its shortcut) brings the
+        // running one to the front instead of starting a second copy, which
+        // would fight the first over the overlay, shortcuts and settings.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.unminimize();
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+        }))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| ingame::on_shortcut(app, shortcut, event.state))
@@ -886,6 +922,7 @@ pub fn run() {
             toggle_toolbar,
             forget_styles,
             window_thumbnail,
+            ui_log,
             session_flags,
             show_main,
             start_preview,
