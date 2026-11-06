@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, union, wrap, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, union, wrap, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -166,5 +166,56 @@ describe("layoutArea (inside a marked box)", () => {
     const short = [line("Yes", [200, 200, 60, 18]), line("No", [200, 230, 40, 18])];
     const items = layoutArea(short, "Sim\nNão", [180, 190, 300, 80], screen, screen, () => measure);
     expect(items.map((p) => p.text)).toEqual(["Sim", "Não"]);
+  });
+});
+
+describe("titles and paragraphs inside a box", () => {
+  // The Wesnoth help page from the bug report: a title right above its explanation.
+  const help = [
+    line("Turns", [10, 10, 70, 24]),
+    line("Every turn, each side in a scenario gets a chance to make their move. Once you've", [10, 42, 690, 20]),
+    line("completed everything you wish to do this turn, click on the End Turn button in the", [10, 68, 690, 20]),
+    line("bottom right of the screen.", [10, 94, 230, 20]),
+  ];
+  const area: Region = [0, 0, 720, 200];
+
+  it("finds the title and the paragraph", () => {
+    expect(splitParagraphs(help, [0, 1, 2, 3])).toEqual([[0], [1, 2, 3]]);
+  });
+
+  it("keeps a wrapped paragraph together, even across a sentence end", () => {
+    const wrapped = [
+      line("The other sides will make their move. Some scenarios", [10, 10, 690, 20]),
+      line("must be completed in a certain number of turns.", [10, 36, 600, 20]),
+    ];
+    expect(splitParagraphs(wrapped, [0, 1])).toEqual([[0, 1]]);
+  });
+
+  it("splits where the letters change size", () => {
+    const sized = [line("Chapter One", [10, 10, 600, 40]), line("It was a dark night and the", [10, 60, 640, 20])];
+    expect(splitParagraphs(sized, [0, 1])).toHaveLength(2);
+  });
+
+  it("splits where the text style changes", () => {
+    const styled = [
+      { ...line("Konrad:", [10, 10, 680, 20]), style: "s1" },
+      { ...line("we must go on to the north", [10, 36, 680, 20]), style: "s2" },
+    ];
+    expect(splitParagraphs(styled, [0, 1])).toHaveLength(2);
+  });
+
+  it("draws the title on its own line, not glued to the explanation", () => {
+    const translation = "Turnos\nEm cada turno, cada lado em um cenário tem a chance de fazer seu movimento. Assim que você\nconcluir tudo o que deseja fazer neste turno, clique no botão Fim de Turno no canto\ninferior direito da tela.";
+    const patches = layoutArea(help, translation, area, screen, screen, () => measure);
+    expect(patches[0].text).toBe("Turnos");
+    expect(patches.slice(1).some((p) => p.text.startsWith("Turnos"))).toBe(false);
+    expect(patches[1].textTop).toBeGreaterThan(patches[0].textTop);
+  });
+
+  it("keeps them apart when the model answered one line per paragraph", () => {
+    const translation = "Turnos\nEm cada turno, cada lado em um cenário tem a chance de fazer seu movimento. Assim que você concluir tudo, clique em Fim de Turno.";
+    const patches = layoutArea(help, translation, area, screen, screen, () => measure);
+    expect(patches[0].text).toBe("Turnos");
+    expect(patches[1].text.startsWith("Em cada turno")).toBe(true);
   });
 });

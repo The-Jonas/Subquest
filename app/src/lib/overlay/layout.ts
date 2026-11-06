@@ -10,6 +10,7 @@
 //    share (centered menus stay centered, dialogue stays left-aligned).
 // Positions are CSS pixels of the overlay, which covers exactly the captured area.
 import type { OcrLine, Region } from "../api";
+import { continues } from "../text/paragraphs";
 
 export type Align = "left" | "center" | "right";
 
@@ -224,6 +225,30 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
+const SIZE_JUMP = 1.3; // letters this much taller (or shorter) than the line before: a title
+const SHORT_LINE = 0.7; // a line this much narrower than the widest one can be a paragraph's end
+
+// Splits lines that sit together (sorted top to bottom) into paragraphs. A
+// break goes where a title ends ("Turns" above its explanation) or a
+// paragraph ends: the line is short and its text doesn't go on into the next
+// one, or the letters change size or text style.
+export function splitParagraphs(lines: OcrLine[], group: number[]): number[][] {
+  if (!group.length) return [];
+  const widest = Math.max(...group.map((i) => lines[i].rect[2]));
+  const out: number[][] = [[group[0]]];
+  for (let k = 1; k < group.length; k++) {
+    const a = lines[group[k - 1]];
+    const b = lines[group[k]];
+    const [ha, hb] = [a.rect[3], b.rect[3]];
+    const sizeJump = Math.max(ha, hb) / Math.max(1, Math.min(ha, hb)) > SIZE_JUMP;
+    const otherStyle = !!a.style && !!b.style && a.style !== b.style;
+    const ended = a.rect[2] < widest * SHORT_LINE && !continues(a.text, b.text);
+    if (sizeJump || otherStyle || ended) out.push([group[k]]);
+    else out[out.length - 1].push(group[k]);
+  }
+  return out;
+}
+
 // Patches for a marked area (a dialogue box): instead of one translated line
 // over each original line (Portuguese runs longer, so lines spilled out of the
 // box), each paragraph is written again inside the area: same left edge, same
@@ -246,19 +271,24 @@ export function layoutArea(
     .map((s) => s.trim())
     .filter((s, i, all) => s !== "" || i < all.length - 1);
 
-  // Paragraphs: lines that sit together. With the model's line count matching
-  // the original, each paragraph gets its own lines' translation; otherwise
-  // everything is one paragraph.
+  // Paragraphs: lines that sit together, split where a title or a paragraph
+  // ends (splitParagraphs). With the model's line count matching the original,
+  // each paragraph gets its own lines' translation; with one line per
+  // paragraph, each gets its line; otherwise everything is one paragraph.
   const rects = lines.map((l) => l.rect);
-  let groups = blocks(rects).map((g) => [...g].sort((a, b) => rects[a][1] - rects[b][1]));
+  let groups = blocks(rects)
+    .map((g) => [...g].sort((a, b) => rects[a][1] - rects[b][1]))
+    .flatMap((g) => splitParagraphs(lines, g));
   groups.sort((a, b) => rects[a[0]][1] - rects[b[0]][1]);
   const matched = parts.length === lines.length;
-  if (!matched) groups = [lines.map((_, i) => i).sort((a, b) => rects[a][1] - rects[b][1])];
+  const perParagraph = !matched && parts.length === groups.length && groups.length > 1;
+  if (!matched && !perParagraph) groups = [lines.map((_, i) => i).sort((a, b) => rects[a][1] - rects[b][1])];
 
   const [ax, ay, aw, ah] = area.map((v) => v * scale);
   const patches: Patch[] = [];
-  for (const group of groups) {
-    const text = (matched ? group.map((i) => parts[i]) : parts).join(" ").replace(/\s+/g, " ").trim();
+  for (const [g, group] of groups.entries()) {
+    const own = matched ? group.map((i) => parts[i]) : perParagraph ? [parts[g]] : parts;
+    const text = own.join(" ").replace(/\s+/g, " ").trim();
     if (!text) continue;
     const first = lines[group[0]];
     const measure = measureFor(first);
