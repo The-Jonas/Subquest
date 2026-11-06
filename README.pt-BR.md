@@ -64,11 +64,14 @@ O instalador fica em `app/src-tauri/target/release/bundle/nsis/`. Ele leva a DLL
 ## Roteiro
 
 1. ~~**MVP:** captura WGC, OCR do Windows (inglês), marcação da área, tradução com LLM, overlay e latência por etapa.~~ Pronto.
-2. **Idiomas asiáticos:** PaddleOCR via ONNX Runtime + DirectML (japonês, chinês e coreano). *Não começado; o OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado.*
+2. **Idiomas asiáticos:** PaddleOCR via ONNX Runtime + DirectML (japonês, chinês e coreano). *Não começado; o OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado. Ele também é a base para outros sistemas (item 7): um OCR que funciona igual em todos.*
 3. **Qualidade:** ~~contexto~~, ~~cache persistente~~ (um arquivo JSON em vez de SQLite), ~~streaming~~, ~~perfis por jogo~~, ~~um segundo tradutor rápido~~, ~~estilos com as fontes do jogo~~. *Falta: o glossário por jogo.*
 4. ~~**Modo tela inteira:** detecção de texto na janela toda, com a tradução desenhada no lugar.~~ Pronto.
 5. **Acabamento:** ~~atalhos~~, ~~barrinha no jogo~~, ~~tour guiado~~, ~~temas~~, instalador *(primeira versão)* e *text hooking* para engines suportadas.
 6. **Outras telas:** modo segunda tela para consoles e celulares, e Android.
+7. **Outros sistemas.** Só o núcleo em C++ (captura, OCR, lista de janelas) e o jeito de manter a tradução por cima do jogo são exclusivos do Windows; a interface e a parte em Rust já compilam em qualquer sistema. Com o PaddleOCR pronto (item 2), cada sistema precisa da sua captura e da sua camada por cima:
+   - **Linux**, pensando no Steam Deck: primeiro X11 (captura e janela sempre por cima funcionam sem drama); depois Wayland, onde a captura passa por um aviso de permissão e um app não pode se posicionar em cima da janela de outro.
+   - **macOS**: ScreenCaptureKit para capturar e o framework Vision para o OCR (já lê japonês, chinês e coreano); precisa liberar a permissão de Gravação de tela uma vez.
 
 ## Licença
 

@@ -15,6 +15,7 @@
     listWindows,
     toggleToolbar,
     windowThumbnail,
+    pictureUrl,
     errorKind,
     profileKey,
     newArea,
@@ -80,11 +81,9 @@
     for (const w of list) {
       const blob = await windowThumbnail(w.handle);
       if (!blob || !windows.includes(w)) continue;
-      if (thumbs[w.handle]) URL.revokeObjectURL(thumbs[w.handle]);
-      thumbs[w.handle] = URL.createObjectURL(blob);
+      thumbs[w.handle] = await pictureUrl(blob);
     }
   }
-  $effect(() => () => Object.values(thumbs).forEach((url) => URL.revokeObjectURL(url)));
 
   // Every marked area needs its rectangle; the whole-window mode needs none.
   const canContinue = $derived(areas.every((a) => a.mode === "screen" || !!a.region));

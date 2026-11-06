@@ -92,11 +92,14 @@ The installer is written to `app/src-tauri/target/release/bundle/nsis/`. It carr
 ## Roadmap
 
 1. ~~**MVP:** WGC capture, Windows OCR (English), area marking, LLM translation, overlay, per-stage latency.~~ Done.
-2. **Asian languages:** PaddleOCR via ONNX Runtime + DirectML (Japanese, Chinese, Korean). *Not started; Windows OCR already reads them when the Windows language pack is installed.*
+2. **Asian languages:** PaddleOCR via ONNX Runtime + DirectML (Japanese, Chinese, Korean). *Not started; Windows OCR already reads them when the Windows language pack is installed. It is also the base for other systems (item 7): one OCR that works the same everywhere.*
 3. **Quality:** ~~context~~, ~~persistent cache~~ (a JSON file instead of SQLite), ~~streaming~~, ~~game profiles~~, ~~a quick second translator~~, ~~text styles with the game's fonts~~. *Left: the per-game glossary.*
 4. ~~**Full-screen mode:** text detection over the whole window, translation drawn in place.~~ Done.
 5. **Polish:** ~~hotkeys~~, ~~in-game toolbar~~, ~~guided tour~~, ~~themes~~, installer *(first build)*, text hooking for supported engines.
 6. **Other screens:** a second-screen mode for consoles and phones, and Android.
+7. **Other systems.** Only the C++ core (capture, OCR, window list) and keeping the overlay on top are Windows-only; the interface and the Rust side already build anywhere. With PaddleOCR in place (item 2), each system needs its own capture and overlay:
+   - **Linux**, aimed at the Steam Deck: X11 first (capture and an always-on-top overlay work without trouble); Wayland later, since capture goes through a permission prompt and an app can't place itself over another app's window.
+   - **macOS**: ScreenCaptureKit for capture and the Vision framework for OCR (already reads Japanese, Chinese and Korean); needs the Screen Recording permission once.
 
 ## Contributing
 

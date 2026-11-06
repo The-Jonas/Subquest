@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { detectFont, keepCandidateFont, errorKind, type FontDetection, type LetterCase } from "../api";
+  import { pictureUrl, detectFont, keepCandidateFont, errorKind, type FontDetection, type LetterCase } from "../api";
   import { candidateFamily, importedOption, loadCandidateFont, loadImportedFont } from "../fonts";
 
   let {
@@ -52,8 +52,7 @@
       busy = false;
       return;
     }
-    if (crop) URL.revokeObjectURL(crop);
-    crop = URL.createObjectURL(png);
+    crop = await pictureUrl(png).catch(() => null);
     try {
       const found = await detectFont(png);
       await Promise.all(found.candidates.map((c) => loadCandidateFont(c.file).catch(() => {})));
@@ -82,9 +81,6 @@
     }
   }
 
-  $effect(() => () => {
-    if (crop) URL.revokeObjectURL(crop);
-  });
 </script>
 
 <section class="detect">

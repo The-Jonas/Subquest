@@ -15,6 +15,7 @@
     profileKey,
     removeStyle,
     stylePrint,
+    pictureUrl,
     updateStyle,
     errorKind,
     type GameArea,
@@ -63,7 +64,7 @@
     for (const id of ids) {
       if (prints[`${key}/${id}`]) continue;
       const blob = await stylePrint(key, id).catch(() => null);
-      if (blob) prints[`${key}/${id}`] = URL.createObjectURL(blob);
+      if (blob) prints[`${key}/${id}`] = await pictureUrl(blob);
     }
   }
 
@@ -97,7 +98,7 @@
     styles.list = [];
   }
 
-  // Prints follow the list (never freed while the screen is open, so nothing
+  // Prints follow the list (kept while the screen is open, so nothing
   // blinks when the list reloads).
   $effect(() => {
     const key = styles.key;
@@ -121,7 +122,6 @@
   loadAllImported()
     .then((fonts) => (imported = fonts))
     .catch(errorKind);
-  $effect(() => () => Object.values(prints).forEach((url) => URL.revokeObjectURL(url)));
 </script>
 
 <div class="games">

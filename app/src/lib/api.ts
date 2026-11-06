@@ -219,6 +219,18 @@ export async function sessionFlags(): Promise<[boolean, boolean]> {
   return invoke("session_flags");
 }
 
+// A picture (PNG bytes) as a data: URL for an <img>. Not a blob: URL: the
+// installed app's security policy refused those, so every picture showed
+// broken (in dev mode no policy applies, which hid the problem).
+export function pictureUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 // Paints a window in the chosen theme's colors (app.css [data-theme]).
 export function applyTheme(theme: string | undefined) {
   document.documentElement.dataset.theme = theme || "graphite";
