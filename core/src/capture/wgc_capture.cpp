@@ -30,6 +30,9 @@ namespace subquest {
 
 namespace {
 
+constexpr DWORD kTickMs = 15; // how often the session thread looks for held-back frames
+constexpr auto kRepeatInterval = std::chrono::milliseconds(150); // still screen: last frame again this often
+
 // Creates the D3D11 device (default GPU) with BGRA support, required by capture.
 void create_d3d_device(winrt::com_ptr<ID3D11Device>& device, winrt::com_ptr<ID3D11DeviceContext>& context) {
     winrt::check_hresult(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
@@ -81,6 +84,9 @@ struct WgcCapture::Impl {
     std::chrono::steady_clock::duration min_interval{};
     std::chrono::steady_clock::time_point last_emit{};
     uint64_t next_id = 1;
+    wgc::Direct3D11CaptureFrame pending{nullptr}; // newest frame that came too soon after the last one
+    Frame last_out;                               // copy of the last frame delivered, repeated while idle
+    bool repeat_still = true;                     // repeat last_out while the window is still
 
     winrt::com_ptr<ID3D11Device> device;
     winrt::com_ptr<ID3D11DeviceContext> context;
@@ -94,7 +100,10 @@ struct WgcCapture::Impl {
     winrt::Windows::Graphics::SizeInt32 last_size{};
 
     void thread_main(HWND hwnd, std::promise<std::string> ready); // sets up, waits for stop and tears down
-    void on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender); // crops, copies and delivers one frame
+    void on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender); // takes a new frame: delivers it, or keeps it for later
+    void deliver(const wgc::Direct3D11CaptureFrame& frame,
+                 std::chrono::steady_clock::time_point now);            // crops, copies and delivers one frame (mutex held)
+    void tick();                                                        // delivers a held frame, or repeats the last one while idle
     void ensure_staging(UINT width, UINT height, DXGI_FORMAT format);    // (re)creates the readback texture at the right size
 };
 
@@ -115,9 +124,11 @@ void WgcCapture::Impl::ensure_staging(UINT width, UINT height, DXGI_FORMAT forma
     staging_desc = desc;
 }
 
-// Called on a system thread for every new frame. Honors the FPS cap, crops the
-// region ON THE GPU (CopySubresourceRegion) and only then copies to the CPU:
-// that is what keeps the cost low even with the game at 4K.
+// Called on a system thread for every new frame. Honors the FPS cap: a frame
+// that comes too soon is kept (not dropped) and delivered by tick() once the
+// interval has passed. Windows only sends frames when the window changes, so a
+// dropped frame could be the LAST one: a static screen (a menu, a tip box)
+// would then never be read at its final state.
 void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& sender) {
     auto frame = sender.TryGetNextFrame();
     if (!frame) return;
@@ -133,8 +144,53 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
     }
 
     const auto now = std::chrono::steady_clock::now();
-    if (now - last_emit < min_interval) return;
+    if (now - last_emit < min_interval) {
+        if (pending) pending.Close(); // only the newest one matters
+        pending = frame;
+        return;
+    }
+    if (pending) {
+        pending.Close();
+        pending = nullptr;
+    }
+    deliver(frame, now);
+}
+
+// Every few milliseconds on the session thread. Delivers the frame held back
+// by the FPS cap; and while the window sends nothing (a still screen), repeats
+// the last frame now and then, so the change detector sees the text stay still
+// and runs OCR. Without the repeats, text that appears on a static screen is
+// never confirmed as "settled" and never read.
+void WgcCapture::Impl::tick() {
+    std::lock_guard lock(mutex);
+    if (!running) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (pending && now - last_emit >= min_interval) {
+        auto frame = pending;
+        pending = nullptr;
+        deliver(frame, now);
+        frame.Close();
+        return;
+    }
+    if (repeat_still && last_out.width > 0 && now - last_emit >= kRepeatInterval) {
+        last_emit = now;
+        try {
+            Frame copy = last_out;
+            copy.id = next_id++;
+            copy.timestamp_us = uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(
+                                             now.time_since_epoch()).count());
+            if (on_frame) on_frame(std::move(copy));
+        } catch (...) {
+            // A repeat that fails (out of memory...) is simply skipped.
+        }
+    }
+}
+
+// Crops the region ON THE GPU (CopySubresourceRegion) and only then copies to
+// the CPU: that is what keeps the cost low even with the game at 4K.
+void WgcCapture::Impl::deliver(const wgc::Direct3D11CaptureFrame& frame, std::chrono::steady_clock::time_point now) {
     last_emit = now;
+    const auto content = frame.ContentSize();
 
     try {
         auto texture = surface_texture(frame.Surface());
@@ -176,6 +232,7 @@ void WgcCapture::Impl::on_frame_arrived(const wgc::Direct3D11CaptureFramePool& s
         out.id = next_id++;
         out.timestamp_us = uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(
                                         now.time_since_epoch()).count());
+        if (repeat_still) last_out = out; // kept for the repeats while the window is still
         if (on_frame) on_frame(std::move(out));
     } catch (const winrt::hresult_error&) {
         // Frame lost (e.g. GPU device reset). The next one tries again.
@@ -227,11 +284,15 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
         return;
     }
 
-    WaitForSingleObject(stop_event, INFINITE);
+    // Until stop: tick() delivers held-back frames and repeats still ones.
+    while (WaitForSingleObject(stop_event, kTickMs) == WAIT_TIMEOUT) tick();
 
     {
         std::lock_guard lock(mutex); // waits for an in-flight frame to finish
         running = false;
+        if (pending) pending.Close();
+        pending = nullptr;
+        last_out = Frame{};
     }
     frame_arrived.revoke();
     session.Close();
@@ -244,7 +305,10 @@ void WgcCapture::Impl::thread_main(HWND hwnd, std::promise<std::string> ready) {
 }
 
 // Stores the FPS cap; nothing D3D is created until start().
-WgcCapture::WgcCapture(uint32_t max_fps) : impl_(std::make_unique<Impl>()), max_fps_(max_fps ? max_fps : 30) {}
+WgcCapture::WgcCapture(uint32_t max_fps, bool repeat_still)
+    : impl_(std::make_unique<Impl>()), max_fps_(max_fps ? max_fps : 30) {
+    impl_->repeat_still = repeat_still;
+}
 
 // Makes sure the capture thread has finished before destruction.
 WgcCapture::~WgcCapture() { stop(); }
@@ -307,7 +371,8 @@ namespace subquest {
 struct WgcCapture::Impl {};
 
 // Empty version: capture only exists on Windows.
-WgcCapture::WgcCapture(uint32_t max_fps) : impl_(std::make_unique<Impl>()), max_fps_(max_fps) {}
+WgcCapture::WgcCapture(uint32_t max_fps, bool)
+    : impl_(std::make_unique<Impl>()), max_fps_(max_fps) {}
 
 // Nothing to release.
 WgcCapture::~WgcCapture() = default;

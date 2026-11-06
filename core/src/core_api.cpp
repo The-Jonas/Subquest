@@ -127,7 +127,7 @@ extern "C" SQ_API SqStatus sq_preview_start(uint64_t window_handle, int32_t max_
     std::lock_guard lock(s.mutex);
     if (s.preview && s.preview->running()) return fail(SQ_ERR_ALREADY_RUNNING, "preview already running");
 
-    s.preview = std::make_unique<PreviewStream>(std::make_unique<WgcCapture>(8));
+    s.preview = std::make_unique<PreviewStream>(std::make_unique<WgcCapture>(8, false)); // a preview needs no repeats
     const bool ok = s.preview->start(window_handle, max_width,
         [callback, user_data](const RgbaImage& img, int32_t source_width, int32_t source_height) {
             callback(img.pixels.data(), img.width, img.height, source_width, source_height, user_data);

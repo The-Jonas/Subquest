@@ -13,7 +13,10 @@ namespace subquest {
 
 class WgcCapture final : public ICaptureSource {
 public:
-    explicit WgcCapture(uint32_t max_fps = 30); // caps how many frames per second are delivered
+    // max_fps caps how many frames per second are delivered; repeat_still sends
+    // the last frame again while the window shows no change (OCR needs that to
+    // see text settle on a static screen; a live preview doesn't).
+    explicit WgcCapture(uint32_t max_fps = 30, bool repeat_still = true);
     ~WgcCapture() override;
 
     bool start(uint64_t window_handle, Rect region, FrameCallback on_frame) override;
