@@ -27,7 +27,7 @@
     show: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4z",
     open: "M11 3.5h5.5V9M16.5 3.5L9 11M14 12.5v4H3.5V6h4",
     edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
-    close: "M5.5 5.5l9 9M14.5 5.5l-9 9",
+    tuck: "M5 8l5 5 5-5M4 16.5h12", // arrow down into a line: put the bar away
   };
 
   // Moving the bar by its handle. Done by hand instead of the system drag
@@ -139,7 +139,12 @@
     )}
     <span class="sep"></span>
     {@render tool(t("toolbar.open"), ICONS.open, () => showMain())}
-    {@render tool(t("toolbar.close") + keyHint(keys.toolbar), ICONS.close, () => toggleToolbar())}
+    <span class="sep"></span>
+    {@render tool(
+      keys.toolbar ? t("toolbar.close", { keys: keys.toolbar }) : t("toolbar.closeNoKey"),
+      ICONS.tuck,
+      () => toggleToolbar(),
+    )}
   </div>
   {#if tip}<div class="tip">{tip}</div>{/if}
 </div>

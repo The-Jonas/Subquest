@@ -222,6 +222,12 @@ export async function showMain(screen?: string) {
   await invoke("show_main", { screen: screen ?? null });
 }
 
+// Forgets all of a game's styles and prints (used when its profile is forgotten).
+export async function forgetStyles(profileKey: string) {
+  if (!inTauri) return;
+  await invoke("forget_styles", { profileKey });
+}
+
 // Forgets a style and its print.
 export async function removeStyle(profileKey: string, id: string) {
   if (!inTauri) return;

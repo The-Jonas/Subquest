@@ -31,6 +31,7 @@
   } from "../fonts";
   import FontPicker from "../components/FontPicker.svelte";
   import FontDetect from "../components/FontDetect.svelte";
+  import RemoveButton from "../components/RemoveButton.svelte";
 
   let imported = $state<ImportedFont[]>([]);
   let prints = $state<Record<string, string>>({}); // "game/id" -> object URL of its print
@@ -136,6 +137,7 @@
       {#each styles.list as s (s.id)}
         {@const print = prints[`${styles.key}/${s.id}`]}
         <li class="card">
+          <RemoveButton label={t("styles.forget")} onconfirm={() => forget(s)} />
           <!-- The real thing: the phrase exactly as the game drew it -->
           <div class="print-box">
             {#if print}<img class="print" src={print} alt="" />{/if}
@@ -187,7 +189,6 @@
           </div>
           <div class="row">
             <button class="btn" onclick={() => (open = open === s.id ? null : s.id)}>{t("styles.search")}</button>
-            <button class="btn btn-ghost" onclick={() => forget(s)}>{t("styles.forget")}</button>
           </div>
 
           {#if open === s.id && styles.key}
@@ -264,6 +265,7 @@
     gap: 12px;
   }
   .card {
+    position: relative; /* holds the X in its corner */
     display: grid;
     gap: 10px;
     padding: 16px;
@@ -274,6 +276,7 @@
   /* Fixed-height box: the card keeps its size while the picture loads */
   .print-box {
     height: 96px;
+    margin-right: 36px; /* room for the X */
     display: flex;
     align-items: center;
     border-radius: 6px;

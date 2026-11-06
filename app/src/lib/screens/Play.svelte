@@ -226,7 +226,9 @@
           ? t("play.start.toolbarHint", { keys: app.settings.shortcuts.toolbar })
           : t("play.start.toolbarHintNoKey")}</p>
       <div class="actions">
-        <button class="btn btn-ghost" onclick={() => toggleToolbar()}>{t("play.start.toolbar")}</button>
+        <button class="btn btn-ghost" onclick={() => toggleToolbar()}>
+          {session.toolbarShown ? t("play.start.toolbarHide") : t("play.start.toolbarShow")}
+        </button>
         <button class="btn btn-ghost" onclick={adjust}>{t("play.start.adjust")}</button>
         <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
       </div>

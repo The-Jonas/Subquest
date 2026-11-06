@@ -63,9 +63,10 @@
       "cached": "Línea repetida, desde la caché en {ms} ms",
       "adjust": "Ajustar áreas",
       "quickDone": "Traducción rápida en {ms} ms (el principal no respondió)",
-      "toolbar": "Barra en el juego",
       "toolbarHint": "En el juego, {keys} muestra u oculta la barra para marcar áreas y tomar capturas de estilo.",
-      "toolbarHintNoKey": "La barra del juego no tiene atajo; usa el botón de abajo o define uno en Atajos."
+      "toolbarHintNoKey": "La barra del juego no tiene atajo; usa el botón de abajo o define uno en Atajos.",
+      "toolbarShow": "Mostrar barra en el juego",
+      "toolbarHide": "Ocultar barra del juego"
     },
     "back": "Volver",
     "next": "Continuar",
@@ -75,21 +76,17 @@
   },
   "profiles": {
     "title": "Perfiles de juego",
-    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, su área de diálogo, idioma y glosario se guardan aquí.",
-    "dialogueArea": "Cuadro de diálogo de {width} × {height} px",
-    "wholeScreen": "Toda la ventana",
-    "forget": "Olvidar",
-    "look": "Apariencia",
-    "font": "Fuente de la traducción",
-    "style": "Estilo",
-    "styles": {
-      "inPlace": "Integrada al juego",
-      "inPlaceHelp": "Cada línea traducida se dibuja en el lugar de la original, con los colores y el tamaño del juego.",
-      "classic": "Clásico",
-      "classicHelp": "Cuadro oscuro con texto blanco, como un subtítulo de película."
-    },
-    "sample": "Los mares reflejan su belleza radiante",
-    "areaCount": "{count} áreas"
+    "intro": "Lo que se guarda de cada juego: dónde están las cajas de texto y los estilos sacados de las capturas. Para cambiar la fuente de un estilo, haz clic en su captura.",
+    "empty": "Todavía no hay perfiles. Cuando traduzcas un juego, sus áreas y estilos se guardan aquí.",
+    "wholeScreen": "Pantalla completa",
+    "forget": "Olvidar este juego (áreas, estilos y capturas)",
+    "areas": "Áreas",
+    "styles": "Estilos",
+    "unmarked": "sin rectángulo",
+    "editStyle": "Abrir en Estilos",
+    "unnamed": "Sin nombre",
+    "noFont": "todavía sin fuente",
+    "noStyles": "Todavía no hay capturas de estilo. Saca una desde la barra en el juego."
   },
   "settings": {
     "title": "Ajustes",
@@ -287,8 +284,9 @@
     "hide": "Ocultar las traducciones",
     "show": "Mostrar las traducciones",
     "open": "Abrir Subquest",
-    "close": "Guardar la barra",
-    "edit": "Editar las áreas en el juego"
+    "close": "Ocultar la barra · vuelve con {keys}",
+    "edit": "Editar las áreas en el juego",
+    "closeNoKey": "Ocultar la barra · vuelve desde Subquest"
   },
   "select": {
     "area": "Marca la nueva área",
@@ -344,5 +342,10 @@
     "cancel": "Cancelar",
     "rename": "Haz clic para renombrar",
     "remove": "Quitar área"
+  },
+  "remove": {
+    "ask": "¿Borrar?",
+    "yes": "Sí",
+    "no": "No"
   }
 }

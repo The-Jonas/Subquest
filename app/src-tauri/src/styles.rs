@@ -345,6 +345,16 @@ impl StyleStore {
         Ok(result)
     }
 
+    /// Deletes every style of a game, with their prints (the game's profile was forgotten).
+    pub fn forget(&self, key: &str) {
+        let mut open = self.open.lock().unwrap();
+        if let Some((_, book)) = open.as_mut().filter(|(k, _)| k == key) {
+            book.styles.clear(); // still being translated: the next lines get no style
+        }
+        let _ = std::fs::remove_file(self.book_path(key));
+        let _ = std::fs::remove_dir_all(self.dir.join(file_key(key)));
+    }
+
     /// A game's styles, in the order they were taken.
     pub fn list(&self, key: &str) -> Vec<TextStyle> {
         let open = self.open.lock().unwrap();

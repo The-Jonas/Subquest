@@ -46,6 +46,7 @@ export const session = $state({
   translations: {} as Record<number, TranslationEvent>, // by frame id
   history: [] as HistoryEntry[], // newest first; survives stopping, cleared when a session starts
   unseenMissed: 0, // missed lines since the History screen was last opened
+  toolbarShown: false, // the in-game bar is on screen (its button in Play says so)
 });
 
 // Marks as missed every line of an area that still had no translation when the
@@ -145,4 +146,5 @@ export async function watchSession() {
     unlistenAll();
     session.running = false;
   });
+  await listen<boolean>("toolbar-shown", (e) => (session.toolbarShown = e.payload));
 }

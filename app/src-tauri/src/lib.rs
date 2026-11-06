@@ -689,6 +689,13 @@ fn remove_style(app: AppHandle, state: State<'_, AppState>, profile_key: String,
     Ok(())
 }
 
+/// Deletes all of a game's styles and prints (its profile was forgotten).
+#[tauri::command]
+fn forget_styles(app: AppHandle, state: State<'_, AppState>, profile_key: String) {
+    state.styles.forget(&profile_key);
+    styles_changed(&app);
+}
+
 /// Decodes "%20"-style escapes (enough for file names sent by encodeURIComponent).
 fn percent_decode(text: &str) -> String {
     let bytes = text.as_bytes();
@@ -815,6 +822,7 @@ pub fn run() {
             toggle_pause,
             toggle_hidden,
             toggle_toolbar,
+            forget_styles,
             session_flags,
             show_main,
             start_preview,

@@ -63,9 +63,10 @@
       "cached": "Repeated line, from cache in {ms} ms",
       "adjust": "Adjust areas",
       "quickDone": "Quick translation in {ms} ms (the main one didn't answer)",
-      "toolbar": "In-game bar",
       "toolbarHint": "In the game, {keys} shows or hides the bar for marking areas and taking style prints.",
-      "toolbarHintNoKey": "The in-game bar has no shortcut; use the button below or set one in Shortcuts."
+      "toolbarHintNoKey": "The in-game bar has no shortcut; use the button below or set one in Shortcuts.",
+      "toolbarShow": "Show in-game bar",
+      "toolbarHide": "Hide in-game bar"
     },
     "back": "Back",
     "next": "Continue",
@@ -75,21 +76,17 @@
   },
   "profiles": {
     "title": "Game profiles",
-    "empty": "No profiles yet. Once you translate a game, its dialogue area, language and glossary are saved here.",
-    "dialogueArea": "Dialogue box of {width} × {height} px",
-    "wholeScreen": "Whole window",
-    "forget": "Forget",
-    "look": "Look",
-    "font": "Translation font",
-    "style": "Style",
-    "styles": {
-      "inPlace": "Part of the game",
-      "inPlaceHelp": "Each translated line is drawn over the original one, in the game's colors and size.",
-      "classic": "Classic",
-      "classicHelp": "Dark box with white text, like a movie subtitle."
-    },
-    "sample": "Seas reflect her gleaming beauty",
-    "areaCount": "{count} areas"
+    "intro": "What is saved for each game: where its text boxes are and the styles taken from prints. To change a style's font, click its print.",
+    "empty": "No profiles yet. When you translate a game, its areas and styles are saved here.",
+    "wholeScreen": "Whole screen",
+    "forget": "Forget this game (areas, styles and prints)",
+    "areas": "Areas",
+    "styles": "Styles",
+    "unmarked": "no rectangle",
+    "editStyle": "Open in Styles",
+    "unnamed": "Unnamed",
+    "noFont": "no font yet",
+    "noStyles": "No style prints yet. Take one from the in-game bar."
   },
   "settings": {
     "title": "Settings",
@@ -287,8 +284,9 @@
     "hide": "Hide the translations",
     "show": "Show the translations",
     "open": "Open Subquest",
-    "close": "Put the bar away",
-    "edit": "Edit the areas in the game"
+    "close": "Hide the bar · {keys} brings it back",
+    "edit": "Edit the areas in the game",
+    "closeNoKey": "Hide the bar · Subquest brings it back"
   },
   "select": {
     "area": "Mark the new area",
@@ -344,5 +342,10 @@
     "cancel": "Cancel",
     "rename": "Click to rename",
     "remove": "Remove area"
+  },
+  "remove": {
+    "ask": "Delete?",
+    "yes": "Yes",
+    "no": "No"
   }
 }
