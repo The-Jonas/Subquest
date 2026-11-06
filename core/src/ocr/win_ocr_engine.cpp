@@ -131,16 +131,32 @@ OcrResult WinOcrEngine::recognize(const Frame& frame) {
             const auto [first, last] = kept_words(texts);
             if (first == last) continue; // nothing but symbols
             const std::vector<ocr::OcrWord> words(all.begin() + first, all.begin() + last);
+            std::vector<std::wstring> kept(texts.begin() + first, texts.begin() + last);
             Rect box = line_box(words);
+            // Marks glued to the ends ("(PLAY"): cut from the text, and from the
+            // box by their share of that word's width (OCR has no letter boxes).
+            const auto [front, back] = stray_marks(kept);
+            if (front > 0) {
+                const auto r = words.front().BoundingRect();
+                const float cut = r.Width * float(front) / float(kept.front().size());
+                box.x += int32_t(cut);
+                box.width -= int32_t(cut);
+                kept.front().erase(0, front);
+            }
+            if (back > 0) {
+                const auto r = words.back().BoundingRect();
+                box.width -= int32_t(r.Width * float(back) / float(kept.back().size()));
+                kept.back().erase(kept.back().size() - back);
+            }
             box = {int32_t(box.x * scale), int32_t(box.y * scale), int32_t(box.width * scale),
                    int32_t(box.height * scale)};
             std::string text;
-            if (first == 0 && last == all.size()) {
+            if (first == 0 && last == all.size() && front == 0 && back == 0) {
                 text = winrt::to_string(line.Text()); // untouched: keep Windows' own spacing
             } else {
-                for (size_t i = first; i < last; ++i) {
+                for (const auto& word : kept) {
                     if (!text.empty()) text += ' ';
-                    text += winrt::to_string(texts[i]);
+                    text += winrt::to_string(word);
                 }
             }
             if (!result.full_text.empty()) result.full_text += '\n';

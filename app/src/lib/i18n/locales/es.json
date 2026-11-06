@@ -257,7 +257,15 @@
     "forget": "Olvidar",
     "caseAuto": "Como en el juego ({seen})",
     "caseNone": "Como se traduce",
-    "seenNormal": "letras normales"
+    "seenNormal": "letras normales",
+    "fontInUse": "Fuente de este estilo:",
+    "font": "Fuente",
+    "letters": "Letras",
+    "caseShort": {
+      "normal": "letras normales",
+      "upper": "Mayúsculas",
+      "smallCaps": "Versalitas"
+    }
   },
   "toolbar": {
     "move": "Arrastra para mover",

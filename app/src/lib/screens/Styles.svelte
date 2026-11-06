@@ -19,7 +19,16 @@
     type LetterCase,
     type TextStyle,
   } from "../api";
-  import { applyCase, cssFamily, ensureFont, loadAllImported, styleCase } from "../fonts";
+  import {
+    applyCase,
+    builtInFonts,
+    cssFamily,
+    ensureFont,
+    importedOption,
+    loadAllImported,
+    styleCase,
+    systemFonts,
+  } from "../fonts";
   import FontPicker from "../components/FontPicker.svelte";
   import FontDetect from "../components/FontDetect.svelte";
 
@@ -35,6 +44,12 @@
     }),
   );
   const translatingThis = $derived(!!session.running && !!session.game && profileKey(session.game) === styles.key);
+
+  // Readable name of a font value ("imported:Cinzel-700.ttf" -> its label).
+  function fontName(value: string): string {
+    const all = [...builtInFonts, ...systemFonts, ...imported.map(importedOption)];
+    return all.find((f) => f.value === value)?.label ?? value.replace(/^imported:/, "").replace(/\.[^.]+$/, "");
+  }
 
   // CSS color of a style's letters.
   function hex(rgb: number): string {
@@ -145,17 +160,32 @@
           >
             {applyCase(s.name || t("fonts.sampleText"), styleCase(s))}
           </p>
-          {#if !s.font}<p class="hint">{t("styles.noFont")}</p>{/if}
+          <!-- Which font this style uses, said plainly -->
+          <p class="in-use" class:missing={!s.font}>
+            {#if s.font}
+              {t("styles.fontInUse")} <strong>{fontName(s.font)}</strong>
+            {:else}
+              {t("styles.noFont")}
+            {/if}
+          </p>
 
+          <div class="controls">
+            <label class="field">
+              <span>{t("styles.font")}</span>
+              <FontPicker value={s.font} {imported} onchange={(font) => save(s, { font })} />
+            </label>
+            <label class="field">
+              <span>{t("styles.letters")}</span>
+              <select class="input" value={s.caps} onchange={(e) => save(s, { caps: e.currentTarget.value as LetterCase })}>
+                <!-- Default: the case seen on the print, so the translation is written like the game -->
+                <option value="">{t("styles.caseAuto", { seen: t(`styles.caseShort.${s.seenCase || "normal"}`) })}</option>
+                <option value="none">{t("styles.caseNone")}</option>
+                <option value="upper">{t("styles.caseShort.upper")}</option>
+                <option value="smallCaps">{t("styles.caseShort.smallCaps")}</option>
+              </select>
+            </label>
+          </div>
           <div class="row">
-            <FontPicker value={s.font} {imported} onchange={(font) => save(s, { font })} />
-            <select class="input caps" value={s.caps} onchange={(e) => save(s, { caps: e.currentTarget.value as LetterCase })}>
-              <!-- Default: the case seen on the print, so the translation is written like the game -->
-              <option value="">{t("styles.caseAuto", { seen: s.seenCase ? t(`fonts.detect.cases.${s.seenCase}`) : t("styles.seenNormal") })}</option>
-              <option value="none">{t("styles.caseNone")}</option>
-              <option value="upper">{t("fonts.detect.cases.upper")}</option>
-              <option value="smallCaps">{t("fonts.detect.cases.smallCaps")}</option>
-            </select>
             <button class="btn" onclick={() => (open = open === s.id ? null : s.id)}>{t("styles.search")}</button>
             <button class="btn btn-ghost" onclick={() => forget(s)}>{t("styles.forget")}</button>
           </div>
@@ -280,21 +310,37 @@
     line-height: 1.25;
     overflow-wrap: anywhere;
   }
-  .hint {
+  .in-use {
     margin: 0;
-    color: var(--gold);
     font-size: var(--text-sm);
+    color: var(--ink-dim);
+  }
+  .in-use strong {
+    color: var(--gold);
+    font-size: var(--text-md, 1rem);
+  }
+  /* No font yet: the style does nothing, so say it in the accent */
+  .in-use.missing {
+    color: var(--gold);
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
+    gap: 10px;
+  }
+  .field {
+    display: grid;
+    gap: 4px;
+    color: var(--ink-dim);
+    font-size: var(--text-sm);
+  }
+  .field :global(select) {
+    width: 100%;
   }
   .row {
     display: flex;
     gap: 8px;
     align-items: center;
-  }
-  .row :global(select:first-child) {
-    flex: 1;
-  }
-  .caps {
-    width: auto;
   }
   .empty {
     color: var(--ink-dim);

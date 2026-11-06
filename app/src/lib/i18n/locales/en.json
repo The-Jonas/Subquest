@@ -257,7 +257,15 @@
     "forget": "Forget",
     "caseAuto": "As in the game ({seen})",
     "caseNone": "As translated",
-    "seenNormal": "regular letters"
+    "seenNormal": "regular letters",
+    "fontInUse": "This style's font:",
+    "font": "Font",
+    "letters": "Letters",
+    "caseShort": {
+      "normal": "regular letters",
+      "upper": "Uppercase",
+      "smallCaps": "Small caps"
+    }
   },
   "toolbar": {
     "move": "Drag to move",

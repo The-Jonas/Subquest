@@ -100,15 +100,16 @@ export function styleCase(style: { caps: LetterCase; seenCase?: string | null })
   return style.caps === "none" ? "" : style.caps;
 }
 
-// Text as it is drawn in a letter case. Small capitals: each word gets one
-// capital and the rest in lowercase, which CSS small-caps then draws as small
-// capitals ("JOGAR" from the model becomes "Jogar", shown like the game's "PLAY").
+// Text as it is drawn in a letter case. Small capitals: the translation keeps
+// its own capitals (CSS small-caps draws the lowercase letters as small
+// capitals), except a translation all in capitals, which comes from OCR
+// reading small capitals as big ones ("PLAY" -> "JOGAR"): that one goes back
+// to sentence case ("Jogar"), so it looks like the game's "Play".
 export function applyCase(text: string, caps: LetterCase): string {
   if (caps === "upper") return text.toLocaleUpperCase();
-  if (caps === "smallCaps") {
-    return text
-      .toLocaleLowerCase()
-      .replace(/(^|[\s(\[«"'¡¿-])(\p{L})/gu, (_, before: string, letter: string) => before + letter.toLocaleUpperCase());
+  if (caps === "smallCaps" && text === text.toLocaleUpperCase() && text !== text.toLocaleLowerCase()) {
+    const lower = text.toLocaleLowerCase();
+    return lower.replace(/\p{L}/u, (first) => first.toLocaleUpperCase());
   }
   return text;
 }
