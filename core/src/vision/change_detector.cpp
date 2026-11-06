@@ -25,6 +25,25 @@ float ChangeDetector::mean_abs_diff(const std::vector<uint8_t>& a, const std::ve
     return float(sum) / (float(a.size()) * 255.0f);
 }
 
+// Share of pixels whose difference is above `delta` gray levels (0..1).
+float ChangeDetector::changed_pixels(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b, uint8_t delta) {
+    if (a.size() != b.size() || a.empty()) return 1.0f;
+    size_t changed = 0;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (std::abs(int(a[i]) - int(b[i])) > int(delta)) ++changed;
+    }
+    return float(changed) / float(a.size());
+}
+
+// Other text than the one read last time: a big change on average (a box that
+// appears or goes away), or a clear change in a small share of the pixels (a
+// new sentence of about the same length: the average barely moves, but the
+// letters are in other places).
+bool ChangeDetector::differs(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) const {
+    return mean_abs_diff(a, b) >= config_.change_threshold ||
+           changed_pixels(a, b, config_.pixel_delta) >= config_.changed_share;
+}
+
 // Shrinks the frame with a box filter and converts BGRA to luminance.
 // Block averaging, rather than sampling 1 pixel, so noise and anti-aliasing
 // don't look like a "change".
@@ -75,7 +94,7 @@ bool ChangeDetector::feed(const Frame& frame) {
     if (still_count_ != config_.settle_frames) return false; // fires only once per still period
 
     const bool first_fire = last_fired_.empty();
-    if (!first_fire && mean_abs_diff(thumb, last_fired_) < config_.change_threshold) return false;
+    if (!first_fire && !differs(thumb, last_fired_)) return false;
 
     last_fired_ = std::move(thumb);
     return true;

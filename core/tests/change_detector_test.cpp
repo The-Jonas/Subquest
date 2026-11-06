@@ -19,6 +19,34 @@ static Frame make_frame(int w, int h, int text_width, uint8_t bg = 30) {
     return f;
 }
 
+// A box with three lines of "words" whose widths and gaps come
+// from `seed`. Two seeds give two different sentences of about the same length.
+static Frame make_sentence(int w, int h, unsigned seed) {
+    Frame f;
+    f.width = w;
+    f.height = h;
+    f.stride = w * 4;
+    f.bgra.assign(size_t(f.stride) * h, 30);
+    unsigned state = seed;
+    for (int line = 0; line < 3; ++line) {
+        const int top = 20 + line * 40;
+        int x = 12;
+        while (x < w - 40) {
+            state = state * 1103515245u + 12345u;
+            const int word = 6 + int((state >> 16) % 7) * 6; // 6..42 px
+            // Letters: thin strokes (2 px every 5 px), like real anti-aliased text.
+            // Seen from far away every word is the same gray: only where the
+            // gaps between words fall tells two sentences apart.
+            for (int y = top; y < top + 16 && y < h; ++y)
+                for (int i = x; i < x + word && i < w; ++i)
+                    if ((i - x) % 5 < 2)
+                        for (int c = 0; c < 3; ++c) f.bgra[size_t(y) * f.stride + i * 4 + c] = 230;
+            x += word + 8;
+        }
+    }
+    return f;
+}
+
 static int failures = 0;
 
 // Checks a condition and records a failure with a description.
@@ -48,6 +76,18 @@ int main() {
     det.feed(make_frame(640, 120, 400, 60));
     det.feed(b); det.feed(b);
     check(!det.feed(b), "same text after a blink does not repeat OCR");
+
+    // A new sentence of about the same length in the same box (game tips,
+    // dialogue): the average barely changes, but it is another text.
+    ChangeDetector det2;
+    Frame s1 = make_sentence(727, 160, 1);
+    Frame s2 = make_sentence(727, 160, 2);
+    det2.feed(s1); det2.feed(s1);
+    check(det2.feed(s1), "first sentence is read");
+    det2.feed(s2); det2.feed(s2);
+    check(det2.feed(s2), "another sentence of the same length is read too");
+    det2.feed(s2); det2.feed(s2);
+    check(!det2.feed(s2), "the same sentence staying on screen is not read again");
 
     std::printf("%s\n", failures ? "FAILED" : "ALL OK");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
