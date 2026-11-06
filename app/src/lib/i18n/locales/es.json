@@ -140,6 +140,12 @@
       },
       "deeplKey": "Clave de DeepL",
       "deeplKeyHelp": "Créala gratis en deepl.com/pro-api. Las claves del plan gratis terminan en \":fx\"."
+    },
+    "storage": {
+      "title": "Almacenamiento",
+      "intro": "El historial de líneas queda solo en memoria y desaparece al cerrar Subquest. Lo que se guarda en disco son las traducciones ya hechas, para que las líneas repetidas aparezcan al instante (como máximo 20 mil, pocos MB).",
+      "cache": "{count} traducciones guardadas ({size})",
+      "clear": "Borrar traducciones guardadas"
     }
   },
   "tutorial": {
@@ -239,7 +245,8 @@
     "pending": "Traduciendo…",
     "nothingMatches": "Ninguna línea con este filtro.",
     "empty": "Todavía no hay líneas. Empieza a traducir un juego y todo lo que aparezca se guarda aquí.",
-    "missedBadge": "Líneas que pasaron antes de que la traducción estuviera lista"
+    "missedBadge": "Líneas que pasaron antes de que la traducción estuviera lista",
+    "clear": "Limpiar"
   },
   "styles": {
     "title": "Estilos del juego",
@@ -276,7 +283,8 @@
     "hide": "Ocultar las traducciones",
     "show": "Mostrar las traducciones",
     "open": "Abrir Subquest",
-    "close": "Guardar la barra"
+    "close": "Guardar la barra",
+    "edit": "Editar las áreas en el juego"
   },
   "select": {
     "area": "Marca la nueva área",
@@ -317,7 +325,20 @@
       "hide": {
         "name": "Ocultar traducciones",
         "help": "Quita las traducciones de la pantalla sin dejar de leer."
+      },
+      "edit": {
+        "name": "Editar áreas",
+        "help": "Mueve, redimensiona, renombra o quita las áreas directo en el juego."
       }
     }
+  },
+  "areaEditor": {
+    "title": "Editar áreas",
+    "help": "Arrastra dentro para mover, por los cuadraditos para cambiar el tamaño, en el vacío para crear. Haz clic en el nombre para renombrar.",
+    "screenAreas": "+ {count} área(s) de pantalla completa (no se muestran aquí)",
+    "done": "Listo",
+    "cancel": "Cancelar",
+    "rename": "Haz clic para renombrar",
+    "remove": "Quitar área"
   }
 }

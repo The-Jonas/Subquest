@@ -37,7 +37,8 @@
   } from "../api";
   import { applyCase, cssFamily, ensureFont, styleCase } from "../fonts";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
-  import { finishSelection, type SelectionPurpose, type Region } from "../api";
+  import { finishAreaEdit, finishSelection, type SelectionPurpose, type Region } from "../api";
+  import AreaEditor from "./AreaEditor.svelte";
   import { layout, pairLines, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
@@ -372,7 +373,7 @@
     document.fonts.ready.then(() => (fontReady += 1));
     // overlay.html?select=area|style shows the selection mode, to design it.
     const select = new URLSearchParams(location.search).get("select");
-    if (select === "area" || select === "style") selecting = select;
+    if (select === "area" || select === "style" || select === "edit") selecting = select;
   }
 
   setup();
@@ -385,7 +386,17 @@
 <!-- While a rectangle is drawn, the translations step aside: the game's own
      text must be visible to aim at, and nothing may catch the drag -->
 <div class="stage" class:selecting bind:clientWidth={viewWidth} bind:clientHeight={viewHeight}>
-  {#if selecting}
+  {#if selecting === "edit"}
+    <!-- Editing the areas already marked: move, resize, rename, remove, add -->
+    <AreaEditor
+      areas={areas}
+      scale={window.devicePixelRatio || 1}
+      ondone={(list) => {
+        selecting = null;
+        void finishAreaEdit(list);
+      }}
+    />
+  {:else if selecting}
     <!-- Selection mode: the game dims, the drag draws a gold rectangle -->
     <div
       class="select-layer"

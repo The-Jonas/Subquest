@@ -97,6 +97,19 @@ fn raise(overlay: &WebviewWindow) {
     }
 }
 
+/// Gives the keyboard back to the game (after editing areas on the overlay).
+#[cfg(windows)]
+pub fn focus_game(game: u64) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
+    // SAFETY: a window handle from the core; a stale one just fails.
+    unsafe {
+        SetForegroundWindow(game as usize as _);
+    }
+}
+
+#[cfg(not(windows))]
+pub fn focus_game(_game: u64) {}
+
 /// Shows (above the overlay) or hides the in-game toolbar, if it exists.
 fn set_toolbar(app: &AppHandle, show: bool) {
     let Some(toolbar) = app.get_webview_window(crate::ingame::TOOLBAR) else {

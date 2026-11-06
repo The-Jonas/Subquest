@@ -88,6 +88,18 @@ impl TranslationCache {
     }
 
     /// Number of stored translations.
+    /// Forgets every translation (the file is rewritten empty on the next save).
+    pub fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+        self.dirty = true;
+    }
+
+    /// Number of stored translations.
+    pub fn count(&self) -> usize {
+        self.entries.len()
+    }
+
     #[cfg(test)]
     pub fn len(&self) -> usize {
         self.entries.len()

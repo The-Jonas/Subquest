@@ -346,6 +346,24 @@ pub(crate) fn restart_reading(app: &AppHandle) -> Result<(), AppError> {
     start_core(app, &state, window_handle, &profile_key)
 }
 
+/// Saved translations: (how many, file size in bytes), for the Settings screen.
+#[tauri::command]
+fn cache_usage(state: State<'_, AppState>) -> (usize, u64) {
+    state.translation.cache_usage()
+}
+
+/// Forgets every saved translation (memory and file).
+#[tauri::command]
+fn clear_translation_cache(state: State<'_, AppState>) {
+    state.translation.clear_cache();
+}
+
+/// Ends editing the areas over the game: the new list, or None to cancel.
+#[tauri::command]
+fn finish_area_edit(app: AppHandle, areas: Option<Vec<settings::GameArea>>) -> Result<(), AppError> {
+    ingame::finish_area_edit(&app, areas)
+}
+
 /// Starts drawing a rectangle over the game: "area" or "style".
 #[tauri::command]
 fn begin_selection(app: AppHandle, purpose: ingame::Purpose) -> Result<(), AppError> {
@@ -776,6 +794,9 @@ pub fn run() {
             apply_areas,
             begin_selection,
             finish_selection,
+            finish_area_edit,
+            cache_usage,
+            clear_translation_cache,
             toggle_pause,
             toggle_hidden,
             toggle_toolbar,

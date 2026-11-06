@@ -55,6 +55,8 @@
         <input type="checkbox" bind:checked={onlyMissed} />
         {t("history.onlyMissed")}
       </label>
+      <!-- Only in memory: closing Subquest clears it anyway -->
+      <button class="btn btn-ghost" onclick={() => (session.history = [])}>{t("history.clear")}</button>
     </div>
 
     <ol class="lines">

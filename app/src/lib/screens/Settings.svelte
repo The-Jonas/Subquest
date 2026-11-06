@@ -2,11 +2,36 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import { app, persistSettings } from "../stores/app.svelte";
-  import { errorDetail, errorKind, listModels, testTranslator, translatorPresets } from "../api";
+  import {
+    cacheUsage,
+    clearTranslationCache,
+    errorDetail,
+    errorKind,
+    listModels,
+    testTranslator,
+    translatorPresets,
+  } from "../api";
 
   const gameLanguages = ["en", "ja", "zh-Hans", "ko"];
   const targetLanguages = ["pt-BR", "en", "es"];
   const quickEngines = ["google", "deepl", ""]; // "" = layer off
+
+  // Saved translations [count, bytes], shown in the Storage section.
+  let usage = $state<[number, number] | null>(null);
+  cacheUsage()
+    .then((u) => (usage = u))
+    .catch(errorKind);
+
+  // "1.2 MB" for a size in bytes.
+  function megabytes(bytes: number): string {
+    return `${(bytes / 1_000_000).toLocaleString(app.settings.uiLanguage, { maximumFractionDigits: 1 })} MB`;
+  }
+
+  // Forgets every saved translation (they are made again when the lines come back).
+  async function clearCache() {
+    await clearTranslationCache().catch(errorKind);
+    usage = await cacheUsage().catch(() => null);
+  }
 
   let saved = $state(false);
   let error = $state<string | null>(null);
@@ -239,6 +264,22 @@
     </figure>
   </section>
 
+  <!-- What Subquest keeps on disk, and a way to free it -->
+  <section>
+    <h2>{t("settings.storage.title")}</h2>
+    <p class="intro">{t("settings.storage.intro")}</p>
+    <div class="storage">
+      <p>
+        {#if usage}
+          {t("settings.storage.cache", { count: usage[0].toLocaleString(app.settings.uiLanguage), size: megabytes(usage[1]) })}
+        {/if}
+      </p>
+      <button class="btn btn-ghost" onclick={clearCache} disabled={!usage || usage[0] === 0}>
+        {t("settings.storage.clear")}
+      </button>
+    </div>
+  </section>
+
   <div class="bar">
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if saved}<p class="ok" role="status">{t("settings.saved")}</p>{/if}
@@ -320,6 +361,15 @@
   .engine:has(input:focus-visible) {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
+  }
+  .storage {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .storage p {
+    margin: 0;
   }
   .deepl-key {
     margin-top: 12px;

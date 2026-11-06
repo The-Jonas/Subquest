@@ -86,6 +86,19 @@ impl TranslationState {
         }
     }
 
+    /// Number of translations kept, and the cache file's size in bytes.
+    pub fn cache_usage(&self) -> (usize, u64) {
+        let count = self.cache.lock().unwrap().count();
+        let bytes = std::fs::metadata(&self.cache_path).map(|m| m.len()).unwrap_or(0);
+        (count, bytes)
+    }
+
+    /// Forgets every saved translation, in memory and on disk.
+    pub fn clear_cache(&self) {
+        self.cache.lock().unwrap().clear();
+        self.save_cache();
+    }
+
     /// Forgets the previous game's lines; the cache stays (same lines, same answer).
     pub fn reset_context(&self) {
         self.context.lock().unwrap().clear();

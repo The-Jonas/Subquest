@@ -160,7 +160,25 @@ export async function updateStyle(
 }
 
 // What a rectangle drawn over the game is for.
-export type SelectionPurpose = "area" | "style";
+export type SelectionPurpose = "area" | "style" | "edit";
+
+// Saved translations: [count, file size in bytes].
+export async function cacheUsage(): Promise<[number, number]> {
+  if (!inTauri) return [1234, 180_000];
+  return invoke("cache_usage");
+}
+
+// Forgets every saved translation.
+export async function clearTranslationCache() {
+  if (!inTauri) return;
+  await invoke("clear_translation_cache");
+}
+
+// Ends editing the areas over the game: the new list (window pixels), or null to cancel.
+export async function finishAreaEdit(areas: GameArea[] | null) {
+  if (!inTauri) return;
+  await invoke("finish_area_edit", { areas });
+}
 
 // Starts drawing a rectangle over the game (the overlay takes the mouse).
 export async function beginSelection(purpose: SelectionPurpose) {

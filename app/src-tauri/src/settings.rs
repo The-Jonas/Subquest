@@ -113,6 +113,7 @@ pub struct ShortcutSettings {
     pub pause: String,   // pause / resume translating
     pub hide: String,    // hide / show the translations
     pub toolbar: String, // show / hide the in-game toolbar
+    pub edit: String,    // edit the marked areas (move, resize, rename, remove)
 }
 
 impl Default for ShortcutSettings {
@@ -124,6 +125,7 @@ impl Default for ShortcutSettings {
             pause: "Ctrl+Shift+T".into(),
             hide: "Ctrl+Shift+H".into(),
             toolbar: "Ctrl+Shift+B".into(),
+            edit: "Ctrl+Shift+E".into(),
         }
     }
 }

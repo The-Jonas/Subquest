@@ -140,6 +140,12 @@
       },
       "deeplKey": "Chave do DeepL",
       "deeplKeyHelp": "Crie grátis em deepl.com/pro-api. Chaves do plano grátis terminam em \":fx\"."
+    },
+    "storage": {
+      "title": "Armazenamento",
+      "intro": "O histórico de falas fica só na memória e some ao fechar o Subquest. O que fica guardado no disco são as traduções já feitas, para falas repetidas aparecerem na hora (no máximo 20 mil, uns poucos MB).",
+      "cache": "{count} traduções guardadas ({size})",
+      "clear": "Limpar traduções guardadas"
     }
   },
   "tutorial": {
@@ -239,7 +245,8 @@
     "pending": "Traduzindo…",
     "nothingMatches": "Nenhuma fala com esse filtro.",
     "empty": "Nenhuma fala ainda. Comece a traduzir um jogo e tudo o que aparecer fica guardado aqui.",
-    "missedBadge": "Falas que passaram antes da tradução ficar pronta"
+    "missedBadge": "Falas que passaram antes da tradução ficar pronta",
+    "clear": "Limpar"
   },
   "styles": {
     "title": "Estilos do jogo",
@@ -276,7 +283,8 @@
     "hide": "Esconder as traduções",
     "show": "Mostrar as traduções",
     "open": "Abrir o Subquest",
-    "close": "Guardar a barrinha"
+    "close": "Guardar a barrinha",
+    "edit": "Editar as áreas no jogo"
   },
   "select": {
     "area": "Marque a nova área",
@@ -317,7 +325,20 @@
       "hide": {
         "name": "Esconder traduções",
         "help": "Some com as traduções da tela, sem parar de ler."
+      },
+      "edit": {
+        "name": "Editar áreas",
+        "help": "Mova, redimensione, renomeie ou remova as áreas direto no jogo."
       }
     }
+  },
+  "areaEditor": {
+    "title": "Editar áreas",
+    "help": "Arraste dentro para mover, pelos quadradinhos para mudar o tamanho, no vazio para criar. Clique no nome para renomear.",
+    "screenAreas": "+ {count} área(s) da tela inteira (não aparecem aqui)",
+    "done": "Concluir",
+    "cancel": "Cancelar",
+    "rename": "Clique para renomear",
+    "remove": "Remover área"
   }
 }

@@ -11,6 +11,7 @@
   import { beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
 
   let paused = $state(false);
+  let tip = $state(""); // label of the button under the mouse, drawn below the bar
   let keys = $state<Shortcuts>({ ...defaultShortcuts }); // shown in the tooltips
   let hidden = $state(false);
   const unlisteners: (() => void)[] = [];
@@ -24,6 +25,7 @@
     hide: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4zM3.5 16.5l13-13",
     show: "M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 8a2 2 0 1 0 0 4a2 2 0 0 0 0-4z",
     open: "M11 3.5h5.5V9M16.5 3.5L9 11M14 12.5v4H3.5V6h4",
+    edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
     close: "M5.5 5.5l9 9M14.5 5.5l-9 9",
   };
 
@@ -53,35 +55,56 @@
   onDestroy(() => unlisteners.forEach((fn) => fn()));
 </script>
 
-<div class="bar">
-  <!-- Handle: the only part that moves the window -->
-  <div class="grip" data-tauri-drag-region title={t("toolbar.move")}>
-    <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" data-tauri-drag-region>
-      <rect x="3" y="9" width="26" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2.4" />
-      <rect x="6" y="5.5" width="11" height="6" rx="2" fill="var(--gold)" />
-    </svg>
-  </div>
+<!-- Labels are drawn by the page, under the bar: the browser's own tooltips
+     open behind the bar and the overlay, which both stay on top of everything -->
+{#snippet tool(label: string, icon: string, run: () => unknown, on = false)}
+  <button
+    class:on
+    onclick={run}
+    aria-label={label}
+    onmouseenter={() => (tip = label)}
+    onmouseleave={() => (tip = "")}
+  >
+    <svg viewBox="0 0 20 20"><path d={icon} /></svg>
+  </button>
+{/snippet}
 
-  <button onclick={() => beginSelection("area")} title={t("toolbar.area") + keyHint(keys.area)}>
-    <svg viewBox="0 0 20 20"><path d={ICONS.area} /></svg>
-  </button>
-  <button onclick={() => beginSelection("style")} title={t("toolbar.style") + keyHint(keys.style)}>
-    <svg viewBox="0 0 20 20"><path d={ICONS.style} /></svg>
-  </button>
-  <button class:on={paused} onclick={pause} title={(paused ? t("toolbar.resume") : t("toolbar.pause")) + keyHint(keys.pause)}>
-    <svg viewBox="0 0 20 20"><path d={paused ? ICONS.play : ICONS.pause} /></svg>
-  </button>
-  <button class:on={hidden} onclick={hide} title={(hidden ? t("toolbar.show") : t("toolbar.hide")) + keyHint(keys.hide)}>
-    <svg viewBox="0 0 20 20"><path d={hidden ? ICONS.hide : ICONS.show} /></svg>
-  </button>
-  <span class="sep"></span>
-  <button onclick={() => showMain()} title={t("toolbar.open")}>
-    <svg viewBox="0 0 20 20"><path d={ICONS.open} /></svg>
-  </button>
-  <!-- Puts the bar away; Ctrl+Shift+B brings it back -->
-  <button onclick={() => toggleToolbar()} title={t("toolbar.close") + keyHint(keys.toolbar)}>
-    <svg viewBox="0 0 20 20"><path d={ICONS.close} /></svg>
-  </button>
+<div class="wrap">
+  <div class="bar">
+    <!-- Handle: the only part that moves the window -->
+    <div
+      class="grip"
+      data-tauri-drag-region
+      role="presentation"
+      onmouseenter={() => (tip = t("toolbar.move"))}
+      onmouseleave={() => (tip = "")}
+    >
+      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" data-tauri-drag-region>
+        <rect x="3" y="9" width="26" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2.4" />
+        <rect x="6" y="5.5" width="11" height="6" rx="2" fill="var(--gold)" />
+      </svg>
+    </div>
+
+    {@render tool(t("toolbar.area") + keyHint(keys.area), ICONS.area, () => beginSelection("area"))}
+    {@render tool(t("toolbar.edit") + keyHint(keys.edit), ICONS.edit, () => beginSelection("edit"))}
+    {@render tool(t("toolbar.style") + keyHint(keys.style), ICONS.style, () => beginSelection("style"))}
+    {@render tool(
+      (paused ? t("toolbar.resume") : t("toolbar.pause")) + keyHint(keys.pause),
+      paused ? ICONS.play : ICONS.pause,
+      pause,
+      paused,
+    )}
+    {@render tool(
+      (hidden ? t("toolbar.show") : t("toolbar.hide")) + keyHint(keys.hide),
+      hidden ? ICONS.hide : ICONS.show,
+      hide,
+      hidden,
+    )}
+    <span class="sep"></span>
+    {@render tool(t("toolbar.open"), ICONS.open, () => showMain())}
+    {@render tool(t("toolbar.close") + keyHint(keys.toolbar), ICONS.close, () => toggleToolbar())}
+  </div>
+  {#if tip}<div class="tip">{tip}</div>{/if}
 </div>
 
 <style>
@@ -96,10 +119,16 @@
     height: 100%;
   }
 
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
   /* A small dialogue-box-style pill: dark, gold edge, out of the way */
   .bar {
     box-sizing: border-box;
-    height: 100%;
+    height: 48px;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -151,6 +180,19 @@
   }
   .grip svg rect:first-child {
     stroke-width: 2.4;
+  }
+  /* The label of the hovered button, under the bar on its right */
+  .tip {
+    max-width: 100%;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgb(15 18 34 / 0.95);
+    color: var(--ink);
+    font-size: 12.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .sep {
     width: 1px;

@@ -140,6 +140,12 @@
       },
       "deeplKey": "DeepL key",
       "deeplKeyHelp": "Create one for free at deepl.com/pro-api. Free-plan keys end in \":fx\"."
+    },
+    "storage": {
+      "title": "Storage",
+      "intro": "The line history is kept in memory only and is gone when Subquest closes. What stays on disk are the translations already made, so repeated lines show at once (20 thousand at most, a few MB).",
+      "cache": "{count} saved translations ({size})",
+      "clear": "Clear saved translations"
     }
   },
   "tutorial": {
@@ -239,7 +245,8 @@
     "pending": "Translating…",
     "nothingMatches": "No lines match this filter.",
     "empty": "No lines yet. Start translating a game and everything that shows up is kept here.",
-    "missedBadge": "Lines that passed before their translation was ready"
+    "missedBadge": "Lines that passed before their translation was ready",
+    "clear": "Clear"
   },
   "styles": {
     "title": "Game styles",
@@ -276,7 +283,8 @@
     "hide": "Hide the translations",
     "show": "Show the translations",
     "open": "Open Subquest",
-    "close": "Put the bar away"
+    "close": "Put the bar away",
+    "edit": "Edit the areas in the game"
   },
   "select": {
     "area": "Mark the new area",
@@ -317,7 +325,20 @@
       "hide": {
         "name": "Hide translations",
         "help": "Takes the translations off the screen without stopping."
+      },
+      "edit": {
+        "name": "Edit areas",
+        "help": "Move, resize, rename or remove the areas right in the game."
       }
     }
+  },
+  "areaEditor": {
+    "title": "Edit areas",
+    "help": "Drag inside to move, by the small squares to resize, on empty space to add. Click the name to rename.",
+    "screenAreas": "+ {count} whole-screen area(s) (not shown here)",
+    "done": "Done",
+    "cancel": "Cancel",
+    "rename": "Click to rename",
+    "remove": "Remove area"
   }
 }

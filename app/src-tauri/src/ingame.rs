@@ -33,6 +33,7 @@ const GRAB_WAIT: Duration = Duration::from_secs(2); // the first full-size frame
 pub enum Purpose {
     Area,  // a new area to read
     Style, // a print of a phrase, to pick its font
+    Edit,  // move, resize, rename or remove the areas already marked
 }
 
 /// Something a shortcut does.
@@ -43,6 +44,7 @@ enum Action {
     Pause,
     Hide,
     Toolbar,
+    Edit,
 }
 
 /// The configured shortcuts that parse, with their action. A key written in
@@ -55,6 +57,7 @@ fn shortcuts(app: &AppHandle) -> Vec<(Shortcut, Action)> {
         (keys.pause, Action::Pause),
         (keys.hide, Action::Hide),
         (keys.toolbar, Action::Toolbar),
+        (keys.edit, Action::Edit),
     ]
     .into_iter()
     .filter(|(text, _)| !text.trim().is_empty())
@@ -85,6 +88,7 @@ pub fn on_shortcut(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
             Ok(())
         }
         Action::Toolbar => toggle_toolbar(app).map(|_| ()),
+        Action::Edit => begin_selection(app, Purpose::Edit),
     };
     if let Err(e) = result {
         eprintln!("[subquest] shortcut: {}", e.detail);
@@ -153,7 +157,7 @@ pub fn on_session_end(app: &AppHandle) {
 fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
     let toolbar = WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
         .title("Subquest")
-        .inner_size(296.0, 48.0)
+        .inner_size(332.0, 84.0) // the bar, plus room below it for the button labels
         .transparent(true)
         .decorations(false)
         .shadow(false)
@@ -166,7 +170,7 @@ fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Resu
         .build()
         .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?;
     if let Some((x, y, width)) = game_bounds {
-        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(296);
+        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(332);
         let _ = toolbar.set_position(tauri::PhysicalPosition::new(x + width - size - 24, y + 24));
     }
     Ok(())
@@ -186,8 +190,39 @@ pub fn begin_selection(app: &AppHandle, purpose: Purpose) -> Result<(), AppError
         .set_ignore_cursor_events(false)
         .map_err(|e| AppError::other(e.to_string()))?;
     let _ = overlay.show();
+    if purpose == Purpose::Edit {
+        // Renaming needs the keyboard: the overlay may take the focus until done.
+        let _ = overlay.set_focusable(true);
+        let _ = overlay.set_focus();
+    }
     let _ = app.emit("select-region", purpose);
     Ok(())
+}
+
+/// Ends editing the areas over the game. With `areas` (the whole new list,
+/// in window pixels), they replace the game's areas and are read right away;
+/// None cancels. Either way the overlay lets the mouse and keyboard through
+/// again and the game gets the focus back.
+pub fn finish_area_edit(app: &AppHandle, areas: Option<Vec<GameArea>>) -> Result<(), AppError> {
+    let state = app.state::<AppState>();
+    if let Some(overlay) = app.get_webview_window(overlay::LABEL) {
+        let _ = overlay.set_ignore_cursor_events(true);
+        let _ = overlay.set_focusable(false);
+    }
+    if let Some(game) = *state.session_window.lock().unwrap() {
+        overlay::focus_game(game);
+    }
+    let (Some(areas), Some(key)) = (areas, state.active_profile.lock().unwrap().clone()) else {
+        return Ok(());
+    };
+    let settings = {
+        let mut settings = state.settings.lock().unwrap();
+        settings.profiles.entry(key).or_default().areas = areas;
+        crate::settings::save(&state.config_dir, &settings).map_err(AppError::other)?;
+        settings.clone()
+    };
+    let _ = app.emit("settings-changed", settings);
+    crate::restart_reading(app)
 }
 
 /// The rectangle drawn over the game (window pixels), or None when cancelled.
@@ -205,6 +240,7 @@ pub async fn finish_selection(app: AppHandle, purpose: Purpose, rect: Option<[i3
         return Ok(());
     };
     match purpose {
+        Purpose::Edit => Ok(()), // edits end through finish_area_edit
         Purpose::Area => {
             let settings = {
                 let mut settings = state.settings.lock().unwrap();
@@ -329,7 +365,7 @@ mod tests {
     #[test]
     fn the_keys_the_shortcuts_screen_writes_are_understood() {
         let defaults = ShortcutSettings::default();
-        for text in [defaults.area, defaults.style, defaults.pause, defaults.hide, defaults.toolbar] {
+        for text in [defaults.area, defaults.style, defaults.pause, defaults.hide, defaults.toolbar, defaults.edit] {
             assert!(text.parse::<Shortcut>().is_ok(), "{text}");
         }
         for text in ["Ctrl+Alt+F5", "Ctrl+Shift+1", "F9", "Alt+Space", "Super+Shift+PageDown", "Ctrl+Shift+ArrowUp"] {
