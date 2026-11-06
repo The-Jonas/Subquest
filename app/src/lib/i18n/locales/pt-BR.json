@@ -234,7 +234,20 @@
     "cached": "Do cache",
     "glossary": "Glossário: {terms}",
     "reread": "Relida {n}×",
-    "rereadHelp": "O OCR leu esta fala de novo (às vezes com uma letra diferente) e a mesma tradução foi usada."
+    "rereadHelp": "O OCR leu esta fala de novo (às vezes com uma letra diferente) e a mesma tradução foi usada.",
+    "latency": {
+      "title": "Tempo até a tradução aparecer",
+      "slow": "Típico nesta sessão. 9 em cada 10 falas: até {ms}.",
+      "settle": "Esperar o texto parar",
+      "read": "Ler (OCR)",
+      "first": "Primeiras palavras traduzidas",
+      "rest": "Tradução completa: mais {ms}",
+      "biggest": {
+        "settle": "A maior parte é esperar o texto parar de mudar na tela (efeito de máquina de escrever, animações).",
+        "read": "A maior parte é a leitura do texto (OCR). Áreas menores leem mais rápido.",
+        "first": "A maior parte é o tradutor responder. A tradução rápida (Google/DeepL) ou um modelo mais rápido encurtam isso."
+      }
+    }
   },
   "styles": {
     "title": "Estilos do jogo",

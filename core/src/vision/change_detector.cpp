@@ -13,6 +13,7 @@ void ChangeDetector::reset() {
     previous_.clear();
     last_fired_.clear();
     still_count_ = 0;
+    still_since_us_ = 0;
 }
 
 // Mean of the per-pixel absolute difference, normalized to 0..1.
@@ -84,11 +85,13 @@ bool ChangeDetector::feed(const Frame& frame) {
     if (previous_.empty()) {
         previous_ = std::move(thumb);
         still_count_ = 1;
+        still_since_us_ = frame.timestamp_us;
         return false;
     }
 
     const float diff_prev = mean_abs_diff(thumb, previous_);
     still_count_ = (diff_prev <= config_.still_threshold) ? still_count_ + 1 : 1;
+    if (still_count_ == 1) still_since_us_ = frame.timestamp_us; // the screen just stopped changing here
     previous_ = thumb;
 
     if (still_count_ != config_.settle_frames) return false; // fires only once per still period

@@ -45,6 +45,7 @@ public:
             f.stride = f.width * 4;
             f.bgra.assign(size_t(f.stride) * f.height, gray);
             f.id = ++next_id_;
+            f.timestamp_us = next_id_ * 33'000; // 30 frames per second
             f.origin_x = region_.x;
             f.origin_y = region_.y;
             on_frame_(std::move(f));
@@ -124,6 +125,8 @@ int main() {
               "line boxes leave in window pixels (area origin added), without the stray mark");
         check(menu.lines[0].words.size() == 1 && menu.lines[0].words[0].box.x == 130,
               "word boxes too, so a word can be picked over the game");
+        check(menu.settle_ms > 60 && menu.settle_ms < 70,
+              "the wait for the text to stand still is measured (3 still frames at 30 fps = 66 ms)");
 
         screen->show(120);
         screen->show(120);

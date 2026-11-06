@@ -7,6 +7,7 @@
 // game moved on (new line, or the text left) before any translation arrived:
 // those are the ones the History screen is for.
 import { app } from "./app.svelte";
+import type { LineTiming } from "../latency";
 import { showStyles } from "./styles.svelte";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -36,6 +37,7 @@ export interface HistoryEntry {
   cached: boolean; // came straight from the cache (seen before)
   terms: string[]; // glossary terms found in the line
   rereads: number; // times OCR read this line again (the same translation was used)
+  timing: LineTiming; // where the wait for its translation went
   done: boolean;
   failed: boolean;
   missed: boolean; // the game moved on before any translation was ready
@@ -91,6 +93,7 @@ function onLine(e: OcrTextEvent) {
     cached: false,
     terms: [],
     rereads: 0,
+    timing: { settle: e.settleMs ?? 0, read: e.totalMs },
     done: false,
     failed: false,
     missed: false,
@@ -109,6 +112,8 @@ function onProgress(e: TranslationEvent) {
     entry.done = true;
     return;
   }
+  if (e.text && entry.timing.first == null) entry.timing.first = e.elapsedMs; // first words on screen
+  if (e.done) entry.timing.done = e.elapsedMs;
   entry.translation = e.text;
   entry.quick = e.quick;
   entry.cached = e.cached;

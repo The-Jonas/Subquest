@@ -83,6 +83,7 @@ struct OcrTextEvent {
     frame_id: u64,
     ocr_ms: f64,        // recognition only
     total_ms: f64,      // from frame capture until the text was ready
+    settle_ms: f64,     // waited for the text to stop changing before reading it
     box_color: String,  // dialogue box color sampled from the game, "#rrggbb"
     text_color: String, // text color sampled from the game, "#rrggbb"
     frame_width: i32,   // captured area size: line boxes are in these pixels
@@ -380,6 +381,7 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             frame_id: e.frame_id,
             ocr_ms: e.ocr_ms,
             total_ms: e.total_ms,
+            settle_ms: e.settle_ms,
             box_color: css_color(e.background_rgb),
             text_color: css_color(e.text_rgb),
             frame_width: e.frame_width,

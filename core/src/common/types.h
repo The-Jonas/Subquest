@@ -28,6 +28,7 @@ struct Frame {
     int32_t origin_y = 0;
     int32_t source_width = 0;  // whole window size (0 = same as width/height)
     int32_t source_height = 0;
+    uint64_t still_since_us = 0; // set by the pipeline: when this picture stopped changing (0 = unknown)
 };
 
 // One word as an OCR engine found it, so stray marks at a line's edges can be
@@ -52,6 +53,7 @@ struct OcrResult {
     uint32_t area_index = 0; // which of the session's areas this text came from
     double elapsed_ms = 0;  // time spent on recognition only
     double total_ms = 0;    // from frame capture until the text was ready
+    double settle_ms = 0;   // waiting for the text to stop changing before reading it (typewriter effects)
     int32_t frame_width = 0;  // size of the captured area, so line boxes can be scaled
     int32_t frame_height = 0;
     uint32_t background_rgb = 0x000000; // dialogue box color (0xRRGGBB), sampled from the frame

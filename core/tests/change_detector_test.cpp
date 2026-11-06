@@ -89,6 +89,20 @@ int main() {
     det2.feed(s2); det2.feed(s2);
     check(!det2.feed(s2), "the same sentence staying on screen is not read again");
 
+    // The wait to settle is measured from the frame where the screen stopped changing.
+    ChangeDetector det3;
+    Frame t1 = make_frame(640, 120, 200);
+    Frame t2 = make_frame(640, 120, 300);
+    t1.timestamp_us = 1'000'000;
+    det3.feed(t1); // still typing...
+    t2.timestamp_us = 1'033'000; // ...the last letter appears at 1.033 s
+    det3.feed(t2);
+    t2.timestamp_us = 1'066'000;
+    det3.feed(t2);
+    t2.timestamp_us = 1'100'000;
+    check(det3.feed(t2), "the text that stopped changing is read on its 3rd still frame");
+    check(det3.still_since_us() == 1'033'000, "and it is known since when it stood still (67 ms of waiting)");
+
     std::printf("%s\n", failures ? "FAILED" : "ALL OK");
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

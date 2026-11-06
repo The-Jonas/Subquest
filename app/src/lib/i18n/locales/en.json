@@ -234,7 +234,20 @@
     "cached": "From cache",
     "glossary": "Glossary: {terms}",
     "reread": "Read {n}× more",
-    "rereadHelp": "OCR read this line again (sometimes with a letter changed) and the same translation was used."
+    "rereadHelp": "OCR read this line again (sometimes with a letter changed) and the same translation was used.",
+    "latency": {
+      "title": "Time until the translation shows",
+      "slow": "Typical this session. 9 lines in 10: up to {ms}.",
+      "settle": "Waiting for the text to stop",
+      "read": "Reading (OCR)",
+      "first": "First translated words",
+      "rest": "Full translation: {ms} more",
+      "biggest": {
+        "settle": "Most of it is waiting for the text to stop changing on screen (typewriter effect, animations).",
+        "read": "Most of it is reading the text (OCR). Smaller areas read faster.",
+        "first": "Most of it is the translator answering. The quick translation (Google/DeepL) or a faster model shorten it."
+      }
+    }
   },
   "styles": {
     "title": "Game styles",

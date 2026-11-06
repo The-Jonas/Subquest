@@ -91,6 +91,7 @@ export interface OcrTextEvent {
   frameId: number;
   ocrMs: number; // recognition only
   totalMs: number; // from frame capture until the text was ready
+  settleMs?: number; // waited for the text to stop changing before reading it
   boxColor: string; // dialogue box color sampled from the game ("#rrggbb")
   textColor: string; // text color sampled from the game ("#rrggbb")
   frameWidth: number; // whole game window size: line rects are in these pixels
@@ -694,6 +695,7 @@ function fakeOcrFeed(handler: (e: OcrTextEvent) => void): UnlistenFn {
       frameId,
       ocrMs: 9 + Math.random() * 6,
       totalMs: 11 + Math.random() * 8,
+      settleMs: 66 + Math.random() * 120,
       boxColor: "#14181f",
       textColor: frameId % 3 === 2 ? "#5fb56b" : "#e9e4d6",
       frameWidth: 1460,

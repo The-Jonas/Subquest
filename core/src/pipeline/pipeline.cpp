@@ -82,11 +82,18 @@ void Pipeline::on_frame(Frame&& frame) {
     if (!running_) return;
     for (size_t i = 0; i < areas_.size(); ++i) {
         if (areas_[i].empty()) {
-            if (detectors_[i].feed(frame)) ocr_slots_.put(i, frame); // whole capture: a copy per area
+            if (detectors_[i].feed(frame)) {
+                Frame copy = frame; // whole capture: a copy per area
+                copy.still_since_us = detectors_[i].still_since_us();
+                ocr_slots_.put(i, std::move(copy));
+            }
             continue;
         }
         Frame piece;
-        if (crop(frame, areas_[i], piece) && detectors_[i].feed(piece)) ocr_slots_.put(i, std::move(piece));
+        if (crop(frame, areas_[i], piece) && detectors_[i].feed(piece)) {
+            piece.still_since_us = detectors_[i].still_since_us();
+            ocr_slots_.put(i, std::move(piece));
+        }
     }
 }
 
@@ -105,6 +112,8 @@ void Pipeline::ocr_loop() {
         const auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
                                 std::chrono::steady_clock::now().time_since_epoch()).count();
         result.total_ms = double(now_us - int64_t(frame.timestamp_us)) / 1000.0;
+        if (frame.still_since_us > 0 && frame.timestamp_us >= frame.still_since_us)
+            result.settle_ms = double(frame.timestamp_us - frame.still_since_us) / 1000.0;
         if (result.full_text == last_texts_[area]) continue; // nothing new (still the same, or still empty)
         last_texts_[area] = result.full_text;
         if (!result.full_text.empty()) {

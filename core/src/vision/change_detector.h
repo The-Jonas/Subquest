@@ -31,6 +31,7 @@ public:
 
     bool feed(const Frame& frame); // true => stable frame, different from the last fire: run OCR
     void reset();                  // forgets history (new session or region changed)
+    uint64_t still_since_us() const { return still_since_us_; } // capture time of the first frame of the current still stretch
 
     // Exposed for tests: mean absolute difference between two thumbnails (0..1).
     static float mean_abs_diff(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b);
@@ -45,6 +46,7 @@ private:
     std::vector<uint8_t> previous_;  // thumbnail of the previous frame
     std::vector<uint8_t> last_fired_; // thumbnail of the last frame that fired OCR
     uint32_t still_count_ = 0;       // still frames in a row
+    uint64_t still_since_us_ = 0;    // when the screen stopped changing (to measure the wait to settle)
 };
 
 } // namespace subquest

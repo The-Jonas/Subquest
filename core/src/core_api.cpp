@@ -104,7 +104,7 @@ extern "C" SQ_API SqStatus sq_start(const SqSessionConfig* config, SqTextCallbac
                                r.image ? r.image->bgra.data() : nullptr,
                                r.image ? r.image->origin_x : 0, r.image ? r.image->origin_y : 0,
                                r.image ? r.image->width : 0, r.image ? r.image->height : 0,
-                               r.image ? r.image->stride : 0};
+                               r.image ? r.image->stride : 0, r.settle_ms};
         callback(&event, user_data);
     });
     switch (result) {

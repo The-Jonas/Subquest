@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 11u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 12u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -95,6 +95,7 @@ typedef struct SqOcrEvent {
     int32_t image_width;
     int32_t image_height;
     int32_t image_stride;
+    double settle_ms;        /* waited for the text to stop changing before reading it */
 } SqOcrEvent;
 
 /* Called on the OCR thread when an area shows NEW text, and once with empty
