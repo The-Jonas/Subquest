@@ -7,6 +7,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(SUBQUEST_BUILD_TESTS "Build the core tests" ON)
 
+# Static C++ runtime: the DLL then runs on PCs without the Visual C++
+# Redistributable installed (players shouldn't need to install anything else).
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # --- Portable parts (build on any OS; this is what the tests use) ---
 add_library(subquest_portable STATIC
     src/vision/change_detector.cpp

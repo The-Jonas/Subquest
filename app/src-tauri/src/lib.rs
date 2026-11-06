@@ -29,6 +29,8 @@ use settings::{Settings, TranslatorSettings};
 use translate::similar;
 use translation::TranslationState;
 
+const MIN_WIDTH: f64 = 960.0; // same as minWidth in tauri.conf.json
+const MIN_HEIGHT: f64 = 640.0; // same as minHeight in tauri.conf.json
 const THUMBNAIL_WIDTH: i32 = 360; // game list pictures: enough to recognize a game, cheap to send
 
 /// Channel the preview reaches the UI through, as raw bytes (no JSON).
@@ -135,6 +137,20 @@ fn css_color(rgb: u32) -> String {
 /// Copies a C string into an owned String (lossy on invalid UTF-8).
 unsafe fn owned(text: *const c_char) -> String {
     CStr::from_ptr(text).to_string_lossy().into_owned()
+}
+
+/// Opens the main window big enough for the screen it is on: 80% of it,
+/// at most 1440 × 920 and never below the minimum size in tauri.conf.json.
+/// A fixed size is either cramped on big screens or too tall for laptops.
+fn fit_main_window(app: &AppHandle) {
+    let Some(main) = app.get_webview_window("main") else { return };
+    let Ok(Some(monitor)) = main.current_monitor() else { return };
+    let scale = monitor.scale_factor();
+    let screen = monitor.size().to_logical::<f64>(scale);
+    let width = (screen.width * 0.8).clamp(MIN_WIDTH, 1440.0);
+    let height = (screen.height * 0.8).clamp(MIN_HEIGHT, 920.0);
+    let _ = main.set_size(tauri::LogicalSize::new(width, height));
+    let _ = main.center();
 }
 
 /// Writes every panic (with where it happened) to `<app data>/crash.log`, so a
@@ -851,6 +867,7 @@ pub fn run() {
                 toolbar_wanted: AtomicBool::new(false),
                 active_profile: Mutex::new(None),
             });
+            fit_main_window(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

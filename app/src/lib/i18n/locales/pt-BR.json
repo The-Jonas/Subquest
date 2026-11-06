@@ -7,9 +7,10 @@
     "tour": "Tour guiado"
   },
   "core": {
-    "ok": "Núcleo pronto",
-    "missing": "Núcleo não encontrado",
-    "missingHelp": "Compile a pasta core (veja o README) para listar janelas e traduzir. A interface funciona mesmo assim."
+    "ok": "Leitura da tela pronta",
+    "okHelp": "A parte que captura a tela do jogo e lê o texto (subquest_core.dll) está funcionando.",
+    "missing": "Leitura da tela indisponível",
+    "missingHelp": "A parte que captura a tela do jogo e lê o texto (subquest_core.dll) não foi encontrada: sem ela não dá para listar jogos nem traduzir. Reinstale o Subquest. Se você está compilando o código, compile a pasta core (veja o README)."
   },
   "play": {
     "steps": {

@@ -1,7 +1,8 @@
 <!--
   RemoveButton — the "X" in the top corner of a card that deletes it.
   Deleting can't be undone, so the first click only asks ("Delete?") and the
-  second one confirms; moving the mouse away or clicking "No" calls it off.
+  second one confirms. "No" calls it off; so does leaving it alone for a few
+  seconds with the mouse away (just moving off it doesn't, that was annoying).
   The parent card needs `position: relative`.
 -->
 <script lang="ts">
@@ -9,8 +10,24 @@
 
   let { label, onconfirm }: { label: string; onconfirm: () => unknown } = $props();
 
+  const GIVE_UP_MS = 4000; // the question stays this long once the mouse leaves it
+
   let asking = $state(false);
   let busy = $state(false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  // Mouse away: the question waits a while before closing by itself.
+  function leave() {
+    clearTimeout(timer);
+    if (asking) timer = setTimeout(() => (asking = false), GIVE_UP_MS);
+  }
+
+  // Mouse back (or a click): the question stays.
+  function stay() {
+    clearTimeout(timer);
+  }
+
+  $effect(() => () => clearTimeout(timer));
 
   // Second click: really deletes.
   async function confirm() {
@@ -24,7 +41,7 @@
   }
 </script>
 
-<div class="remove" role="group" onmouseleave={() => (asking = false)}>
+<div class="remove" role="group" onmouseleave={leave} onmouseenter={stay}>
   {#if asking}
     <span class="ask">{t("remove.ask")}</span>
     <button class="yes" onclick={confirm} disabled={busy}>{t("remove.yes")}</button>

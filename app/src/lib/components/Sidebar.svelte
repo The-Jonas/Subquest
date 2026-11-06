@@ -1,4 +1,4 @@
-<!-- Sidebar — main navigation, the guided tour, language switch and core status. -->
+<!-- Sidebar — main navigation, the guided tour, language switch and whether the screen reader (core) loaded. -->
 <script lang="ts">
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
@@ -65,7 +65,8 @@
         {/each}
       </select>
     </label>
-    <p class="core" class:ok={app.core.loaded} title={app.core.loaded ? "" : t("core.missingHelp")}>
+    <!-- The screen reader (capture + OCR, the core DLL): is it there? -->
+    <p class="core" class:ok={app.core.loaded} title={app.core.loaded ? t("core.okHelp") : t("core.missingHelp")}>
       <span class="dot"></span>
       {app.core.loaded ? t("core.ok") : t("core.missing")}
     </p>
@@ -136,6 +137,12 @@
   }
   li button:hover {
     color: var(--ink-dim);
+  }
+  /* Keyboard focus: a quiet ring inside the item, not a box around the menu */
+  li button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+    border-radius: 6px;
   }
   li button.active {
     color: var(--ink);

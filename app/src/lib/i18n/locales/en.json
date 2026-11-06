@@ -7,9 +7,10 @@
     "tour": "Guided tour"
   },
   "core": {
-    "ok": "Core ready",
-    "missing": "Core not found",
-    "missingHelp": "Build the core folder (see the README) to list windows and translate. The interface works anyway."
+    "ok": "Screen reading ready",
+    "okHelp": "The part that captures the game's screen and reads its text (subquest_core.dll) is working.",
+    "missing": "Screen reading unavailable",
+    "missingHelp": "The part that captures the game's screen and reads its text (subquest_core.dll) wasn't found: without it, games can't be listed or translated. Reinstall Subquest. If you're building from source, build the core folder (see the README)."
   },
   "play": {
     "steps": {

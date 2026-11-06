@@ -13,17 +13,17 @@
     "windows": [
       {
         "title": "Subquest",
-        "width": 1000,
-        "height": 660,
-        "minWidth": 820,
-        "minHeight": 560,
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
         "center": true,
-        "backgroundColor": "#151A2E",
+        "backgroundColor": "#17191E",
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling"
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
     }
   },
   "bundle": {
@@ -38,6 +38,9 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "bin/subquest_core.dll": "subquest_core.dll"
+    }
   }
 }
