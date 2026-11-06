@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define SQ_API_VERSION 12u /* bump whenever the ABI changes */
+#define SQ_API_VERSION 13u /* bump whenever the ABI changes */
 
 typedef enum SqStatus {
     SQ_OK = 0,
@@ -96,6 +96,11 @@ typedef struct SqOcrEvent {
     int32_t image_height;
     int32_t image_stride;
     double settle_ms;        /* waited for the text to stop changing before reading it */
+    /* The area's picture with the text taken out (BGRA, clean_box.width * 4
+     * bytes per row), so the original lines can be hidden with the game's own
+     * background. NULL when there is none. Valid only during the callback. */
+    const uint8_t* clean_bgra;
+    SqRect clean_box;        /* where it goes, in window pixels */
 } SqOcrEvent;
 
 /* Called on the OCR thread when an area shows NEW text, and once with empty

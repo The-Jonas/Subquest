@@ -16,6 +16,7 @@ add_library(subquest_portable STATIC
     src/vision/change_detector.cpp
     src/vision/image_ops.cpp
     src/vision/palette.cpp
+    src/vision/inpaint.cpp
     src/ocr/line_cleanup.cpp
     src/pipeline/pipeline.cpp
 )
@@ -83,6 +84,10 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(line_cleanup_test tests/line_cleanup_test.cpp)
     target_link_libraries(line_cleanup_test PRIVATE subquest_portable)
     add_test(NAME line_cleanup COMMAND line_cleanup_test)
+
+    add_executable(inpaint_test tests/inpaint_test.cpp)
+    target_link_libraries(inpaint_test PRIVATE subquest_portable)
+    add_test(NAME inpaint COMMAND inpaint_test)
 
     add_executable(pipeline_test tests/pipeline_test.cpp)
     target_link_libraries(pipeline_test PRIVATE subquest_portable)

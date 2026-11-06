@@ -6,6 +6,7 @@
 
 #include "ocr/line_cleanup.h"
 #include "vision/image_ops.h"
+#include "vision/inpaint.h"
 #include "vision/palette.h"
 
 namespace subquest {
@@ -125,6 +126,16 @@ void Pipeline::ocr_loop() {
                 const TextColors c = sample_line_colors(frame, line.box);
                 line.background_rgb = c.background;
                 line.text_rgb = c.text;
+            }
+            // The picture without the text, so the overlay can hide the original
+            // with the game's own background instead of a patch of color.
+            CleanImage clean;
+            if (remove_text(frame, result.lines, !areas_[area].empty(), clean)) {
+                result.clean_rect = {clean.rect.x + frame.origin_x, clean.rect.y + frame.origin_y, clean.rect.width,
+                                     clean.rect.height};
+                result.clean = std::move(clean.bgra);
+            }
+            for (OcrLine& line : result.lines) {
                 line.box.x += frame.origin_x; // from the crop to the window
                 line.box.y += frame.origin_y;
                 for (OcrWord& word : line.words) {

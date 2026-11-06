@@ -125,6 +125,9 @@ int main() {
               "line boxes leave in window pixels (area origin added), without the stray mark");
         check(menu.lines[0].words.size() == 1 && menu.lines[0].words[0].box.x == 130,
               "word boxes too, so a word can be picked over the game");
+        check(menu.clean_rect.x == 100 && menu.clean_rect.width == 256 &&
+                  menu.clean.size() == size_t(256) * 64 * 4,
+              "the area's picture without the text comes along, in window pixels");
         check(menu.settle_ms > 60 && menu.settle_ms < 70,
               "the wait for the text to stand still is measured (3 still frames at 30 fps = 66 ms)");
 

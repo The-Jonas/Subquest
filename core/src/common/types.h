@@ -59,6 +59,8 @@ struct OcrResult {
     uint32_t background_rgb = 0x000000; // dialogue box color (0xRRGGBB), sampled from the frame
     uint32_t text_rgb = 0xFFFFFF;       // text color (0xRRGGBB), sampled from the letters
     const Frame* image = nullptr;       // the area's pixels; valid only during the text callback
+    Rect clean_rect;                    // where `clean` goes, in window pixels (empty = none)
+    std::vector<uint8_t> clean;         // the area's pixels without the text (BGRA, rows packed), see inpaint.h
 };
 
 } // namespace subquest

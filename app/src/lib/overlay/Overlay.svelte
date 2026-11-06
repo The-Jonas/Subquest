@@ -172,12 +172,29 @@
     };
   }
 
+  // The game's picture without the text, placed in overlay px. Covers show
+  // their piece of it: outside the letters it is the game's own pixels, so
+  // the original line disappears without a visible patch.
+  interface CleanPiece {
+    url: string;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  }
+  function cleanPiece(e: OcrTextEvent, view: { width: number; height: number }): CleanPiece | null {
+    if (!e.background || e.frameHeight <= 0) return null;
+    const scale = view.height / e.frameHeight; // same scale the layout uses
+    const [x, y, w, h] = e.background.rect;
+    return { url: e.background.url, left: x * scale, top: y * scale, width: w * scale, height: h * scale };
+  }
+
   // In-place patches of every area (recomputed on resize or when a font loads).
   // A lone line keeps its left edge in a dialogue box; loose labels on the
   // whole screen (menus, signs) stay centered on the original.
   const patches = $derived.by(() => {
     if (viewHeight <= 0 || !fontReady) return [];
-    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number }[] = [];
+    const out: { look: { font: string; caps: LetterCase }; patch: Patch; frame: number; bg: CleanPiece | null }[] = [];
     for (const [key, v] of Object.entries(views)) {
       const a = areaAt(Number(key));
       if (classic || !v.current || !v.translation) continue;
@@ -190,7 +207,8 @@
         a.mode !== "screen" && a.region
           ? layoutArea(v.current.lines, v.translation, a.region, frame, view, measureFor)
           : layout(pairLines(v.current.lines, v.translation), frame, view, measureFor, "center");
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId });
+      const bg = cleanPiece(v.current, view);
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style), patch, frame: v.current.frameId, bg });
     }
     return withoutOverlaps(out);
   });
@@ -488,16 +506,22 @@
       {/if}
     </div>
   {/if}
-  {#each patches as { look, patch: p }, i (i)}
-    <!-- The cover hides the original line with the color around it... -->
+  {#each patches as { look, patch: p, bg }, i (i)}
+    {@const pad = bg ? Math.max(3, p.fontPx * 0.3) : Math.max(2, p.fontPx * 0.18)}
+    <!-- The cover hides the original line: with the game's picture without the
+         text when there is one (no visible patch), else with the color around it -->
     <div
       class="cover"
+      class:clean={!!bg}
       style:left="{p.cover.left}px"
       style:top="{p.cover.top}px"
       style:width="{p.cover.width}px"
       style:height="{p.cover.height}px"
       style:--patch-bg={p.boxColor}
-      style:--pad="{Math.max(2, p.fontPx * 0.18)}px"
+      style:--pad="{pad}px"
+      style:background-image={bg ? `url(${bg.url})` : null}
+      style:background-size={bg ? `${bg.width}px ${bg.height}px` : null}
+      style:background-position={bg ? `${bg.left - (p.cover.left - pad)}px ${bg.top - (p.cover.top - pad)}px` : null}
     ></div>
     <!-- ...and the translation takes its place: same size, baseline and alignment -->
     <div
@@ -615,6 +639,14 @@
     background: var(--patch-bg, transparent);
     border-radius: var(--pad);
     filter: blur(calc(var(--pad) * 0.7));
+  }
+  /* With the clean picture: sharp edges, since around the letters it is the
+     game's own pixels; beyond the picture, the game shows through */
+  .cover.clean {
+    background-color: transparent;
+    background-repeat: no-repeat;
+    border-radius: 0;
+    filter: none;
   }
   .line {
     position: absolute;

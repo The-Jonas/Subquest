@@ -91,6 +91,36 @@ struct OcrTextEvent {
     lines: Vec<OcrLineEvent>,
     area: u32,            // index of the profile area this text came from
     same_as: Option<u64>, // this is that earlier line read again: keep its translation
+    background: Option<CleanBackground>, // the area without its text, to hide the original lines with
+}
+
+/// The game's picture without the text, for the overlay to put under the
+/// translations instead of a patch of color (see core/src/vision/inpaint.h).
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CleanBackground {
+    rect: [i32; 4], // [x, y, width, height] in window pixels
+    url: String,    // PNG as a data: URL
+}
+
+/// The event's clean picture as a PNG data URL (BGRA from the core -> RGBA).
+unsafe fn clean_background(e: &core_ffi::SqOcrEvent) -> Option<CleanBackground> {
+    use base64::Engine as _;
+    let r = e.clean_box;
+    if e.clean_bgra.is_null() || r.width <= 0 || r.height <= 0 {
+        return None;
+    }
+    let bgra = std::slice::from_raw_parts(e.clean_bgra, (r.width * r.height * 4) as usize);
+    let mut pixels = bgra.to_vec();
+    for px in pixels.chunks_exact_mut(4) {
+        px.swap(0, 2);
+        px[3] = 255; // a window capture's alpha means nothing: the picture is opaque
+    }
+    let png = styles::Rgba { pixels, width: r.width, height: r.height }.png()?;
+    Some(CleanBackground {
+        rect: [r.x, r.y, r.width, r.height],
+        url: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)),
+    })
 }
 
 /// One recognized line with its place and colors, for drawing its translation in place.
@@ -389,6 +419,8 @@ unsafe fn handle_ocr_text(event: *const core_ffi::SqOcrEvent, user: *mut c_void)
             lines,
             area: e.area_index,
             same_as,
+            // Only for new text: a re-reading keeps the picture of the line it repeats.
+            background: if meaningful && same_as.is_none() { clean_background(e) } else { None },
         },
     );
     if let Some(plan) = plan {

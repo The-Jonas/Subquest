@@ -99,6 +99,13 @@ export interface OcrTextEvent {
   lines: OcrLine[]; // empty (with empty text) when the text left the screen; rects in window pixels
   area: number; // index of the profile area this text came from
   sameAs?: number | null; // this is that earlier line read again: keep its translation
+  background?: CleanBackground | null; // the area without its text, to hide the original lines with
+}
+
+// The game's picture without the text (see core/src/vision/inpaint.h).
+export interface CleanBackground {
+  rect: Region; // [x, y, width, height] in window pixels
+  url: string; // PNG data URL
 }
 
 // One recognized line, with its place and its own colors.
