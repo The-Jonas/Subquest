@@ -46,7 +46,9 @@
       "name": "Nome da área",
       "namePlaceholder": "Ex.: Diálogo, Letra da música, Nomes",
       "remove": "Remover área",
-      "unmarked": "\"{name}\" ainda não tem retângulo: marque na prévia ou remova a área."
+      "unmarked": "\"{name}\" ainda não tem retângulo: marque na prévia ou remova a área.",
+      "editHint": "Arraste dentro para mover, pelos quadradinhos para mudar o tamanho, ou fora para marcar de novo.",
+      "pick": "Editar esta área"
     },
     "start": {
       "question": "Tudo pronto.",

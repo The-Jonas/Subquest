@@ -1,8 +1,10 @@
 <!--
   GamePreview — live thumbnail of the game window.
   Starts capture on mount and stops it on unmount (or when the game changes).
-  With `selectable`, dragging over the image marks the dialogue area; the
-  result goes into `region`, in real capture pixels (not preview pixels).
+  With `selectable`, the area works like the in-game editor: drag inside it to
+  move it, drag a handle to resize it, or drag anywhere else to mark it again.
+  The result goes into `region`, in real capture pixels (not preview pixels).
+  Clicking another area's outline asks to switch to it (`onpick`).
 -->
 <script lang="ts">
   import { startPreview, errorKind, type PreviewFrame, type Region } from "../api";
@@ -14,13 +16,19 @@
     region = $bindable(null),
     label = "",
     others = [],
+    onpick,
   }: {
     windowHandle: number;
     selectable?: boolean;
     region?: Region | null;
     label?: string; // number shown on the area being marked
     others?: { region: Region | null; label: string }[]; // the game's other areas, shown dimmed
+    onpick?: (label: string) => void; // another area's outline was clicked
   } = $props();
+
+  // Resize handles: corners and edge midpoints, named by compass direction.
+  const HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+  type Handle = (typeof HANDLES)[number];
 
   const MAX_WIDTH = 1024; // preview width: big enough to mark the area precisely, light enough for 8 fps
   const FULL_WIDTH = 8192; // asks for frames at the window's real size (never upscaled)
@@ -36,7 +44,10 @@
   let error = $state<string | null>(null);
   let sourceWidth = $state(0);
   let sourceHeight = $state(0);
-  let dragStart: [number, number] | null = null;
+  // Current drag: what it does, where it started (capture pixels) and the area before it.
+  let drag = $state.raw<{ kind: "new" | "move" | "resize"; handle?: Handle; from: [number, number]; start: Region | null } | null>(
+    null,
+  );
   let draft = $state<Region | null>(null);
   let width = $state(MAX_WIDTH); // preview width asked from the core
   let latest: PreviewFrame | null = null;
@@ -134,26 +145,62 @@
     return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])];
   }
 
-  // Starts a drag; pointer capture keeps the events coming even outside the image.
+  // Starts a drag. What was pressed decides the kind: a handle resizes, the area
+  // moves, anything else draws a new one. Pointer capture keeps the events
+  // coming even outside the image.
   function onDown(e: PointerEvent) {
     if (!selectable || !live || e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    const handle = target.dataset.handle as Handle | undefined;
+    const kind = handle && region ? "resize" : region && target.closest(".area.current") ? "move" : "new";
     stage!.setPointerCapture(e.pointerId);
-    dragStart = toSource(e);
-    draft = [...dragStart, 0, 0];
+    const from = toSource(e);
+    drag = { kind, handle, from, start: region ? ([...region] as Region) : null };
+    draft = kind === "new" ? [...from, 0, 0] : drag.start;
   }
 
-  // Updates the rectangle while dragging.
+  // Updates the rectangle while dragging, always kept inside the image.
   function onMove(e: PointerEvent) {
-    if (!dragStart) return;
-    draft = rectFrom(dragStart, toSource(e));
+    if (!drag) return;
+    const now = toSource(e);
+    if (drag.kind === "new" || !drag.start) {
+      draft = rectFrom(drag.from, now);
+      return;
+    }
+    const dx = now[0] - drag.from[0];
+    const dy = now[1] - drag.from[1];
+    let [x, y, w, h] = drag.start;
+    if (drag.kind === "move") {
+      x = Math.min(Math.max(0, x + dx), sourceWidth - w);
+      y = Math.min(Math.max(0, y + dy), sourceHeight - h);
+    } else {
+      const handle = drag.handle!;
+      const right = x + w;
+      const bottom = y + h;
+      // Each dragged edge follows the pointer; the opposite edge stays put.
+      if (handle.includes("w")) x = Math.min(Math.max(0, x + dx), right - MIN_SIZE);
+      if (handle.includes("e")) w = Math.max(MIN_SIZE, Math.min(sourceWidth, right + dx) - x);
+      else w = right - x;
+      if (handle.includes("n")) y = Math.min(Math.max(0, y + dy), bottom - MIN_SIZE);
+      if (handle.includes("s")) h = Math.max(MIN_SIZE, Math.min(sourceHeight, bottom + dy) - y);
+      else h = bottom - y;
+    }
+    draft = [x, y, w, h];
   }
 
-  // Ends the drag; keeps the rectangle only if it's big enough to be intentional.
+  // Ends the drag; a new rectangle is kept only if it's big enough to be intentional.
   function onUp() {
-    if (!dragStart) return;
+    if (!drag) return;
     if (draft && draft[2] >= MIN_SIZE && draft[3] >= MIN_SIZE) region = draft;
-    dragStart = null;
+    drag = null;
     draft = null;
+  }
+
+  // Clicking another area's outline (outside the current one) switches to it.
+  function pick(e: PointerEvent, label: string) {
+    if (!onpick || e.button !== 0) return;
+    e.stopPropagation(); // not the start of a new rectangle
+    onpick(label);
   }
 
   // Rectangle edges as percentages, so everything follows the canvas at any size.
@@ -182,6 +229,7 @@
   <div
     class="stage"
     class:selectable={selectable && live}
+    class:dragging={!!drag}
     bind:this={stage}
     onpointerdown={onDown}
     onpointermove={onMove}
@@ -192,13 +240,27 @@
     <canvas bind:this={canvas} aria-label={t("play.area.previewLabel")}></canvas>
     {#if selectable && shown && sourceWidth > 0}
       <div class="shade" style={shadeStyle(shown)}></div>
-      <div class="area" style={boxStyle(shown)}>{#if label}<span>{label}</span>{/if}</div>
+      <div class="area current" style={boxStyle(shown)}>
+        {#if label}<span class="tag">{label}</span>{/if}
+        {#each HANDLES as handle (handle)}
+          <i class="handle {handle}" data-handle={handle}></i>
+        {/each}
+      </div>
     {/if}
     <!-- Drawn over the shade: the other areas stay readable while this one is marked -->
     {#if sourceWidth > 0}
       {#each others as o (o.label)}
         {#if o.region}
-          <div class="area other" style={boxStyle(o.region)}><span>{o.label}</span></div>
+          <div
+            class="area other"
+            class:pickable={!!onpick}
+            style={boxStyle(o.region)}
+            onpointerdown={(e) => pick(e, o.label)}
+            title={onpick ? t("play.area.pick") : undefined}
+            role="presentation"
+          >
+            <span class="tag">{o.label}</span>
+          </div>
         {/if}
       {/each}
     {/if}
@@ -267,8 +329,36 @@
     border-radius: 3px;
     pointer-events: none;
   }
+  /* The area being edited: grab it to move it (handles resize it) */
+  .area.current {
+    pointer-events: auto;
+    cursor: move;
+  }
+  .stage.dragging,
+  .stage.dragging * {
+    cursor: grabbing;
+  }
+  /* Small gold squares on the corners and edge midpoints */
+  .handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    margin: -6px 0 0 -6px;
+    border: 1px solid var(--gold-ink);
+    border-radius: 2px;
+    background: var(--gold);
+  }
+  .handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+  .handle.n { left: 50%; top: 0; cursor: ns-resize; }
+  .handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
+  .handle.e { left: 100%; top: 50%; cursor: ew-resize; }
+  .handle.se { left: 100%; top: 100%; cursor: nwse-resize; }
+  .handle.s { left: 50%; top: 100%; cursor: ns-resize; }
+  .handle.sw { left: 0; top: 100%; cursor: nesw-resize; }
+  .handle.w { left: 0; top: 50%; cursor: ew-resize; }
+
   /* Number tag in the corner, matching the area tabs above the preview */
-  .area span {
+  .area .tag {
     position: absolute;
     top: -2px;
     left: -2px;
@@ -285,7 +375,15 @@
   .area.other {
     border: 1px dashed rgb(234 228 211 / 0.55);
   }
-  .area.other span {
+  /* Another area can be clicked to edit it instead */
+  .area.other.pickable {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .area.other.pickable:hover {
+    border-color: var(--ink);
+  }
+  .area.other .tag {
     background: rgb(234 228 211 / 0.55);
   }
 

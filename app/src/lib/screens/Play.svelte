@@ -268,6 +268,7 @@
           selectable={!wholeScreen}
           bind:region={areas[selected].region}
           label={String(selected + 1)}
+          onpick={(label) => (selected = Number(label) - 1)}
           others={areas
             .map((a, i) => ({ region: a.mode === "screen" ? null : a.region, label: String(i + 1) }))
             .filter((_, i) => i !== selected)}
@@ -277,7 +278,10 @@
         {#if wholeScreen}
           <p>{t("play.area.wholeWindow")}</p>
         {:else if area.region}
-          <p>{t("play.area.marked", { width: String(area.region[2]), height: String(area.region[3]) })}</p>
+          <p>
+            {t("play.area.marked", { width: String(area.region[2]), height: String(area.region[3]) })}
+            <span class="edit-hint">{t("play.area.editHint")}</span>
+          </p>
           <button class="btn btn-ghost" onclick={() => (areas[selected].region = null)}>{t("play.area.clear")}</button>
         {:else}
           <p>{t("play.area.drag")}</p>
@@ -472,6 +476,12 @@
     margin: 6px 0 14px;
     color: var(--ink-dim);
     font-size: var(--text-sm);
+  }
+  .edit-hint {
+    color: var(--ink-faint);
+  }
+  .edit-hint::before {
+    content: " · ";
   }
   .area-hint .btn {
     padding: 6px 10px;

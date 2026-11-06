@@ -46,7 +46,9 @@
       "name": "Area name",
       "namePlaceholder": "E.g. Dialogue, Song lyrics, Names",
       "remove": "Remove area",
-      "unmarked": "\"{name}\" has no rectangle yet: mark it on the preview or remove the area."
+      "unmarked": "\"{name}\" has no rectangle yet: mark it on the preview or remove the area.",
+      "editHint": "Drag inside to move, the small squares to resize, or outside to mark it again.",
+      "pick": "Edit this area"
     },
     "start": {
       "question": "All set.",

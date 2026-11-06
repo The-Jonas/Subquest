@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { keyHint, defaultShortcuts, type Shortcuts } from "../shortcuts";
   import { beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
@@ -28,6 +29,38 @@
     edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
     close: "M5.5 5.5l9 9M14.5 5.5l-9 9",
   };
+
+  // Moving the bar by its handle. Done by hand instead of the system drag
+  // (data-tauri-drag-region): this window never takes the focus, and the
+  // system move loop doesn't start for such windows.
+  let moving = $state.raw<{ x: number; y: number; left: number; top: number } | null>(null);
+  let frame = 0; // pending animation frame: one move per screen refresh at most
+
+  // Grabs the handle: remembers where the pointer and the window were.
+  async function grab(e: PointerEvent) {
+    if (!inTauri || e.button !== 0) return;
+    const handle = e.currentTarget as HTMLElement;
+    handle.setPointerCapture(e.pointerId); // keeps the events coming outside the bar
+    const start = { x: e.screenX, y: e.screenY };
+    const at = await getCurrentWindow().outerPosition();
+    moving = { ...start, left: at.x, top: at.y };
+  }
+
+  // Follows the pointer; screen coordinates are CSS pixels, the window wants physical ones.
+  function drag(e: PointerEvent) {
+    if (!moving) return;
+    const m = moving;
+    const scale = window.devicePixelRatio || 1;
+    const x = Math.round(m.left + (e.screenX - m.x) * scale);
+    const y = Math.round(m.top + (e.screenY - m.y) * scale);
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => getCurrentWindow().setPosition(new PhysicalPosition(x, y)));
+  }
+
+  // Lets go of the handle.
+  function drop() {
+    moving = null;
+  }
 
   // Pause or resume reading the game.
   async function pause() {
@@ -74,12 +107,16 @@
     <!-- Handle: the only part that moves the window -->
     <div
       class="grip"
-      data-tauri-drag-region
+      class:moving={!!moving}
+      onpointerdown={grab}
+      onpointermove={drag}
+      onpointerup={drop}
+      onpointercancel={drop}
       role="presentation"
       onmouseenter={() => (tip = t("toolbar.move"))}
       onmouseleave={() => (tip = "")}
     >
-      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" data-tauri-drag-region>
+      <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true">
         <rect x="3" y="9" width="26" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2.4" />
         <rect x="6" y="5.5" width="11" height="6" rx="2" fill="var(--gold)" />
       </svg>
@@ -145,6 +182,13 @@
     height: 100%;
     cursor: grab;
     color: var(--ink-dim);
+    touch-action: none;
+  }
+  .grip.moving {
+    cursor: grabbing;
+  }
+  .grip svg {
+    pointer-events: none; /* the handle itself gets the pointer, not the drawing */
   }
   button {
     display: grid;

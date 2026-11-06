@@ -46,7 +46,9 @@
       "name": "Nombre del área",
       "namePlaceholder": "Ej.: Diálogo, Letra de la canción, Nombres",
       "remove": "Quitar área",
-      "unmarked": "\"{name}\" todavía no tiene rectángulo: márcalo en la vista previa o quita el área."
+      "unmarked": "\"{name}\" todavía no tiene rectángulo: márcalo en la vista previa o quita el área.",
+      "editHint": "Arrastra dentro para mover, los cuadraditos para cambiar el tamaño, o fuera para marcarla de nuevo.",
+      "pick": "Editar esta área"
     },
     "start": {
       "question": "Todo listo.",
