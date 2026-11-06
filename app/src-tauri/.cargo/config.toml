@@ -1,0 +1,4 @@
+# Static C runtime for Windows builds: Subquest.exe then runs on PCs without
+# the Visual C++ Redistributable (same choice as the core DLL, see core/CMakeLists.txt).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
