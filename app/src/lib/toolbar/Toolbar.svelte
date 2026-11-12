@@ -39,7 +39,7 @@
   // The guide: one step per part of the bar, in its order (texts in toolbar.guide.<key>).
   const GUIDE = ["intro", "move", "area", "edit", "style", "term", "log", "pause", "hide", "open", "close"] as const;
   type Part = (typeof GUIDE)[number];
-  const WIDTH = 440; // the window: the bar's width (see ingame.rs)
+  const WIDTH = 480; // the window: the bar's width (see ingame.rs)
   const BAR_HEIGHT = 84; // the bar and the label under it
   const GUIDE_HEIGHT = 250; // the bar and the guide's box under it
   const LOG_HEIGHT = 380; // the bar and the list of recent lines under it

@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, pairScreen, splitKeycap, splitParagraphs, shareParts, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, pairScreen, splitKeycap, splitParagraphs, shareParts, loneAlign, union, wrap, effectShadow, withoutOverlaps, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -78,6 +78,37 @@ describe("layout: neighbours on the same row", () => {
     const [a] = layout(rows, screen, screen, () => measure, "left");
     const width = measure("Nome completo do personagem principal", a.fontPx).width;
     expect(a.textLeft + width).toBeLessThanOrEqual(400);
+  });
+});
+
+describe("withoutOverlaps (two areas reading the same text)", () => {
+  const patch = (text: string) => ({
+    text,
+    style: null,
+    cover: { left: 80, top: 1000, width: 700, height: 24 },
+    textLeft: 80,
+    textTop: 1000,
+    lineHeight: 24,
+    fontPx: 20,
+    boxColor: "#000",
+    textColor: "#fff",
+  });
+
+  it("keeps the area that holds the whole line, even when the other reading is newer", () => {
+    const whole = { patch: patch("E lembre-se; como um agente da ICA, você é a pessoa mais perigosa"), frame: 7, size: 80 };
+    const piece = { patch: patch("E lembre-se; como um A"), frame: 9, size: 22 };
+    expect(withoutOverlaps([piece, whole])).toEqual([whole]);
+  });
+
+  it("keeps the newest of two readings with the same text", () => {
+    const older = { patch: patch("a"), frame: 3, size: 10 };
+    const newer = { patch: patch("a"), frame: 4, size: 10 };
+    expect(withoutOverlaps([older, newer])).toEqual([newer]);
+  });
+
+  it("keeps both when they do not overlap", () => {
+    const apart = { patch: { ...patch("b"), cover: { left: 80, top: 100, width: 100, height: 24 } }, frame: 5, size: 5 };
+    expect(withoutOverlaps([apart, { patch: patch("a"), frame: 4, size: 10 }])).toHaveLength(2);
   });
 });
 

@@ -633,6 +633,29 @@ export function layoutArea(
   return patches;
 }
 
+// Two areas can read the same text (a marked box inside a larger one) and then
+// two translations would be drawn on top of each other. Where patches of
+// different readings overlap, one reading stays: the one with the most text
+// (the area that holds the whole line, not a piece of it), the newest when
+// they tie. `size` = characters the reading holds.
+export function withoutOverlaps<T extends { patch: Patch; frame: number; size: number }>(items: T[]): T[] {
+  const kept: T[] = [];
+  for (const item of [...items].sort((a, b) => b.size - a.size || b.frame - a.frame)) {
+    const c = item.patch.cover;
+    // Only against another reading's patches: one reading's own paragraphs
+    // may touch (a paragraph pushed down keeps its cover over its old place).
+    const clash = kept.some(({ patch: { cover: k }, frame }) => {
+      if (frame === item.frame) return false;
+      const w = Math.min(c.left + c.width, k.left + k.width) - Math.max(c.left, k.left);
+      const h = Math.min(c.top + c.height, k.top + k.height) - Math.max(c.top, k.top);
+      const smaller = Math.min(c.width * c.height, k.width * k.height);
+      return w > 0 && h > 0 && smaller > 0 && (w * h) / smaller > 0.3;
+    });
+    if (!clash) kept.push(item);
+  }
+  return kept;
+}
+
 // The CSS text-shadow that draws a game's effect around translated letters,
 // `scale` = CSS px per window pixel. An outline 1 px wide is crisp (eight
 // copies around the letters); wider ones are the soft halos games use, drawn

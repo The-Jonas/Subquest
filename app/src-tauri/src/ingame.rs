@@ -215,7 +215,7 @@ pub fn on_session_end(app: &AppHandle) {
 fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Result<(), AppError> {
     let toolbar = WebviewWindowBuilder::new(app, TOOLBAR, WebviewUrl::App("toolbar.html".into()))
         .title("Subquest")
-        .inner_size(440.0, 84.0) // the bar, plus room below it for the button labels (its guide makes it taller)
+        .inner_size(480.0, 84.0) // the bar, plus room below it for the button labels (its guide makes it taller)
         .transparent(true)
         .decorations(false)
         .shadow(false)
@@ -228,7 +228,7 @@ fn create_toolbar(app: &AppHandle, game_bounds: Option<(i32, i32, i32)>) -> Resu
         .build()
         .map_err(|e| AppError::other(format!("could not create the toolbar: {e}")))?;
     if let Some((x, y, width)) = game_bounds {
-        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(440);
+        let size = toolbar.outer_size().map(|s| s.width as i32).unwrap_or(480);
         let _ = toolbar.set_position(tauri::PhysicalPosition::new(x + width - size - 24, y + 24));
     }
     Ok(())

@@ -45,7 +45,7 @@
   import TermPicker from "./TermPicker.svelte";
   import IconText from "../components/IconText.svelte";
   import { extentOf, forMeasure, withAllIcons } from "../text/icons";
-  import { effectShadow, layout, layoutArea, pairScreen, type Metrics, type Patch } from "./layout";
+  import { effectShadow, layout, layoutArea, pairScreen, withoutOverlaps, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
   const AUTO_FALLBACK = 24; // automatic size before any line was measured
@@ -226,6 +226,7 @@
       look: Look;
       patch: Patch;
       frame: number;
+      size: number;
       bg: CleanPiece | null;
       scale: number;
       icons: IconPicture[];
@@ -257,7 +258,7 @@
           : layout(pairScreen(lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
-      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, bg, scale, icons: pictures, colors: v.current.highlights ?? [] });
+      for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, size: v.current.text.length, bg, scale, icons: pictures, colors: v.current.highlights ?? [] });
     }
     return withoutOverlaps(out);
   });
@@ -281,27 +282,6 @@
     }
     return out;
   });
-
-  // Two areas can read the same text (a marked box inside a whole-screen area),
-  // and then two translations would be drawn on top of each other. Where
-  // patches overlap, only the newest reading stays.
-  function withoutOverlaps<T extends { patch: Patch; frame: number }>(items: T[]): T[] {
-    const kept: T[] = [];
-    for (const item of [...items].sort((a, b) => b.frame - a.frame)) {
-      const c = item.patch.cover;
-      // Only against another reading's patches: one reading's own paragraphs
-      // may touch (a paragraph pushed down keeps its cover over its old place).
-      const clash = kept.some(({ patch: { cover: k }, frame }) => {
-        if (frame === item.frame) return false;
-        const w = Math.min(c.left + c.width, k.left + k.width) - Math.max(c.left, k.left);
-        const h = Math.min(c.top + c.height, k.top + k.height) - Math.max(c.top, k.top);
-        const smaller = Math.min(c.width * c.height, k.width * k.height);
-        return w > 0 && h > 0 && smaller > 0 && (w * h) / smaller > 0.3;
-      });
-      if (!clash) kept.push(item);
-    }
-    return kept;
-  }
 
   // Classic boxes: over their area, or a band near the bottom for the whole window.
   const boxes = $derived.by(() => {
