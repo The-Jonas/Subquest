@@ -2,9 +2,11 @@
   <img src="app/src-tauri/app-icon.png" width="96" alt="Ícone do Subquest" />
 </p>
 
-# Subquest: tradutor de jogos em tempo real
+# Subquest: traduza qualquer coisa da sua tela, em tempo real
 
-Jogue qualquer jogo no seu idioma. O Subquest lê os diálogos da tela, traduz com IA que entende o contexto e mostra a tradução por cima do jogo, sem roubar o foco.
+O Subquest lê o texto de qualquer janela, traduz com IA que entende o contexto e mostra a tradução por cima do original, sem roubar o foco. Programas, vídeos, documentos, instaladores, tudo que mostra texto.
+
+**E nos jogos ele vai além:** a tradução é desenhada *no lugar do original*, com a fonte, as cores, as maiúsculas e o espaçamento do próprio jogo, como faria um patch de tradução.
 
 > 🇺🇸 [Read in English](README.md)
 
@@ -12,16 +14,32 @@ Jogue qualquer jogo no seu idioma. O Subquest lê os diálogos da tela, traduz c
   <img src="docs/screenshots/demo.webp" width="820" alt="Uma dica de The Battle for Wesnoth: o texto em inglês e depois a tradução do Subquest desenhada no lugar dele, na caixa e na fonte do próprio jogo" />
 </p>
 
-**Situação:** primeira versão (v0.1.0), só para Windows. Veja o [roteiro](#roteiro) para os próximos passos.
+**Situação:** v0.2.0, só para Windows. A v0.3.0 está em andamento: veja o [roteiro](#roteiro).
 
 ## Instalar
 
 1. Baixe o `Subquest_x.y.z_x64-setup.exe` na página de [Releases](https://github.com/The-Jonas/Subquest/releases) e execute. O Windows pode avisar que o editor é desconhecido (o instalador ainda não é assinado): clique em **Mais informações → Executar assim mesmo**.
 2. Abra o Subquest. Um tour guiado mostra cada tela; dá para abrir de novo quando quiser pelo menu.
-3. Em **Ajustes → Tradução**, cole uma chave de API do tradutor. O [Google AI Studio](https://aistudio.google.com/apikey) dá uma chave grátis do Gemini; ela fica só no seu computador.
-4. Deixe o jogo **em janela ou janela sem borda** (a tela cheia exclusiva bloqueia a captura), escolha ele em **Jogar**, marque onde os textos aparecem e comece.
+3. Em **Ajustes → Tradução**, cole uma chave de API do tradutor. O [Google AI Studio](https://aistudio.google.com/apikey) dá uma chave grátis do Gemini; ela fica só no seu computador. Um modelo local (Ollama, LM Studio) também funciona, sem chave.
+4. Escolha a janela em **Traduzir**, marque onde os textos aparecem e comece. Para jogos, deixe-os **em janela ou janela sem borda** (a tela cheia exclusiva bloqueia a captura).
 
-Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Jogos em japonês, chinês ou coreano também precisam do pacote desse idioma instalado no Windows (Configurações → Hora e idioma → Idioma).
+Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Textos em japonês, chinês ou coreano também precisam do pacote desse idioma instalado no Windows (Configurações → Hora e idioma → Idioma).
+
+## No que ele é bom
+
+| | |
+|---|---|
+| **Qualquer janela** | Programas, navegadores, players de vídeo, instaladores, mensagens de erro, documentos escaneados: se mostra texto, dá para escolher. Os tradutores de navegador só funcionam dentro da página; o Subquest trabalha na própria janela. |
+| **Jogos, bem feitos** | O texto original é coberto com o fundo do próprio jogo, e a tradução ocupa o lugar dele com a mesma fonte, caixa, contorno, cores e espaçamento, ícones e botões inclusos. |
+| **Contexto, não falas isoladas** | O modelo recebe as falas anteriores, corrige erros de OCR e segue um glossário que você monta para cada jogo ou programa, então os nomes saem sempre iguais. |
+| **Rápido** | Captura pela GPU, OCR só quando o texto muda *e* para de mudar, quadros velhos descartados em vez de enfileirados, e um tradutor rápido que tapa o buraco enquanto o modelo responde. |
+| **Privado** | A captura e o OCR rodam no seu PC, e a chave fica no seu computador. Só o texto vai para o tradutor que você escolheu, e com um modelo local nada sai do PC. |
+
+### Fique ciente
+
+- **Marcar as áreas onde o texto aparece dá resultados bem melhores** do que ler a janela inteira. A leitura da janela inteira é **experimental**: em telas cheias, as traduções podem cair fora do lugar, ficar cortadas ou se sobrepor.
+- A qualidade do desenho no lugar foi ajustada em jogos (testada com mais força no Hades II e no Hitman); os outros tipos de conteúdo ainda estão em teste.
+- O tradutor pode escolher os próprios nomes para nomes próprios até você adicioná-los ao glossário.
 
 ## Como é
 
@@ -30,25 +48,32 @@ Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Jogos em japon�
 | | |
 |---|---|
 | ![O menu principal do Wesnoth todo traduzido: a caixa de dica e os botões em português](docs/screenshots/in-game.jpg) | ![Antes e depois: a mesma dica em inglês e em português, na mesma caixa](docs/screenshots/before-after.jpg) |
-| **No jogo.** A dica e o menu traduzidos no lugar onde estavam. | **Antes e depois.** A tradução fica dentro da caixa, no tamanho e no espaçamento do jogo. |
-| ![A tela Jogar durante a sessão: cada fala em português com o original em inglês e o tempo de cada etapa](docs/screenshots/play-feed.jpg) | ![Marcando as áreas sobre a prévia ao vivo do jogo](docs/screenshots/areas.jpg) |
+| **No lugar.** A dica e o menu traduzidos onde estavam. | **Antes e depois.** A tradução fica dentro da caixa, no tamanho e no espaçamento do original. |
+| ![A tela Traduzir durante a sessão: cada fala em português com o original em inglês e o tempo de cada etapa](docs/screenshots/play-feed.jpg) | ![Marcando as áreas sobre a prévia ao vivo do jogo](docs/screenshots/areas.jpg) |
 | **Acompanhe as falas:** tradução, original e quanto tempo cada etapa levou. | **Marque as áreas** onde o texto aparece: mova, redimensione, renomeie. |
-| ![A aba Jogos: áreas e um estilo de texto com a fonte dele](docs/screenshots/games-tab.jpg) | ![Ajustes, Aparência: quatro temas de cores e como a tradução é desenhada](docs/screenshots/themes.jpg) |
-| **Jogos:** áreas e estilos (um print do texto do jogo com a fonte que combina com ele). | **Temas** e a escolha entre desenhar no lugar ou legenda clássica. |
+| ![A aba Programas: áreas e um estilo de texto com a fonte dele](docs/screenshots/games-tab.jpg) | ![Ajustes, Aparência: quatro temas de cores e como a tradução é desenhada](docs/screenshots/themes.jpg) |
+| **Programas:** áreas e estilos (um print do texto original com a fonte que combina com ele). | **Temas** e a escolha entre desenhar no lugar ou legenda clássica. |
 
-A barrinha no jogo (atalho Ctrl+Shift+B) marca áreas, tira prints de estilo, pausa e esconde a tradução sem sair do jogo:
+A barrinha (atalho Ctrl+Shift+B) marca áreas, tira prints de estilo, escolhe termos do glossário, pausa e esconde a tradução sem sair da janela:
 
-<p align="center"><img src="docs/screenshots/toolbar-bar.jpg" width="404" alt="A barrinha do Subquest no jogo, com seus botões" /></p>
+<p align="center"><img src="docs/screenshots/toolbar-bar.jpg" width="404" alt="A barrinha do Subquest, com seus botões" /></p>
 
-## Por que mais um tradutor?
+| Atalho | Faz |
+|---|---|
+| Ctrl+Shift+B | Mostrar ou esconder a barra |
+| Ctrl+Shift+A | Marcar uma área |
+| Ctrl+Shift+E | Editar as áreas |
+| Ctrl+Shift+S | Tirar um print de estilo |
+| Ctrl+Shift+G | Escolher um termo do glossário sobre a tela |
+| Ctrl+Shift+T | Pausar ou retomar |
+| Ctrl+Shift+H | Esconder ou mostrar a tradução |
+| Ctrl+Shift+M | Levar o mouse e o foco para a barra, e devolver à janela |
 
-As ferramentas que existem funcionam, mas costumam ser lentas, traduzem cada fala isolada e enchem o usuário de opções. O Subquest foca em três coisas:
+Todos podem ser trocados na tela de Atalhos.
 
-- **Velocidade.** Captura da janela pela GPU, OCR só quando o texto muda *e* para de mudar, e um pipeline que descarta quadros velhos em vez de enfileirá-los.
-- **Traduções melhores.** O modelo de linguagem recebe as falas anteriores e é instruído a corrigir erros de OCR; um tradutor rápido tapa o buraco enquanto ele responde.
-- **Interface limpa.** Três passos para começar: escolher o jogo, marcar a área das falas e começar.
+## Arquitetura
 
-A arquitetura completa, com o diagrama das camadas, está no [README em inglês](README.md#architecture).
+O diagrama das camadas e as ideias-chave estão no [README em inglês](README.md#architecture). Em resumo: o núcleo em C++ (`core/`) captura a janela e lê o texto, o app em Rust (`app/src-tauri/`) traduz e guarda perfis, glossário e ajustes, e a interface em Svelte (`app/src/`) desenha a tradução por cima da janela.
 
 ## Compilar o código (Windows)
 
@@ -84,19 +109,22 @@ O instalador fica em `app/src-tauri/target/release/bundle/nsis/`. Ele leva a DLL
 
 ## Roteiro
 
-**Pronto na v0.1.0:** captura da janela, OCR, duas camadas de tradução (uma rápida primeiro, o modelo de linguagem substitui), tradução desenhada no lugar com as fontes do próprio jogo (estilos de texto), áreas marcadas e modo tela inteira, a barrinha e os atalhos, histórico, tour guiado, temas e o instalador.
+**Pronto até agora (v0.1.0 e v0.2.0):** captura da janela, OCR, duas camadas de tradução (uma rápida primeiro, o modelo de linguagem substitui), tradução desenhada no lugar com a fonte, as maiúsculas, as cores e os efeitos do original, ícones mantidos no lugar, texto removido com o fundo real, áreas marcadas e modo janela inteira, glossário por jogo, perfis com versão e migração, OCR trocável, a barrinha e os atalhos, histórico, tour guiado, temas e o instalador.
 
-Daqui para frente, o essencial primeiro: o que todo o resto usa, para nunca precisar ser refeito.
+**Próximo, v0.3.0: o Subquest para tudo que aparece na tela.** Os jogos continuam sendo a vitrine; estes passos abrem a porta para o resto:
 
-1. **Base.** Testes automáticos do posicionamento da tradução e do detector de mudança; perfis de jogo com versão e migração, para atualizações nunca perderem o que o jogador configurou; OCR trocável.
-2. **Qualidade da tradução.** Glossário por jogo (nomes sempre traduzidos do mesmo jeito) e menos tempo entre a fala e a tradução.
-3. **Caixas perfeitas.** Reconstruir o fundo da própria caixa atrás da tradução, em vez de uma mancha de cor; reproduzir efeitos (digitação, letras tremendo, palavras coloridas) e manter os ícones no lugar.
-4. **Tela inteira perfeita.** O mesmo, para texto em qualquer lugar da tela.
-5. **Expansão.**
-   - **PaddleOCR** (ONNX Runtime + DirectML): japonês, chinês e coreano melhores, e a base para outros sistemas. O OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado.
-   - **Linux**, pensando no Steam Deck: primeiro X11, depois Wayland (lá a captura pede permissão e um app não pode ficar por cima de outras janelas).
-   - **macOS**: ScreenCaptureKit e o framework Vision.
-   - Modo segunda tela para consoles e celulares, Android e *text hooking* para engines suportadas.
+1. **Tradução pontual.** Um atalho, arraste um retângulo sobre qualquer coisa e veja a tradução uma vez. Para quadrinhos, documentos escaneados, imagens e vídeos que não precisam de leitura constante.
+2. **Janela inteira confiável.** Tirar a leitura da janela inteira do "experimental": texto no lugar certo, sem sobreposição, sem palavras cortadas.
+3. **Copiar o texto.** Copiar o que foi lido de uma imagem ou vídeo, original ou traduzido.
+4. **OCR melhor para idiomas asiáticos.** **PaddleOCR** (ONNX Runtime + DirectML) como download opcional: japonês, chinês e coreano melhores, inclusive texto na vertical. O OCR do Windows já lê esses idiomas quando o pacote de idioma do Windows está instalado.
+5. **Interface em linguagem simples.** O app fala de janelas e programas, não só de jogos, e é fácil de usar sem ler nada antes.
+
+**Depois:**
+- Qualidade da tradução: nomes próprios pelo glossário, detecção de itálico, menos marcadores inventados.
+- Ícone na bandeja e um modo de fundo mais leve.
+- **Linux**, pensando no Steam Deck: primeiro X11, depois Wayland (lá a captura pede permissão e um app não pode ficar por cima de outras janelas).
+- **macOS**: ScreenCaptureKit e o framework Vision.
+- Modo segunda tela para consoles e celulares, Android e *text hooking* para engines de jogo suportadas.
 
 ## Licença
 

@@ -2,9 +2,11 @@
   <img src="app/src-tauri/app-icon.png" width="96" alt="Subquest icon" />
 </p>
 
-# Subquest: Real-Time Game Translator
+# Subquest: translate anything on your screen, in real time
 
-Play any game in your language. Subquest reads the dialogue on your screen, translates it with context-aware AI and shows the translation over the game, without stealing focus.
+Subquest reads the text on any window, translates it with context-aware AI and shows the translation over the original, without stealing focus. Apps, videos, documents, installers, anything that shows text.
+
+**And in games it goes further:** the translation is drawn *in the original's place*, with the game's own font, colors, letter case and spacing, as a translation patch would.
 
 > 🇧🇷 [Leia em português](README.pt-BR.md)
 
@@ -12,16 +14,32 @@ Play any game in your language. Subquest reads the dialogue on your screen, tran
   <img src="docs/screenshots/demo.webp" width="820" alt="A tip in The Battle for Wesnoth: the English text, then Subquest's Portuguese translation drawn in its place, in the game's own box and font" />
 </p>
 
-**Status:** first version (v0.1.0), Windows only. See the [Roadmap](#roadmap) for what's next.
+**Status:** v0.2.0, Windows only. v0.3.0 is in progress: see the [Roadmap](#roadmap).
 
 ## Install
 
 1. Download `Subquest_x.y.z_x64-setup.exe` from the [Releases](https://github.com/The-Jonas/Subquest/releases) page and run it. Windows may warn that the publisher is unknown (the installer isn't signed yet): click **More info → Run anyway**.
 2. Open Subquest. A guided tour shows each screen; you can open it again any time from the menu.
-3. In **Settings → Translation**, paste an API key for the translator. [Google AI Studio](https://aistudio.google.com/apikey) gives a free Gemini key; it stays on your computer.
-4. Run the game **windowed or borderless** (exclusive fullscreen blocks the capture), pick it in **Play**, mark where the text appears and start.
+3. In **Settings → Translation**, paste an API key for the translator. [Google AI Studio](https://aistudio.google.com/apikey) gives a free Gemini key; it stays on your computer. A local model (Ollama, LM Studio) works too, with no key.
+4. Pick the window in **Translate**, mark where the text appears and start. For games, run them **windowed or borderless** (exclusive fullscreen blocks the capture).
 
-Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or Korean games also need that language's pack installed in Windows (Settings → Time & language → Language).
+Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or Korean text also needs that language's pack installed in Windows (Settings → Time & language → Language).
+
+## What it is good at
+
+| | |
+|---|---|
+| **Any window** | Apps, browsers, video players, installers, error messages, scanned documents: if it shows text, you can pick it. Browser translators only work inside the page; Subquest works on the window itself. |
+| **Games, done right** | The original text is covered with the game's own background, and the translation takes its place in the same font, case, outline, colors and spacing, icons and buttons included. |
+| **Context, not isolated lines** | The model receives the previous lines, fixes OCR mistakes, and follows a glossary you build for each game or app, so names are always translated the same way. |
+| **Fast** | GPU capture, OCR only when the text changes *and* stops changing, stale frames dropped instead of queued, and a quick translator that fills the gap while the model answers. |
+| **Private** | The capture and the OCR run on your PC, and the key stays on your computer. Only the text goes to the translator you chose, and with a local model nothing leaves your PC. |
+
+### Be aware
+
+- **Marking the areas where text shows up gives far better results** than reading the whole window. Whole-window reading is **experimental**: on busy screens translations may land out of place, be cut off or overlap.
+- The quality of the in-place drawing is tuned on games (tested hardest on Hades II and Hitman); other kinds of content are still being tested.
+- The translator may pick its own names for proper nouns until you add them to the glossary.
 
 ## What it looks like
 
@@ -30,23 +48,28 @@ Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or 
 | | |
 |---|---|
 | ![The Wesnoth main menu fully translated: the tip box and the menu buttons in Portuguese](docs/screenshots/in-game.jpg) | ![Before and after: the same tip in English and in Portuguese, in the same box](docs/screenshots/before-after.jpg) |
-| **In the game.** The tip and the menu, translated where they were. | **Before and after.** The translation stays inside the box, in the game's size and spacing. |
-| ![The Play screen during a session: each line in Portuguese with the English original and its timing](docs/screenshots/play-feed.jpg) | ![Marking areas over a live preview of the game](docs/screenshots/areas.jpg) |
+| **In place.** The tip and the menu, translated where they were. | **Before and after.** The translation stays inside the box, in the original's size and spacing. |
+| ![The Translate screen during a session: each line in Portuguese with the English original and its timing](docs/screenshots/play-feed.jpg) | ![Marking areas over a live preview of the game](docs/screenshots/areas.jpg) |
 | **Follow the lines:** translation, original and how long each step took. | **Mark the areas** where text appears: move, resize, rename. |
-| ![The Games tab: areas and a text style with its font](docs/screenshots/games-tab.jpg) | ![Settings, Look: four color themes and how the translation is drawn](docs/screenshots/themes.jpg) |
-| **Games:** areas and styles (a print of the game's text and the font that matches it). | **Themes** and the choice between drawn-in-place or a classic subtitle. |
+| ![The Apps tab: areas and a text style with its font](docs/screenshots/games-tab.jpg) | ![Settings, Look: four color themes and how the translation is drawn](docs/screenshots/themes.jpg) |
+| **Apps:** areas and styles (a print of the original text and the font that matches it). | **Themes** and the choice between drawn-in-place or a classic subtitle. |
 
-The in-game bar (shortcut Ctrl+Shift+B) marks areas, takes style prints, pauses and hides the translation without leaving the game:
+The in-game bar (shortcut Ctrl+Shift+B) marks areas, takes style prints, picks glossary terms, pauses and hides the translation without leaving the window:
 
 <p align="center"><img src="docs/screenshots/toolbar-bar.jpg" width="404" alt="Subquest's in-game bar with its buttons" /></p>
 
-## Why another translator?
+| Shortcut | Does |
+|---|---|
+| Ctrl+Shift+B | Show or hide the bar |
+| Ctrl+Shift+A | Mark an area |
+| Ctrl+Shift+E | Edit areas |
+| Ctrl+Shift+S | Take a style print |
+| Ctrl+Shift+G | Pick a glossary term over the screen |
+| Ctrl+Shift+T | Pause or resume |
+| Ctrl+Shift+H | Hide or show the translation |
+| Ctrl+Shift+M | Move the mouse and focus to the bar, and back to the window |
 
-Existing tools work, but tend to be slow, translate each line in isolation and bury the user under settings. Subquest focuses on three things:
-
-- **Speed.** GPU window capture, OCR only when the text actually changes *and* stops changing, and a pipeline that always drops stale frames instead of queueing them.
-- **Better translations.** Language models receive the previous lines and are told to fix OCR mistakes; a quick translator fills the gap while they answer.
-- **A clean interface.** Three steps to start: pick the game, mark the dialogue area, start.
+All of them can be changed in the Shortcuts screen.
 
 ## Architecture
 
@@ -58,25 +81,27 @@ Existing tools work, but tend to be slow, translate each line in isolation and b
                                    C API (core_api.h)   │
 ┌───────────── app/src-tauri/ (Rust) ───────────────────▼──────────┐
 │ FFI bridge · streaming translator (context, cache) · settings    │
-│ overlay window that follows the game                             │
+│ overlay window that follows the captured window                  │
 └────────────────────────────────▲─────────────────────────────────┘
                                  │ Tauri commands / events
 ┌──────────────── app/src/ (Svelte 5 + TypeScript) ────────────────┐
-│ Play · Games · History · Settings · tour · overlay · toolbar     │
+│ Translate · Apps · History · Settings · tour · overlay · toolbar │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Language | Responsibility |
 |---|---|---|
-| `core/` | C++20 | Window capture, change detection, OCR, window position. Exposes a small C API. |
-| `app/src-tauri/` | Rust | Loads the core DLL at runtime, translation, cache, settings, the overlay window. |
+| `core/` | C++20 | Window capture, change detection, OCR, text removal, window position. Exposes a small C API. |
+| `app/src-tauri/` | Rust | Loads the core DLL at runtime, translation, cache, glossary, settings, the overlay window. |
 | `app/src/` | Svelte 5 + TS | User interface, the overlay page and translations of the interface. |
 
 ### Key ideas
 
 - **Latest slot instead of a queue** (`core/src/pipeline/latest_slot.h`): if OCR is busy, only the newest frame waits; older ones are dropped. Latency never piles up.
 - **Change detector** (`core/src/vision/change_detector.cpp`): compares grayscale thumbnails and fires once the text changed *and* stayed still for a few frames, so typewriter animations don't trigger OCR on every letter.
+- **Text taken out of the picture** (`core/src/vision/inpaint.cpp`): the original text is removed using the surrounding pixels, so the translation sits on the real, live background instead of a flat patch.
 - **One translator for many services** (`app/src-tauri/src/translate/openai_compat.rs`): the OpenAI-compatible protocol covers OpenAI, Gemini, OpenRouter, Ollama and LM Studio by changing only the URL and model.
+- **Pluggable OCR** (`core/src/ocr/ocr_engine.h`): Windows OCR today, more engines behind the same interface.
 
 ## Building from source (Windows)
 
@@ -112,19 +137,22 @@ The installer is written to `app/src-tauri/target/release/bundle/nsis/`. It carr
 
 ## Roadmap
 
-**Done in v0.1.0:** window capture, OCR, two translation layers (a fast one first, the language model replaces it), translation drawn in place with the game's own fonts (text styles), marked areas and whole-screen mode, the in-game bar and shortcuts, history, guided tour, themes and the installer.
+**Done so far (v0.1.0 and v0.2.0):** window capture, OCR, two translation layers (a fast one first, the language model replaces it), translation drawn in place with the original's font, case, colors and effects, icons kept in place, text removed with the real background, marked areas and whole-window mode, a per-game glossary, versioned profiles with migration, a pluggable OCR engine, the in-game bar and shortcuts, history, guided tour, themes and the installer.
 
-From here, the essentials first: what everything else builds on, so it never has to be redone.
+**Next, v0.3.0: Subquest for everything on screen.** Games stay the showcase; these steps open the door to the rest:
 
-1. **Foundation.** Automated tests for the overlay layout and the change detector; versioned game profiles with migration, so updates never lose what a player set up; a pluggable OCR engine.
-2. **Translation quality.** A per-game glossary (names always translated the same way) and lower latency from line to translation.
-3. **Perfect boxes.** Rebuild the box's own background behind the translation instead of a flat patch; reproduce effects (typewriter, shaking letters, colored words) and keep icons in place.
-4. **Perfect whole screen.** The same, for text anywhere on screen.
-5. **Expansion.**
-   - **PaddleOCR** (ONNX Runtime + DirectML): better Japanese, Chinese and Korean, and the base for other systems. Windows OCR already reads them when the Windows language pack is installed.
-   - **Linux**, aimed at the Steam Deck: X11 first, Wayland later (capture asks for permission and apps can't place themselves over other windows there).
-   - **macOS**: ScreenCaptureKit and the Vision framework.
-   - A second-screen mode for consoles and phones, Android, and text hooking for supported engines.
+1. **One-shot translation.** A shortcut, drag a rectangle over anything and see the translation once. For comics, scanned documents, images and videos that don't need constant reading.
+2. **Reliable whole window.** Take whole-window reading out of "experimental": text in the right place, no overlaps, no cut-off words.
+3. **Copy the text.** Copy what was read from an image or video, original or translated.
+4. **Better OCR for Asian languages.** **PaddleOCR** (ONNX Runtime + DirectML) as an optional download: better Japanese, Chinese and Korean, including vertical text. Windows OCR already reads them when the Windows language pack is installed.
+5. **Plain-language interface.** The app speaks of windows and profiles, not only games, and is easy to use without reading anything first.
+
+**Later:**
+- Translation quality: proper nouns through the glossary, italic detection, fewer invented placeholders.
+- A tray icon and a lighter background mode.
+- **Linux**, aimed at the Steam Deck: X11 first, Wayland later (capture asks for permission and apps can't place themselves over other windows there).
+- **macOS**: ScreenCaptureKit and the Vision framework.
+- A second-screen mode for consoles and phones, Android, and text hooking for supported game engines.
 
 ## Contributing
 

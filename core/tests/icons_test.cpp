@@ -354,6 +354,21 @@ int main() {
         const std::vector<Rect> icons = find_icons(f, lines);
         check(icons.size() == 1 && icons[0].x == 36 && icons[0].width == 12, "the note is cut alone, without the speck");
     }
+    {
+        // A website's "This is a journal": the "a" is a 9 px glyph, nearly all edge
+        // pixels, a third of them with a subpixel tint. Measured on a real page
+        // (16 of 16 lone "a"/"A" became pictures), its core is the text's color.
+        Frame f = blank();
+        const Rect is{20, 20, 22, 16}, a{50, 23, 9, 9}, journal{66, 20, 60, 16};
+        letters(f, is), letters(f, journal);
+        for (int i = 0; i < a.width * a.height; ++i) {
+            const uint32_t rgb = i % 5 < 3 ? TEXT : 0x7080F0; // the tint: off every mix of the text and its background
+            paint(f, {a.x + i % a.width, a.y + i / a.width, 1, 1}, rgb);
+        }
+        std::vector<OcrLine> lines{make_line({{"is", is}, {"a", a}, {"journal", journal}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.empty() && lines[0].text == "is a journal", "a lone letter in the text's own color stays a word");
+    }
     check(icon_placeholder(0) == "{1}" && icon_placeholder(9) == "{10}", "placeholders count from 1");
 
     std::printf(failures ? "%d FAILURE(S)\n" : "ALL OK\n", failures);

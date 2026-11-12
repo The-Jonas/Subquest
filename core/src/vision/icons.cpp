@@ -14,6 +14,9 @@ constexpr float OTHER_GAP_INK = 0.3f; // a drawing in a gap between words: this 
 constexpr float TALL_WORD = 1.35f;   // a short word this much taller than the line's words: a drawn key
 constexpr size_t SHORT_WORD = 3;     // characters at most for the "tall word" rule
 constexpr size_t ICON_READING = 1;   // OCR reads a picture as one character ("A", "®"); two letters can be a word ("on")
+constexpr float OWN_COLOR = 0.25f;   // a one-letter word whose letters' core is this near the text's color (share of the
+                                     // text/background contrast) is a word ("a"), not a picture: on a tiny glyph almost
+                                     // every pixel is an edge, which looks "colored" (a website's 9 px "a": 38-64%)
 constexpr float WIDE_GAP = 0.9f;     // a gap wider than this share of the line height can hold a picture
 constexpr float TALLER = 0.75f;      // pictures may reach this share of the line height above and below the letters
 constexpr float OTHER_INK = 0.35f;   // short junk with this much of its ink in another color than the text's (a white
@@ -339,6 +342,14 @@ uint32_t ink_of(const Frame& frame, Rect box, uint32_t background) {
     return uint32_t(r / n) << 16 | uint32_t(g / n) << 8 | uint32_t(b / n);
 }
 
+// How far a 0xRRGGBB color is from the line's text color, as a share of the
+// contrast between the text and its background (0 = the text's own color).
+float color_gap(uint32_t color, uint32_t text, uint32_t background) {
+    const uint8_t c[4] = {uint8_t(color & 0xFF), uint8_t((color >> 8) & 0xFF), uint8_t((color >> 16) & 0xFF), 255};
+    const uint8_t t[4] = {uint8_t(text & 0xFF), uint8_t((text >> 8) & 0xFF), uint8_t((text >> 16) & 0xFF), 255};
+    return distance(c, text) / std::max(1.0f, distance(t, background));
+}
+
 // A picture OCR boxed together with the first (or last) word but left out of
 // its text ("♫Mares" read as "Mares") or read as junk glued to it ("274" and
 // coins read "2746B", "20" and a clock read "20C"): something of a color of
@@ -505,7 +516,18 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
             // Only short junk: a whole word in another color is a highlighted
             // word ("use a Fireball" in red), and must be translated.
             const bool junk = char_count(w.text) <= ICON_READING || !has_letters(w.text);
-            const bool colored = junk && (seen.other >= OTHER_WORD || (seen.filled > 0.05f && seen.ink_other >= OTHER_INK));
+            // A lone letter in the text's own color is a word OCR read right ("a", "A").
+            // ...in the line's color, or in the color of one of its words (a line with links has more than one).
+            bool own_color = false;
+            if (char_count(w.text) == 1 && has_letters(w.text)) {
+                const uint32_t core = ink_of(frame, w.box, line.background_rgb);
+                float gap = color_gap(core, line.text_rgb, line.background_rgb);
+                for (size_t k = 0; k < source.size() && gap >= OWN_COLOR; ++k)
+                    if (k != i && real_word(source[k]))
+                        gap = std::min(gap, color_gap(core, ink_of(frame, source[k].box, line.background_rgb), line.background_rgb));
+                own_color = gap < OWN_COLOR;
+            }
+            const bool colored = junk && !own_color && (seen.other >= OTHER_WORD || (seen.filled > 0.05f && seen.ink_other >= OTHER_INK));
             // A key drawn as a box with its letter on it: the face fills the box.
             const bool squarish = w.box.width * 10 >= w.box.height * 6; // keys are about square; an "I" is a thin bar
             // Keys carry capitals: a lone lowercase letter is a word ("a"), even

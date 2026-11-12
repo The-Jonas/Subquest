@@ -379,9 +379,15 @@
   // keeps the previous text until the new one has its first words.
   function onTranslation(e: TranslationEvent) {
     setTimeout(() => diagnose(e), 200); // after the patches were recomputed
-    if (!e.text || e.errorKind) return;
     const line = lines[e.frameId];
-    if (!line) return;
+    if (e.errorKind) {
+      // The translation failed (maybe halfway): a half-written paragraph must not stay
+      // over the game for good; the original shows again until the text is read anew.
+      const failed = line && views[line.area ?? 0];
+      if (failed && isCurrent(line.area ?? 0, e.frameId)) failed.translation = "";
+      return;
+    }
+    if (!e.text || !line) return;
     const i = line.area ?? 0;
     const v = view(i);
     const m = meta(i);

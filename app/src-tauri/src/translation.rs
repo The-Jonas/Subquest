@@ -335,7 +335,12 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
         if paused {
             return Err(TranslateError::Quota("paused".into())); // quota used up: no request, no log
         }
-        let result = hedged(&model, &request, &on_partial).await;
+        let mut result = hedged(&model, &request, &on_partial).await;
+        // A stream that broke halfway (network, overload) would leave a half-written
+        // line on screen: ask once more while it is still the area's current line.
+        if matches!(&result, Err(e) if worth_hedging(e)) && translation.is_latest(frame_id) {
+            result = hedged(&model, &request, &on_partial).await;
+        }
         if let Err(TranslateError::Quota(_)) = result {
             *MAIN_PAUSED.lock().unwrap() = Some((which, Instant::now() + MAIN_PAUSE));
             log::warn(&format!("model quota used up: model paused for {} min (quick layer unaffected)", MAIN_PAUSE.as_secs() / 60));
