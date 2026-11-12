@@ -52,16 +52,14 @@ h2,
 h3 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-stretch: 85%;
-  line-height: 1.15;
+  line-height: 1.2;
   margin: 0;
 }
-/* Screen titles: big and narrow, the menu's voice */
+/* Screen titles: one clear size, normal width */
 h1 {
-  font-size: 36px;
-  font-weight: 800;
-  font-stretch: 72%;
-  line-height: 1.05;
+  font-size: var(--text-xl);
+  font-weight: 750;
+  line-height: 1.15;
 }
 
 p {
@@ -106,8 +104,9 @@ select {
   color: var(--gold-ink);
 }
 .btn-primary:hover {
-  background: #f6cf6e;
-  border-color: #f6cf6e;
+  /* a lighter shade of the theme's own accent */
+  background: color-mix(in srgb, var(--gold), white 18%);
+  border-color: color-mix(in srgb, var(--gold), white 18%);
 }
 .btn-ghost {
   background: transparent;

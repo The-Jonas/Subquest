@@ -1,29 +1,29 @@
 {
   "nav": {
-    "play": "Jogar",
-    "games": "Jogos",
+    "play": "Traduzir",
+    "games": "Programas",
     "history": "Histórico",
     "settings": "Ajustes",
     "tour": "Tour guiado"
   },
   "core": {
     "ok": "Leitura da tela pronta",
-    "okHelp": "A parte que captura a tela do jogo e lê o texto (subquest_core.dll) está funcionando.",
+    "okHelp": "A parte que captura a tela e lê o texto (subquest_core.dll) está funcionando.",
     "missing": "Leitura da tela indisponível",
-    "missingHelp": "A parte que captura a tela do jogo e lê o texto (subquest_core.dll) não foi encontrada: sem ela não dá para listar jogos nem traduzir. Reinstale o Subquest. Se você está compilando o código, compile a pasta core (veja o README)."
+    "missingHelp": "A parte que captura a tela e lê o texto (subquest_core.dll) não foi encontrada: sem ela não dá para listar janelas nem traduzir. Reinstale o Subquest. Se você está compilando o código, compile a pasta core (veja o README)."
   },
   "play": {
     "steps": {
-      "game": "Jogo",
+      "game": "Janela",
       "area": "Área",
       "start": "Começar",
       "label": "Progresso"
     },
     "game": {
-      "question": "Qual jogo vamos traduzir?",
-      "hint": "Abra o jogo em modo janela ou janela sem borda. Ele aparece aqui.",
+      "question": "Qual janela vamos traduzir?",
+      "hint": "Escolha a janela com o texto a traduzir (app, navegador, vídeo, jogo…). Em tela cheia exclusiva a captura não funciona: use janela ou janela sem borda.",
       "refresh": "Atualizar lista",
-      "empty": "Nenhuma janela aberta. Abra o jogo e atualize a lista.",
+      "empty": "Nenhuma janela aberta. Abra o programa e atualize a lista.",
       "choose": "Escolher"
     },
     "area": {
@@ -33,8 +33,8 @@
       "screen": "Na tela inteira",
       "screenHelp": "Para menus, itens e placas espalhados. Mais lento: procura texto na janela toda.",
       "marked": "Área marcada: {width} × {height} px",
-      "previewLabel": "Imagem ao vivo da janela do jogo",
-      "previewWaiting": "Conectando à janela do jogo…",
+      "previewLabel": "Imagem ao vivo da janela",
+      "previewWaiting": "Conectando à janela…",
       "drag": "Arraste sobre a imagem para marcar onde as falas aparecem.",
       "clear": "Marcar de novo",
       "wholeWindow": "A janela inteira será lida.",
@@ -48,9 +48,9 @@
       "unmarked": "\"{name}\" ainda não tem retângulo: marque na prévia ou remova a área.",
       "editHint": "Arraste dentro para mover, pelos quadradinhos para mudar o tamanho, ou fora para marcar de novo.",
       "pick": "Editar esta área",
-      "previewPeeking": "Mostrando o jogo por um instante para ele desenhar a tela…",
-      "previewStuck": "O jogo não está desenhando a tela. Ele pode estar minimizado ou pausado por estar em segundo plano.",
-      "previewShowGame": "Mostrar o jogo de novo"
+      "previewPeeking": "Mostrando a janela por um instante para ela desenhar a tela…",
+      "previewStuck": "A janela não está desenhando a tela. Ela pode estar minimizada ou pausada por estar em segundo plano.",
+      "previewShowGame": "Mostrar a janela de novo"
     },
     "start": {
       "question": "Tudo pronto.",
@@ -58,17 +58,17 @@
       "button": "Começar a traduzir",
       "stop": "Parar",
       "running": "Traduzindo {game}",
-      "waiting": "Esperando a primeira fala aparecer no jogo…",
-      "change": "Trocar jogo",
+      "waiting": "Esperando o primeiro texto aparecer…",
+      "change": "Trocar janela",
       "timing": "OCR em {ocr} ms, {total} ms desde a captura",
       "translated": "Traduzido em {ms} ms",
       "cached": "Repetida, veio do cache em {ms} ms",
       "adjust": "Ajustar áreas",
       "quickDone": "Tradução rápida em {ms} ms (o principal não respondeu)",
-      "toolbarHint": "No jogo, {keys} mostra ou esconde a barrinha para marcar áreas e tirar prints de estilo.",
-      "toolbarHintNoKey": "A barrinha do jogo não tem atalho; use o botão abaixo ou defina um em Atalhos.",
-      "toolbarShow": "Mostrar barrinha no jogo",
-      "toolbarHide": "Esconder barrinha do jogo",
+      "toolbarHint": "Na janela traduzida, {keys} mostra ou esconde a barrinha para marcar áreas e tirar prints de estilo.",
+      "toolbarHintNoKey": "A barrinha não tem atalho; use o botão abaixo ou defina um em Atalhos.",
+      "toolbarShow": "Mostrar barrinha",
+      "toolbarHide": "Esconder barrinha",
       "glossary": "Glossário: {terms}"
     },
     "back": "Voltar",
@@ -81,7 +81,7 @@
     "title": "Ajustes",
     "languages": "Idiomas",
     "uiLanguage": "Idioma da interface",
-    "sourceLanguage": "Idioma do jogo",
+    "sourceLanguage": "Idioma original",
     "targetLanguage": "Traduzir para",
     "translation": "Tradutor principal",
     "service": "Serviço",
@@ -89,7 +89,7 @@
     "model": "Modelo",
     "apiKey": "Chave da API",
     "apiKeyHelp": "Fica só no seu computador. Deixe vazio para modelos locais.",
-    "overlay": "Legenda no jogo",
+    "overlay": "Legenda sobre a tela",
     "fontSize": "Tamanho do texto",
     "opacity": "Fundo",
     "showOriginal": "Mostrar o texto original acima da tradução",
@@ -146,14 +146,14 @@
     },
     "look": {
       "title": "Como a tradução aparece",
-      "inPlace": "Integrada ao jogo",
+      "inPlace": "Integrada à tela",
       "inPlaceHelp": "Cada linha traduzida é desenhada no lugar da original, com as cores, o tamanho e a fonte do estilo dela.",
       "classic": "Legenda clássica",
       "classicHelp": "Uma caixa escura com o texto todo, como legenda de filme. Mais simples, sempre legível.",
-      "inPlaceNote": "A fonte de cada linha vem dos estilos do jogo (aba Jogos). Cor e tamanho são medidos na tela."
+      "inPlaceNote": "A fonte de cada linha vem dos estilos do programa (aba Programas). Cor e tamanho são medidos na tela."
     },
     "fontSizeAuto": "Automático",
-    "fontSizeAutoHelp": "Automático: do tamanho das letras do jogo",
+    "fontSizeAutoHelp": "Automático: do tamanho das letras originais",
     "theme": {
       "title": "Tema do Subquest",
       "graphite": "Grafite",
@@ -175,10 +175,10 @@
     "invalidArg": "Algo foi enviado errado para o núcleo. Tente de novo; se repetir, reporte o problema.",
     "alreadyRunning": "Já existe uma tradução em andamento. Pare a atual antes de começar outra.",
     "notRunning": "Não há nenhuma tradução em andamento.",
-    "platform": "O Windows recusou a captura dessa janela. Confira se o jogo está aberto, em janela ou sem borda, e não minimizado.",
+    "platform": "O Windows recusou a captura dessa janela. Confira se o programa está aberto, em janela ou sem borda, e não minimizado.",
     "notImplemented": "Essa parte ainda está em construção. Ela chega nos próximos passos da fase 1.",
     "unknown": "Algo deu errado. Os detalhes estão no console (F12).",
-    "ocrLanguage": "O Windows não tem o reconhecimento de texto (OCR) do idioma do jogo. Em Configurações > Hora e idioma > Idioma e região, adicione o idioma do jogo (por exemplo, English (United States)); o OCR vem junto. Depois reabra o Subquest.",
+    "ocrLanguage": "O Windows não tem o reconhecimento de texto (OCR) do idioma original. Em Configurações > Hora e idioma > Idioma e região, adicione esse idioma (por exemplo, English (United States)); o OCR vem junto. Depois reabra o Subquest.",
     "ocrEngine": "O motor de leitura de texto (OCR) configurado não existe nesta versão do Subquest (as configurações devem ser de uma versão mais nova). Atualize o Subquest.",
     "translatorNotConfigured": "Falta configurar o tradutor: confira o modelo e o endereço em Ajustes.",
     "translatorNetwork": "Não consegui falar com o serviço de tradução. Confira a internet e o endereço em Ajustes.",
@@ -188,7 +188,7 @@
   },
   "fonts": {
     "title": "Fontes",
-    "intro": "Importe arquivos de fonte para a tradução ficar com a cara do jogo. Eles ficam guardados na pasta do Subquest; nada é instalado no Windows.",
+    "intro": "Importe arquivos de fonte para a tradução ficar com a cara do original. Eles ficam guardados na pasta do Subquest; nada é instalado no Windows.",
     "import": "Importar fonte",
     "importHelp": "Clique ou arraste arquivos .ttf, .otf, .woff ou .woff2 para cá.",
     "importError": "Não deu para importar {name}: {detail}",
@@ -202,15 +202,15 @@
       "imported": "Importadas"
     },
     "detect": {
-      "title": "Fonte do jogo",
+      "title": "Fonte do texto original",
       "help": "O modelo de tradução olha a área marcada e sugere fontes parecidas do Google Fonts.",
       "button": "Detectar fonte",
       "again": "Detectar de novo",
-      "working": "Olhando as letras do jogo…",
+      "working": "Olhando as letras…",
       "use": "Usar esta",
       "inUse": "Em uso",
       "weight": "peso {weight}",
-      "snapshotFailed": "Não deu para capturar a tela do jogo.",
+      "snapshotFailed": "Não deu para capturar a janela.",
       "case": "Letras",
       "cases": {
         "normal": "Como traduzido",
@@ -230,7 +230,7 @@
     "failed": "Não deu para traduzir esta fala.",
     "pending": "Traduzindo…",
     "nothingMatches": "Nenhuma fala com esse filtro.",
-    "empty": "Nenhuma fala ainda. Comece a traduzir um jogo e tudo o que aparecer fica guardado aqui.",
+    "empty": "Nenhuma fala ainda. Comece a traduzir e tudo o que aparecer fica guardado aqui.",
     "missedBadge": "Falas que passaram antes da tradução ficar pronta",
     "clear": "Limpar",
     "cached": "Do cache",
@@ -252,11 +252,11 @@
     }
   },
   "styles": {
-    "title": "Estilos do jogo",
-    "intro": "Cada jogo escreve coisas diferentes com fontes diferentes. Tire um print de uma frase e escolha a fonte dela: toda linha com letras desse mesmo jeito (grossura, contraste, inclinação) passa a usar essa fonte, em qualquer tamanho. A cor só ajuda a desempatar.",
+    "title": "Estilos do texto",
+    "intro": "Cada programa escreve coisas diferentes com fontes diferentes. Tire um print de uma frase e escolha a fonte dela: toda linha com letras desse mesmo jeito (grossura, contraste, inclinação) passa a usar essa fonte, em qualquer tamanho. A cor só ajuda a desempatar.",
     "take": "Tirar print de um estilo",
-    "takeHelp": "Arraste sobre uma frase no jogo. Atalho: {keys}.",
-    "takeNeedsGame": "Comece a traduzir este jogo para tirar prints dele.",
+    "takeHelp": "Arraste sobre uma frase na tela. Atalho: {keys}.",
+    "takeNeedsGame": "Comece a traduzir esta janela para tirar prints dela.",
     "empty": "Nenhum estilo ainda.",
     "namePlaceholder": "Nome (ex.: Menu, Falas, Nomes)",
     "color": "Cor das letras medida no print",
@@ -265,7 +265,7 @@
     "searchTitle": "Fontes parecidas no Google Fonts",
     "searchHelp": "O modelo olha o print deste estilo e sugere fontes; a escolhida vale só para este estilo.",
     "forget": "Esquecer",
-    "caseAuto": "Como no jogo ({seen})",
+    "caseAuto": "Como no original ({seen})",
     "caseNone": "Como traduzido",
     "seenNormal": "letras normais",
     "fontInUse": "Fonte deste estilo:",
@@ -279,7 +279,7 @@
   },
   "toolbar": {
     "move": "Arraste para mover",
-    "area": "Marcar uma área no jogo",
+    "area": "Marcar uma área",
     "style": "Tirar print de um estilo",
     "pause": "Pausar a tradução",
     "resume": "Voltar a traduzir",
@@ -287,7 +287,7 @@
     "show": "Mostrar as traduções",
     "open": "Abrir o Subquest",
     "close": "Esconder a barrinha · volta com {keys}",
-    "edit": "Editar as áreas no jogo",
+    "edit": "Editar as áreas",
     "closeNoKey": "Esconder a barrinha · volta pelo Subquest",
     "term": "Escolher uma palavra para o glossário",
     "help": "Como usar a barrinha",
@@ -343,17 +343,17 @@
   "select": {
     "area": "Marque a nova área",
     "style": "Marque uma frase deste estilo",
-    "howTo": "Arraste sobre o jogo. Botão direito cancela.",
+    "howTo": "Arraste sobre a tela. Botão direito cancela.",
     "cancel": "Cancelar"
   },
   "shortcuts": {
     "title": "Atalhos",
-    "intro": "Teclas que funcionam dentro do jogo enquanto ele é traduzido. Clique na tecla e aperte a nova combinação.",
+    "intro": "Teclas que funcionam por cima da janela traduzida. Clique na tecla e aperte a nova combinação.",
     "press": "Aperte as teclas… (Esc cancela)",
     "none": "Sem atalho",
     "clear": "Tirar",
     "restore": "Restaurar os padrões",
-    "note": "Os atalhos só valem enquanto um jogo é traduzido; no resto do tempo essas teclas voltam para os outros programas. Se outro programa já usa uma combinação, ela não funciona: troque aqui.",
+    "note": "Os atalhos só valem enquanto uma janela é traduzida; no resto do tempo essas teclas voltam para os outros programas. Se outro programa já usa uma combinação, ela não funciona: troque aqui.",
     "errors": {
       "needsModifier": "Use junto com Ctrl, Alt ou Win (só as teclas F1–F12 podem ir sozinhas).",
       "unsupportedKey": "Essa tecla não serve para atalho. Use letras, números, F1–F12, setas ou Espaço.",
@@ -405,17 +405,17 @@
     "no": "Não"
   },
   "games": {
-    "title": "Jogos",
-    "intro": "Tudo que fica salvo de cada jogo: onde estão as caixas de texto, o glossário e os estilos. Um estilo é o print de uma frase do jogo com a fonte que combina com ela: toda linha com letras parecidas passa a usar essa fonte.",
-    "empty": "Nenhum jogo ainda. Quando você traduzir um jogo, as áreas e os estilos dele aparecem aqui.",
-    "forget": "Esquecer este jogo (áreas, estilos e prints)",
-    "switch": "Trocar de jogo",
+    "title": "Programas",
+    "intro": "Tudo que fica salvo de cada programa: onde estão as caixas de texto, o glossário e os estilos. Um estilo é o print de uma frase com a fonte que combina com ela: toda linha com letras parecidas passa a usar essa fonte.",
+    "empty": "Nenhum programa ainda. Quando você traduzir uma janela, as áreas e os estilos dela aparecem aqui.",
+    "forget": "Esquecer este programa (áreas, estilos e prints)",
+    "switch": "Trocar de programa",
     "live": "traduzindo agora",
     "areas": "Áreas",
     "wholeScreen": "Tela inteira",
     "unmarked": "sem retângulo",
-    "editAreas": "Editar no jogo",
-    "areasHint": "Para mover, redimensionar ou criar áreas, use Jogar → Ajustar áreas, ou a barrinha durante o jogo.",
+    "editAreas": "Editar na tela",
+    "areasHint": "Para mover, redimensionar ou criar áreas, use Traduzir → Ajustar áreas, ou a barrinha durante a tradução.",
     "styles": "Estilos",
     "closeSearch": "Fechar a busca",
     "fallback": "Linhas que não se parecem com nenhum estilo usam a fonte do estilo mais parecido."
@@ -429,7 +429,7 @@
     "steps": {
       "welcome": {
         "title": "Bem-vindo ao Subquest",
-        "text": "Ele lê o texto do jogo na tela e desenha a tradução por cima, no lugar do original. Antes de tudo: deixe o jogo em modo janela ou janela sem borda. A tela cheia exclusiva bloqueia a captura."
+        "text": "Ele lê o texto da tela e desenha a tradução por cima, no lugar do original. Antes de tudo: deixe o programa em modo janela ou janela sem borda. A tela cheia exclusiva bloqueia a captura."
       },
       "translator": {
         "title": "O tradutor principal",
@@ -440,15 +440,15 @@
         "text": "Enquanto o tradutor principal pensa, uma tradução rápida aparece primeiro e é trocada pela boa assim que ela chega. Assim a legenda nunca fica esperando."
       },
       "game": {
-        "title": "Escolha o jogo",
-        "text": "Com o jogo aberto, escolha a janela dele aqui. Depois marque onde os textos aparecem: só nas áreas marcadas (mais rápido e preciso) ou na tela inteira (ainda experimental)."
+        "title": "Escolha a janela",
+        "text": "Com o programa aberto, escolha a janela dele aqui. Depois marque onde os textos aparecem: só nas áreas marcadas (mais rápido e preciso) ou na tela inteira (ainda experimental)."
       },
       "styles": {
-        "title": "Estilos: a cara do jogo",
+        "title": "Estilos: a cara do texto",
         "text": "Durante o jogo, tire um print de uma frase (pela barrinha ou pelo atalho) e escolha a fonte dela aqui. Toda linha com letras parecidas passa a usar essa fonte."
       },
       "glossary": {
-        "title": "Glossário do jogo",
+        "title": "Glossário",
         "text": "Nomes e termos que devem sair sempre do mesmo jeito (Charon → Caronte). Escreva aqui, ou marque a palavra direto no jogo: botão do livro na barrinha ou Ctrl+Shift+G. Ao salvar, a tela é traduzida de novo."
       },
       "toolbar": {
@@ -461,7 +461,7 @@
       },
       "done": {
         "title": "Pronto!",
-        "text": "Este botão abre o tour de novo quando quiser. Bom jogo!"
+        "text": "Este botão abre o tour de novo quando quiser."
       }
     }
   },

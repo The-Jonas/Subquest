@@ -218,6 +218,16 @@
 
 <!-- The area step gets a wider layout: a bigger preview makes marking precise -->
 <div class="play" class:wide={(step === 1 && !running) || editing} data-tour="play-box">
+  <!-- Step track above the card: it says where you are in game -> area -> start -->
+  <ol class="track" aria-label={t("play.steps.label")}>
+    {#each stepKeys as key, i (key)}
+      <li class:done={i < step || running} class:current={i === step && !running}>
+        <span class="num">{i + 1}</span>
+        {t(`play.steps.${key}`)}
+      </li>
+    {/each}
+  </ol>
+
   <DialogueBox line={question}>
     {#if showFeed}
       <ol class="feed" aria-live="polite">
@@ -389,16 +399,6 @@
       <p class="error" role="alert">{error}</p>
     {/if}
   </DialogueBox>
-
-  <!-- Step track: numbering makes sense here, it is a real sequence -->
-  <ol class="track" aria-label={t("play.steps.label")}>
-    {#each stepKeys as key, i (key)}
-      <li class:done={i < step || running} class:current={i === step && !running}>
-        <span class="num">{i + 1}</span>
-        {t(`play.steps.${key}`)}
-      </li>
-    {/each}
-  </ol>
 </div>
 
 <style>
@@ -682,7 +682,7 @@
   .track {
     list-style: none;
     margin: 0;
-    padding: 0 8px;
+    padding: 0 2px;
     display: flex;
     gap: 22px;
     color: var(--ink-faint);

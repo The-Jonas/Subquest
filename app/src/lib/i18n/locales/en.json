@@ -1,29 +1,29 @@
 {
   "nav": {
-    "play": "Play",
-    "games": "Games",
+    "play": "Translate",
+    "games": "Apps",
     "history": "History",
     "settings": "Settings",
     "tour": "Guided tour"
   },
   "core": {
     "ok": "Screen reading ready",
-    "okHelp": "The part that captures the game's screen and reads its text (subquest_core.dll) is working.",
+    "okHelp": "The part that captures the screen and reads its text (subquest_core.dll) is working.",
     "missing": "Screen reading unavailable",
-    "missingHelp": "The part that captures the game's screen and reads its text (subquest_core.dll) wasn't found: without it, games can't be listed or translated. Reinstall Subquest. If you're building from source, build the core folder (see the README)."
+    "missingHelp": "The part that captures the screen and reads its text (subquest_core.dll) wasn't found: without it, windows can't be listed or translated. Reinstall Subquest. If you're building from source, build the core folder (see the README)."
   },
   "play": {
     "steps": {
-      "game": "Game",
+      "game": "Window",
       "area": "Area",
       "start": "Start",
       "label": "Progress"
     },
     "game": {
-      "question": "Which game are we translating?",
-      "hint": "Run the game in windowed or borderless mode. It will show up here.",
+      "question": "Which window are we translating?",
+      "hint": "Pick the window with the text to translate (app, browser, video, game…). Exclusive fullscreen can't be captured: use windowed or borderless.",
       "refresh": "Refresh list",
-      "empty": "No windows open. Start the game and refresh the list.",
+      "empty": "No windows open. Open the program and refresh the list.",
       "choose": "Choose"
     },
     "area": {
@@ -33,8 +33,8 @@
       "screen": "Across the whole screen",
       "screenHelp": "For menus, items and signs all over. Slower: looks for text in the whole window.",
       "marked": "Area marked: {width} × {height} px",
-      "previewLabel": "Live image of the game window",
-      "previewWaiting": "Connecting to the game window…",
+      "previewLabel": "Live image of the window",
+      "previewWaiting": "Connecting to the window…",
       "drag": "Drag over the image to mark where the dialogue appears.",
       "clear": "Mark again",
       "wholeWindow": "The whole window will be read.",
@@ -48,9 +48,9 @@
       "unmarked": "\"{name}\" has no rectangle yet: mark it on the preview or remove the area.",
       "editHint": "Drag inside to move, the small squares to resize, or outside to mark it again.",
       "pick": "Edit this area",
-      "previewPeeking": "Showing the game for a moment so it draws its screen…",
-      "previewStuck": "The game isn't drawing its screen. It may be minimized, or paused while in the background.",
-      "previewShowGame": "Show the game again"
+      "previewPeeking": "Showing the window for a moment so it draws its screen…",
+      "previewStuck": "The window isn't drawing its screen. It may be minimized, or paused while in the background.",
+      "previewShowGame": "Show the window again"
     },
     "start": {
       "question": "All set.",
@@ -58,17 +58,17 @@
       "button": "Start translating",
       "stop": "Stop",
       "running": "Translating {game}",
-      "waiting": "Waiting for the first line to appear in the game…",
-      "change": "Change game",
+      "waiting": "Waiting for the first text to appear…",
+      "change": "Change window",
       "timing": "OCR in {ocr} ms, {total} ms since capture",
       "translated": "Translated in {ms} ms",
       "cached": "Repeated line, from cache in {ms} ms",
       "adjust": "Adjust areas",
       "quickDone": "Quick translation in {ms} ms (the main one didn't answer)",
-      "toolbarHint": "In the game, {keys} shows or hides the bar for marking areas and taking style prints.",
-      "toolbarHintNoKey": "The in-game bar has no shortcut; use the button below or set one in Shortcuts.",
-      "toolbarShow": "Show in-game bar",
-      "toolbarHide": "Hide in-game bar",
+      "toolbarHint": "Over the translated window, {keys} shows or hides the bar for marking areas and taking style prints.",
+      "toolbarHintNoKey": "The bar has no shortcut; use the button below or set one in Shortcuts.",
+      "toolbarShow": "Show bar",
+      "toolbarHide": "Hide bar",
       "glossary": "Glossary: {terms}"
     },
     "back": "Back",
@@ -81,7 +81,7 @@
     "title": "Settings",
     "languages": "Languages",
     "uiLanguage": "Interface language",
-    "sourceLanguage": "Game language",
+    "sourceLanguage": "Source language",
     "targetLanguage": "Translate to",
     "translation": "Main translator",
     "service": "Service",
@@ -89,7 +89,7 @@
     "model": "Model",
     "apiKey": "API key",
     "apiKeyHelp": "Stays on your computer only. Leave empty for local models.",
-    "overlay": "In-game subtitle",
+    "overlay": "Subtitle over the screen",
     "fontSize": "Text size",
     "opacity": "Background",
     "showOriginal": "Show the original text above the translation",
@@ -146,14 +146,14 @@
     },
     "look": {
       "title": "How the translation shows",
-      "inPlace": "Part of the game",
+      "inPlace": "Part of the screen",
       "inPlaceHelp": "Each translated line is drawn where the original was, with its colors, size and its style's font.",
       "classic": "Classic subtitle",
       "classicHelp": "A dark box with all the text, like a movie subtitle. Simpler, always readable.",
-      "inPlaceNote": "Each line's font comes from the game's styles (Games tab). Color and size are measured on screen."
+      "inPlaceNote": "Each line's font comes from the app's styles (Apps tab). Color and size are measured on screen."
     },
     "fontSizeAuto": "Automatic",
-    "fontSizeAutoHelp": "Automatic: as big as the game's own letters",
+    "fontSizeAutoHelp": "Automatic: as big as the original letters",
     "theme": {
       "title": "Subquest theme",
       "graphite": "Graphite",
@@ -175,10 +175,10 @@
     "invalidArg": "Something wrong was sent to the core. Try again; if it repeats, report the issue.",
     "alreadyRunning": "A translation is already running. Stop it before starting another.",
     "notRunning": "No translation is running.",
-    "platform": "Windows refused to capture this window. Make sure the game is open, windowed or borderless, and not minimized.",
+    "platform": "Windows refused to capture this window. Make sure the program is open, windowed or borderless, and not minimized.",
     "notImplemented": "This part is still being built. It arrives in the next steps of phase 1.",
     "unknown": "Something went wrong. Details are in the console (F12).",
-    "ocrLanguage": "Windows doesn't have text recognition (OCR) for the game's language. In Settings > Time & language > Language & region, add the game's language (for example, English (United States)); OCR comes with it. Then reopen Subquest.",
+    "ocrLanguage": "Windows doesn't have text recognition (OCR) for the source language. In Settings > Time & language > Language & region, add that language (for example, English (United States)); OCR comes with it. Then reopen Subquest.",
     "ocrEngine": "The configured text recognition (OCR) engine isn't in this version of Subquest (the settings likely come from a newer version). Update Subquest.",
     "translatorNotConfigured": "The translator isn't set up yet: check the model and address in Settings.",
     "translatorNetwork": "Couldn't reach the translation service. Check your internet and the address in Settings.",
@@ -188,7 +188,7 @@
   },
   "fonts": {
     "title": "Fonts",
-    "intro": "Import font files so the translation looks like the game. They're kept in Subquest's folder; nothing is installed in Windows.",
+    "intro": "Import font files so the translation looks like the original. They're kept in Subquest's folder; nothing is installed in Windows.",
     "import": "Import font",
     "importHelp": "Click or drop .ttf, .otf, .woff or .woff2 files here.",
     "importError": "Couldn't import {name}: {detail}",
@@ -202,15 +202,15 @@
       "imported": "Imported"
     },
     "detect": {
-      "title": "Game font",
+      "title": "Original text font",
       "help": "The translation model looks at the marked area and suggests similar fonts from Google Fonts.",
       "button": "Detect font",
       "again": "Detect again",
-      "working": "Looking at the game's letters…",
+      "working": "Looking at the letters…",
       "use": "Use this one",
       "inUse": "In use",
       "weight": "weight {weight}",
-      "snapshotFailed": "Couldn't capture the game screen.",
+      "snapshotFailed": "Couldn't capture the window.",
       "case": "Letters",
       "cases": {
         "normal": "As translated",
@@ -230,7 +230,7 @@
     "failed": "This line couldn't be translated.",
     "pending": "Translating…",
     "nothingMatches": "No lines match this filter.",
-    "empty": "No lines yet. Start translating a game and everything that shows up is kept here.",
+    "empty": "No lines yet. Start translating and everything that shows up is kept here.",
     "missedBadge": "Lines that passed before their translation was ready",
     "clear": "Clear",
     "cached": "From cache",
@@ -252,11 +252,11 @@
     }
   },
   "styles": {
-    "title": "Game styles",
-    "intro": "Each game writes different things in different fonts. Take a print of a phrase and pick its font: every line whose letters look the same (weight, contrast, slant) uses that font, at any size. Color only breaks ties.",
+    "title": "Text styles",
+    "intro": "Each program writes different things in different fonts. Take a print of a phrase and pick its font: every line whose letters look the same (weight, contrast, slant) uses that font, at any size. Color only breaks ties.",
     "take": "Take a style print",
-    "takeHelp": "Drag over a phrase in the game. Shortcut: {keys}.",
-    "takeNeedsGame": "Start translating this game to take prints of it.",
+    "takeHelp": "Drag over a phrase on screen. Shortcut: {keys}.",
+    "takeNeedsGame": "Start translating this window to take prints of it.",
     "empty": "No styles yet.",
     "namePlaceholder": "Name (e.g. Menu, Dialogue, Names)",
     "color": "Letter color measured on the print",
@@ -265,7 +265,7 @@
     "searchTitle": "Similar fonts on Google Fonts",
     "searchHelp": "The model looks at this style's print and suggests fonts; the one you keep applies to this style only.",
     "forget": "Forget",
-    "caseAuto": "As in the game ({seen})",
+    "caseAuto": "As in the original ({seen})",
     "caseNone": "As translated",
     "seenNormal": "regular letters",
     "fontInUse": "This style's font:",
@@ -279,7 +279,7 @@
   },
   "toolbar": {
     "move": "Drag to move",
-    "area": "Mark an area in the game",
+    "area": "Mark an area",
     "style": "Take a style print",
     "pause": "Pause translating",
     "resume": "Resume translating",
@@ -287,7 +287,7 @@
     "show": "Show the translations",
     "open": "Open Subquest",
     "close": "Hide the bar · {keys} brings it back",
-    "edit": "Edit the areas in the game",
+    "edit": "Edit the areas",
     "closeNoKey": "Hide the bar · Subquest brings it back",
     "term": "Pick a word for the glossary",
     "help": "How to use the toolbar",
@@ -343,17 +343,17 @@
   "select": {
     "area": "Mark the new area",
     "style": "Mark a phrase in this style",
-    "howTo": "Drag over the game. Right click cancels.",
+    "howTo": "Drag over the screen. Right click cancels.",
     "cancel": "Cancel"
   },
   "shortcuts": {
     "title": "Shortcuts",
-    "intro": "Keys that work inside the game while it is translated. Click the key and press the new combination.",
+    "intro": "Keys that work over the translated window. Click the key and press the new combination.",
     "press": "Press the keys… (Esc cancels)",
     "none": "No shortcut",
     "clear": "Remove",
     "restore": "Restore the defaults",
-    "note": "Shortcuts only work while a game is being translated; the rest of the time these keys belong to other programs again. If another program already uses a combination, it won't work: change it here.",
+    "note": "Shortcuts only work while a window is being translated; the rest of the time these keys belong to other programs again. If another program already uses a combination, it won't work: change it here.",
     "errors": {
       "needsModifier": "Use it with Ctrl, Alt or Win (only F1–F12 may go alone).",
       "unsupportedKey": "That key can't be a shortcut. Use letters, digits, F1–F12, arrows or Space.",
@@ -405,17 +405,17 @@
     "no": "No"
   },
   "games": {
-    "title": "Games",
-    "intro": "Everything saved for each game: where its text boxes are, its glossary and its styles. A style is a print of a phrase from the game with the font that matches it: every line with similar letters then uses that font.",
-    "empty": "No games yet. When you translate a game, its areas and styles show up here.",
-    "forget": "Forget this game (areas, styles and prints)",
-    "switch": "Switch game",
+    "title": "Apps",
+    "intro": "Everything saved for each app: where its text boxes are, its glossary and its styles. A style is a print of a phrase with the font that matches it: every line with similar letters then uses that font.",
+    "empty": "No apps yet. When you translate a window, its areas and styles show up here.",
+    "forget": "Forget this app (areas, styles and prints)",
+    "switch": "Switch app",
     "live": "translating now",
     "areas": "Areas",
     "wholeScreen": "Whole screen",
     "unmarked": "no rectangle",
-    "editAreas": "Edit in the game",
-    "areasHint": "To move, resize or add areas, use Play → Adjust areas, or the bar while playing.",
+    "editAreas": "Edit on screen",
+    "areasHint": "To move, resize or add areas, use Translate → Adjust areas, or the bar while translating.",
     "styles": "Styles",
     "closeSearch": "Close the search",
     "fallback": "Lines that look like no style use the font of the closest one."
@@ -429,7 +429,7 @@
     "steps": {
       "welcome": {
         "title": "Welcome to Subquest",
-        "text": "It reads the game's text on screen and draws the translation over it, where the original was. First of all: run the game windowed or borderless. Exclusive fullscreen blocks the capture."
+        "text": "It reads the text on your screen and draws the translation over it, where the original was. First of all: run the program windowed or borderless. Exclusive fullscreen blocks the capture."
       },
       "translator": {
         "title": "The main translator",
@@ -440,15 +440,15 @@
         "text": "While the main translator thinks, a quick translation shows first and is replaced by the good one as soon as it arrives. The subtitle never waits."
       },
       "game": {
-        "title": "Pick the game",
-        "text": "With the game open, pick its window here. Then mark where the text shows up: only in marked areas (faster and more accurate) or on the whole screen (still experimental)."
+        "title": "Pick the window",
+        "text": "With the program open, pick its window here. Then mark where the text shows up: only in marked areas (faster and more accurate) or on the whole screen (still experimental)."
       },
       "styles": {
-        "title": "Styles: the game's look",
+        "title": "Styles: the text's look",
         "text": "While playing, take a print of a phrase (bar or shortcut) and pick its font here. Every line with similar letters then uses that font."
       },
       "glossary": {
-        "title": "The game's glossary",
+        "title": "Glossary",
         "text": "Names and terms that must always come out the same way (Charon → Caronte). Write them here, or pick the word right in the game: the book button on the toolbar or Ctrl+Shift+G. Saving translates the screen again."
       },
       "toolbar": {
@@ -461,7 +461,7 @@
       },
       "done": {
         "title": "All set!",
-        "text": "This button opens the tour again whenever you want. Have fun!"
+        "text": "This button opens the tour again whenever you want."
       }
     }
   },

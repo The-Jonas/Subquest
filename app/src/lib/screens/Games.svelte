@@ -277,7 +277,7 @@
     margin: 0;
   }
   .sub {
-    margin: 4px 0 0;
+    margin: 8px 0 0;
     color: var(--ink-dim);
     font-size: var(--text-sm);
     max-width: 66ch;

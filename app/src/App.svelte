@@ -38,7 +38,7 @@
 <style>
   .shell {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 208px minmax(0, 1fr);
     height: 100%;
   }
   /* The screen scrolls; the subtitle strip stays at the bottom */
@@ -50,5 +50,14 @@
   main {
     overflow-y: auto;
     padding: 40px 40px 0;
+  }
+  /* Narrow window: a slimmer menu and less empty margin around the screen */
+  @media (max-width: 640px) {
+    .shell {
+      grid-template-columns: 168px minmax(0, 1fr);
+    }
+    main {
+      padding: 24px 16px 0;
+    }
   }
 </style>

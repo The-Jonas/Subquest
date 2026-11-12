@@ -78,7 +78,7 @@
     display: flex;
     flex-direction: column;
     gap: 26px;
-    padding: 22px 14px 18px 0;
+    padding: 22px 12px 18px;
     background: var(--night-deep);
     border-right: 1px solid var(--panel);
   }
@@ -88,7 +88,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding-left: 22px;
+    padding-left: 16px;
     color: var(--ink-dim);
     font-family: var(--font-display);
     font-weight: 600;
@@ -103,49 +103,51 @@
     gap: 2px;
   }
 
-  /* Menu items: big narrow words; the cursor is a bar on the left edge */
+  /* Menu items: plain words; the current one sits on a soft pill with a gold bar */
   li button {
     position: relative;
     width: 100%;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 4px 0 4px 22px;
+    padding: 9px 12px 9px 16px;
     border: 0;
+    border-radius: var(--radius-control);
     background: transparent;
-    color: var(--ink-faint);
+    color: var(--ink-dim);
     cursor: pointer;
     text-align: left;
     font-family: var(--font-display);
-    font-size: 30px;
-    font-weight: 750;
-    font-stretch: 70%;
-    line-height: 1.1;
-    transition: color 0.12s ease;
+    font-size: var(--text-md);
+    font-weight: 600;
+    line-height: 1.2;
+    transition:
+      color 0.12s ease,
+      background 0.12s ease;
   }
   li button::before {
     content: "";
     position: absolute;
     left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 4px;
-    border-radius: 0 3px 3px 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 3px;
     background: var(--gold);
     transform: scaleY(0);
     transition: transform 0.15s ease;
   }
   li button:hover {
-    color: var(--ink-dim);
+    color: var(--ink);
+    background: var(--panel);
   }
-  /* Keyboard focus: a quiet ring inside the item, not a box around the menu */
   li button:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: -2px;
-    border-radius: 6px;
   }
   li button.active {
     color: var(--ink);
+    background: var(--panel);
   }
   li button.active::before {
     transform: scaleY(1);
@@ -161,7 +163,6 @@
     margin-top: auto;
     display: grid;
     gap: 12px;
-    padding-left: 18px;
   }
 
   .tour-btn {
@@ -169,7 +170,7 @@
     align-items: center;
     gap: 12px;
     padding: 9px 10px;
-    border: 1px dashed var(--line);
+    border: 1px solid var(--line);
     border-radius: var(--radius-control);
     background: transparent;
     color: var(--ink-dim);
@@ -187,6 +188,7 @@
   }
 
   .core {
+    padding-left: 4px;
     display: flex;
     align-items: center;
     gap: 8px;
