@@ -41,6 +41,32 @@ Precisa do Windows 10 (versão 1903 ou mais nova) ou Windows 11. Textos em japon
 - A qualidade do desenho no lugar foi ajustada em jogos (testada com mais força no Hades II e no Hitman); os outros tipos de conteúdo ainda estão em teste.
 - O tradutor pode escolher os próprios nomes para nomes próprios até você adicioná-los ao glossário.
 
+## Três passos
+
+<p align="center"><img src="docs/screenshots/pick-window.png" width="760" alt="A tela Traduzir listando as janelas abertas como cartões: o launcher de um jogo, a Steam, um navegador, um editor de código e o GitHub Desktop" /></p>
+
+1. **Escolha a janela.** Qualquer janela aberta aparece como um cartão com miniatura ao vivo.
+2. **Marque onde o texto aparece** (ou leia a janela inteira, experimental).
+3. **Comece.** A tradução aparece por cima do original e a janela continua funcionando normalmente.
+
+## Não é só para jogos
+
+O mesmo seletor de janelas aceita um navegador. Aqui, a página de um livro lida em inglês e a tradução desenhada por cima, no modo janela inteira (ainda experimental, então alguns detalhes ficam errados: o link "Show less" foi lido como parte do parágrafo, e o original dele continua visível abaixo):
+
+| Original | Subquest |
+|---|---|
+| ![A página de um livro em inglês no navegador](docs/screenshots/web-before.png) | ![A mesma página com a tradução em português desenhada por cima](docs/screenshots/web-after.png) |
+
+*Página: [Alice's Adventures in Wonderland](https://www.gutenberg.org/ebooks/11), no Project Gutenberg (o livro é de domínio público). O Subquest não é afiliado ao Project Gutenberg.*
+
+E num jogo ([The Battle for Wesnoth](https://www.wesnoth.org/)), uma caixa de diálogo marcada como área: o texto em inglês é lido e, um instante depois, a tradução em português ocupa o lugar dele, na mesma caixa:
+
+<p align="center"><img src="docs/screenshots/wesnoth-dialogue.webp" width="760" alt="Wesnoth: uma caixa de diálogo do tutorial em inglês e depois a mesma caixa com a tradução em português no lugar" /></p>
+
+A tela Histórico mostra o original de cada linha, a tradução e quanto tempo cada etapa levou. Ela também mostra o modelo corrigindo erros de OCR: abaixo, o "press u or use the right-click menu" do jogo foi lido como "apress u or use the tight-clicksmenu" e saiu certo mesmo assim. Linhas já vistas vêm do cache, então aqui a tradução costumava aparecer 121 ms depois do texto surgir; uma linha nova espera o tradutor (656 ms típicos num teste anterior, numa página longa da web com o Gemini).
+
+<p align="center"><img src="docs/screenshots/history-timing.png" width="760" alt="A tela Histórico numa sessão do Wesnoth: tempo até a tradução aparecer e, em cada linha, a leitura do OCR em cima e a tradução em português embaixo" /></p>
+
 ## Como é
 
 *Capturas com [The Battle for Wesnoth](https://www.wesnoth.org/), um jogo livre e de código aberto.*

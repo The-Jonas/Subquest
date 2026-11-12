@@ -41,6 +41,32 @@ Requires Windows 10 (version 1903 or newer) or Windows 11. Japanese, Chinese or 
 - The quality of the in-place drawing is tuned on games (tested hardest on Hades II and Hitman); other kinds of content are still being tested.
 - The translator may pick its own names for proper nouns until you add them to the glossary.
 
+## Three steps
+
+<p align="center"><img src="docs/screenshots/pick-window.png" width="760" alt="The Translate screen listing the open windows as cards: a game launcher, Steam, a browser, a code editor and GitHub Desktop" /></p>
+
+1. **Pick the window.** Any open window shows up as a card with a live thumbnail.
+2. **Mark where the text shows up** (or read the whole window, experimental).
+3. **Start.** The translation appears over the original and the window keeps working as usual.
+
+## Not just games
+
+The same window picker takes a browser. Here, a book's page read in English and the translation drawn over it, in whole-window mode (still experimental, so a few details are off: the "Show less" link was read as part of the paragraph, and its original is still visible below):
+
+| Original | Subquest |
+|---|---|
+| ![An English book page in a browser](docs/screenshots/web-before.png) | ![The same page with the Portuguese translation drawn over it](docs/screenshots/web-after.png) |
+
+*Page: [Alice's Adventures in Wonderland](https://www.gutenberg.org/ebooks/11) on Project Gutenberg (the book is in the public domain). Subquest is not affiliated with Project Gutenberg.*
+
+And in a game ([The Battle for Wesnoth](https://www.wesnoth.org/)), a dialogue box marked as an area: the English text is read and, a moment later, the Portuguese translation takes its place in the same box:
+
+<p align="center"><img src="docs/screenshots/wesnoth-dialogue.webp" width="760" alt="Wesnoth: a tutorial dialogue box in English, then the same box with the Portuguese translation in its place" /></p>
+
+The History screen shows each line's original, its translation and how long every step took. It also shows the model fixing OCR mistakes: below, the game's "press u or use the right-click menu" was read as "apress u or use the tight-clicksmenu" and still came out right. Lines already seen come from the cache, so here the translation showed up typically 121 ms after the text appeared; a new line waits for the translator (656 ms typical in an earlier test, on a long web page with Gemini).
+
+<p align="center"><img src="docs/screenshots/history-timing.png" width="760" alt="The History screen in a Wesnoth session: time until the translation shows, then each line with the OCR's reading above and the Portuguese translation below" /></p>
+
 ## What it looks like
 
 *Screenshots with [The Battle for Wesnoth](https://www.wesnoth.org/), a free and open-source game.*
