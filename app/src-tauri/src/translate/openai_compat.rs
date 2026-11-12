@@ -20,6 +20,15 @@ fn is_transient(status: reqwest::StatusCode) -> bool {
         || status == reqwest::StatusCode::TOO_MANY_REQUESTS
 }
 
+/// True when a 429 body says the quota is used up (Gemini: "exceeded your current
+/// quota", RESOURCE_EXHAUSTED, a "PerDay" metric) rather than a per-minute limit,
+/// which the body marks with "PerMinute" and passes in seconds.
+fn is_quota_exhausted(body: &str) -> bool {
+    let body = body.to_lowercase();
+    body.contains("perday")
+        || ((body.contains("quota") || body.contains("billing")) && !body.contains("perminute"))
+}
+
 /// Lowest reasoning level each Gemini generation accepts: 2.5 models can turn
 /// thinking off ("none"); Gemini 3 models can't, so "low" is the minimum.
 /// Other services get no parameter at all (not every server knows it).
@@ -126,6 +135,9 @@ impl OpenAiCompatTranslator {
     async fn provider_error(response: reqwest::Response) -> TranslateError {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS && is_quota_exhausted(&body) {
+            return TranslateError::Quota(format!("HTTP {status}"));
+        }
         let snippet: String = body.chars().take(300).collect();
         let message = format!("HTTP {status}: {snippet}");
         if is_transient(status) {
@@ -151,8 +163,10 @@ impl OpenAiCompatTranslator {
             if response.status().is_success() {
                 return Ok(response);
             }
-            if !is_transient(response.status()) || attempt >= RETRY_DELAYS_MS.len() {
-                return Err(Self::provider_error(response).await);
+            let transient = is_transient(response.status());
+            let error = Self::provider_error(response).await;
+            if !transient || matches!(error, TranslateError::Quota(_)) || attempt >= RETRY_DELAYS_MS.len() {
+                return Err(error);
             }
             tokio_sleep(RETRY_DELAYS_MS[attempt]).await;
             attempt += 1;
@@ -432,6 +446,45 @@ mod tests {
         let result =
             tauri::async_runtime::block_on(translator(&url).translate(&request(), |_| true));
         assert_eq!(result, Ok("Oi".into()));
+    }
+
+    /// The 429 body Google AI Studio sends when the free quota is used up.
+    const QUOTA_BODY: &str = r#"[{"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details.","status":"RESOURCE_EXHAUSTED","details":[{"violations":[{"quotaMetric":"generativelanguage.googleapis.com/generate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}]"#;
+
+    /// Serves exactly one 429 answer; a second request would find nobody listening.
+    fn one_shot_429(body: &'static str) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            let mut buf = vec![0u8; 16384];
+            let _ = socket.read(&mut buf).unwrap();
+            let head = format!(
+                "HTTP/1.1 429 Too Many Requests\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            socket.write_all(head.as_bytes()).unwrap();
+        });
+        format!("http://{addr}/v1/")
+    }
+
+    #[test]
+    fn exhausted_quota_is_reported_once_without_retrying_or_the_json() {
+        let url = one_shot_429(QUOTA_BODY);
+        let result =
+            tauri::async_runtime::block_on(translator(&url).translate(&request(), |_| true));
+        // A retry would hit the closed listener and come back as Network instead.
+        assert_eq!(result, Err(TranslateError::Quota("HTTP 429 Too Many Requests".into())));
+        assert_eq!(result.unwrap_err().kind(), "translatorQuota");
+    }
+
+    #[test]
+    fn per_minute_limits_are_not_taken_for_an_exhausted_quota() {
+        assert!(is_quota_exhausted(QUOTA_BODY));
+        assert!(!is_quota_exhausted("Rate limit reached, try again in 2s"));
+        assert!(!is_quota_exhausted(
+            r#"{"message":"You exceeded your current quota","quotaId":"GenerateRequestsPerMinutePerProjectPerModel"}"#
+        ));
     }
 
     #[test]

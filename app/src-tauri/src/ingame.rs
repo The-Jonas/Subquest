@@ -7,13 +7,15 @@
 //!   Ctrl+Shift+G  glossary: click a word in the game, say how to translate it
 //!   Ctrl+Shift+T  pause / resume translating
 //!   Ctrl+Shift+H  hide / show the translations
+//!   Ctrl+Shift+M  hand the mouse to the toolbar (a game that keeps the cursor
+//!                 hides it otherwise); again: back to the game
 //!   Ctrl+Shift+B  show / hide the toolbar (hidden until asked for, so it
 //!                 doesn't sit on the game the whole time)
 //!
 //! Marking happens on the overlay: it starts taking the mouse, shows a dimmed
 //! layer and reports the rectangle in window pixels.
 
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
@@ -49,6 +51,7 @@ enum Action {
     Toolbar,
     Edit,
     Term,
+    Focus,
 }
 
 /// The configured shortcuts that parse, with their action. A key written in
@@ -63,6 +66,7 @@ fn shortcuts(app: &AppHandle) -> Vec<(Shortcut, Action)> {
         (keys.toolbar, Action::Toolbar),
         (keys.edit, Action::Edit),
         (keys.term, Action::Term),
+        (keys.focus, Action::Focus),
     ]
     .into_iter()
     .filter(|(text, _)| !text.trim().is_empty())
@@ -95,6 +99,7 @@ pub fn on_shortcut(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState) {
         Action::Toolbar => toggle_toolbar(app).map(|_| ()),
         Action::Edit => begin_selection(app, Purpose::Edit),
         Action::Term => begin_selection(app, Purpose::Term),
+        Action::Focus => focus_toolbar(app),
     };
     if let Err(e) = result {
         eprintln!("[subquest] shortcut: {}", e.detail);
@@ -138,11 +143,58 @@ pub fn toggle_toolbar(app: &AppHandle) -> Result<bool, AppError> {
         create_toolbar(app, bounds)?;
     }
     state.toolbar_wanted.store(wanted, Ordering::SeqCst);
+    if !wanted {
+        release_toolbar_focus(app, true);
+    }
     if let Some(toolbar) = app.get_webview_window(TOOLBAR) {
         let _ = if wanted { toolbar.show() } else { toolbar.hide() };
     }
     let _ = app.emit("toolbar-shown", wanted);
     Ok(wanted)
+}
+
+static BAR_FOCUSABLE: AtomicBool = AtomicBool::new(false); // the toolbar may take the focus right now
+static BAR_FOCUSED_AT: Mutex<Option<std::time::Instant>> = Mutex::new(None); // when it was handed the focus
+
+/// Hands the mouse and keyboard to the toolbar, so its buttons can be clicked
+/// when the game keeps the cursor (the game loses the foreground, as with the
+/// Windows key); pressed again, the game gets them back. Shows the toolbar first if it was away.
+pub fn focus_toolbar(app: &AppHandle) -> Result<(), AppError> {
+    let state = app.state::<AppState>();
+    let Some(game) = *state.session_window.lock().unwrap() else {
+        return Ok(()); // no game, no toolbar
+    };
+    if !state.toolbar_wanted.load(Ordering::SeqCst) {
+        toggle_toolbar(app)?;
+    }
+    let Some(toolbar) = app.get_webview_window(TOOLBAR) else {
+        return Ok(());
+    };
+    if toolbar.is_focused().unwrap_or(false) {
+        release_toolbar_focus(app, true);
+        overlay::focus_game(game);
+    } else {
+        let _ = toolbar.show();
+        BAR_FOCUSABLE.store(true, Ordering::SeqCst);
+        *BAR_FOCUSED_AT.lock().unwrap() = Some(std::time::Instant::now());
+        let _ = toolbar.set_focusable(true);
+        let _ = toolbar.set_focus();
+    }
+    Ok(())
+}
+
+/// The toolbar goes back to never taking the focus from the game (called when
+/// the game is in front again, or the bar is put away; `force` skips the short wait after the hand-over). Cheap when nothing is to undo.
+pub fn release_toolbar_focus(app: &AppHandle, force: bool) {
+    // Just handed over: the game may still be in front for a moment.
+    if !force && BAR_FOCUSED_AT.lock().unwrap().is_some_and(|t| t.elapsed() < Duration::from_millis(500)) {
+        return;
+    }
+    if BAR_FOCUSABLE.swap(false, Ordering::SeqCst) {
+        if let Some(toolbar) = app.get_webview_window(TOOLBAR) {
+            let _ = toolbar.set_focusable(false);
+        }
+    }
 }
 
 /// Session ended: frees the shortcuts and hides the toolbar.
@@ -389,7 +441,7 @@ mod tests {
     #[test]
     fn the_keys_the_shortcuts_screen_writes_are_understood() {
         let defaults = ShortcutSettings::default();
-        for text in [defaults.area, defaults.style, defaults.pause, defaults.hide, defaults.toolbar, defaults.edit] {
+        for text in [defaults.area, defaults.style, defaults.pause, defaults.hide, defaults.toolbar, defaults.edit, defaults.term, defaults.focus] {
             assert!(text.parse::<Shortcut>().is_ok(), "{text}");
         }
         for text in ["Ctrl+Alt+F5", "Ctrl+Shift+1", "F9", "Alt+Space", "Super+Shift+PageDown", "Ctrl+Shift+ArrowUp"] {

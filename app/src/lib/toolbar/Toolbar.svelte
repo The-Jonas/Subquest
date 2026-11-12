@@ -11,7 +11,8 @@
   import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
   import { t, setLocale, type Locale } from "../i18n/index.svelte";
   import { keyHint, defaultShortcuts, type Shortcuts } from "../shortcuts";
-  import { applyTheme, beginSelection, getSettings, inTauri, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
+  import { untagged } from "../text/icons";
+  import { applyTheme, beginSelection, getSettings, inTauri, onOcrText, onTranslation, type Settings, sessionFlags, showMain, toggleHidden, togglePause, toggleToolbar } from "../api";
 
   let paused = $state(false);
   let tip = $state(""); // label of the button under the mouse, drawn below the bar
@@ -30,24 +31,55 @@
     open: "M11 3.5h5.5V9M16.5 3.5L9 11M14 12.5v4H3.5V6h4",
     edit: "M3.5 3.5h7v7h-7zM10.5 10.5l2 6 1.5-2.5 2.5-1.5z",
     term: "M3 4.5h5a2 2 0 0 1 2 1.5a2 2 0 0 1 2-1.5h5v11h-5a2 2 0 0 0-2 1.5a2 2 0 0 0-2-1.5H3zM10 6v10.5", // open book: the glossary
+    log: "M4 5h12M4 10h12M4 15h7", // lines of text: the recent lines
     tuck: "M5 8l5 5 5-5M4 16.5h12", // arrow down into a line: put the bar away
     help: "M10 2.5a7.5 7.5 0 1 0 0 15a7.5 7.5 0 0 0 0-15zM7.8 8a2.2 2.2 0 1 1 3.2 2c-.7.4-1 .9-1 1.6v.4M10 14.6v.1", // a question mark in a circle
   };
 
   // The guide: one step per part of the bar, in its order (texts in toolbar.guide.<key>).
-  const GUIDE = ["intro", "move", "area", "edit", "style", "term", "pause", "hide", "open", "close"] as const;
+  const GUIDE = ["intro", "move", "area", "edit", "style", "term", "log", "pause", "hide", "open", "close"] as const;
   type Part = (typeof GUIDE)[number];
   const WIDTH = 440; // the window: the bar's width (see ingame.rs)
   const BAR_HEIGHT = 84; // the bar and the label under it
   const GUIDE_HEIGHT = 250; // the bar and the guide's box under it
+  const LOG_HEIGHT = 380; // the bar and the list of recent lines under it
+  const LOG_SIZE = 40; // lines kept in the list
   let guide = $state<number | null>(null); // the step shown, or null when the guide is closed
   const step = $derived(guide === null ? null : GUIDE[guide]);
+
+  // Resizes the window to the bar plus whatever box is open under it.
+  async function resize() {
+    const height = guide !== null ? GUIDE_HEIGHT : logOpen ? LOG_HEIGHT : BAR_HEIGHT;
+    if (inTauri) await getCurrentWindow().setSize(new LogicalSize(WIDTH, height));
+  }
 
   // Opens the guide (the window grows down to hold its box) or closes it.
   async function setGuide(open: boolean) {
     guide = open ? 0 : null;
     tip = "";
-    if (inTauri) await getCurrentWindow().setSize(new LogicalSize(WIDTH, open ? GUIDE_HEIGHT : BAR_HEIGHT));
+    await resize();
+  }
+
+  // The lines read since the bar was created, newest first, with their translations.
+  interface Recent {
+    id: number;
+    original: string;
+    translation: string;
+  }
+  let recent = $state<Recent[]>([]);
+  let logOpen = $state(false);
+
+  // Shows or hides the list of recent lines.
+  async function toggleLog() {
+    logOpen = !logOpen;
+    tip = "";
+    await resize();
+  }
+
+  // A new reading enters the list (a re-reading of a line already there does not).
+  function noteLine(e: { text: string; frameId: number; sameAs?: number | null }) {
+    if (!e.text || e.sameAs != null) return;
+    recent = [{ id: e.frameId, original: untagged(e.text).replace(/\{\d+\}/g, "").trim(), translation: "" }, ...recent].slice(0, LOG_SIZE);
   }
 
   // A button's own action, or, while the guide is open, its explanation.
@@ -109,6 +141,14 @@
       await listen<Settings>("settings-changed", (e) => {
         keys = e.payload.shortcuts;
         applyTheme(e.payload.uiTheme);
+      }),
+    );
+    unlisteners.push(await onOcrText(noteLine));
+    unlisteners.push(
+      await onTranslation((e) => {
+        if (!e.text || e.errorKind) return;
+        const entry = recent.find((r) => r.id === e.frameId);
+        if (entry) entry.translation = untagged(e.text).replace(/\{\d+\}/g, "").trim();
       }),
     );
     [paused, hidden] = await sessionFlags();
@@ -174,6 +214,7 @@
       hide,
       hidden,
     )}
+    {@render tool("log", t("toolbar.log"), ICONS.log, toggleLog, logOpen)}
     <span class="sep"></span>
     {@render tool("open", t("toolbar.open"), ICONS.open, () => showMain())}
     <span class="sep"></span>
@@ -211,6 +252,18 @@
           <button class="text-btn primary" onclick={() => setGuide(false)}>{t("toolbar.guide.done")}</button>
         {/if}
       </div>
+    </div>
+  {:else if logOpen}
+    <!-- The lines read, newest first: what went by too fast -->
+    <div class="log" role="log" aria-label={t("toolbar.log")}>
+      {#each recent as r (r.id)}
+        <div class="entry">
+          <p class="orig">{r.original}</p>
+          {#if r.translation}<p class="tr">{r.translation}</p>{/if}
+        </div>
+      {:else}
+        <p class="empty">{t("toolbar.logEmpty")}</p>
+      {/each}
     </div>
   {:else if tip}<div class="tip">{tip}</div>{/if}
 </div>
@@ -346,6 +399,33 @@
   .guide .hint {
     color: var(--gold);
     font-size: 12px;
+  }
+  .log {
+    box-sizing: border-box;
+    width: 100%;
+    max-height: 290px;
+    overflow-y: auto;
+    padding: 8px 12px;
+    border: 1.5px solid color-mix(in srgb, var(--gold) 55%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--night-deep) 96%, transparent);
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .entry {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .entry p,
+  .empty {
+    margin: 0;
+  }
+  .orig {
+    color: var(--ink-dim);
+    font-size: 12px;
+  }
+  .tr {
+    margin-top: 2px;
   }
   .actions {
     display: flex;

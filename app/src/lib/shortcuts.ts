@@ -2,11 +2,11 @@
 // keys, and turning a key press into text like "Ctrl+Shift+A" (the format
 // Rust parses with the global-shortcut plugin).
 
-export type ShortcutAction = "area" | "edit" | "style" | "term" | "pause" | "hide" | "toolbar";
+export type ShortcutAction = "area" | "edit" | "style" | "term" | "pause" | "hide" | "toolbar" | "focus";
 export type Shortcuts = Record<ShortcutAction, string>;
 
 // Order shown on the Shortcuts screen.
-export const shortcutActions: ShortcutAction[] = ["toolbar", "area", "edit", "style", "term", "pause", "hide"];
+export const shortcutActions: ShortcutAction[] = ["toolbar", "focus", "area", "edit", "style", "term", "pause", "hide"];
 
 export const defaultShortcuts: Shortcuts = {
   area: "Ctrl+Shift+A",
@@ -16,6 +16,7 @@ export const defaultShortcuts: Shortcuts = {
   pause: "Ctrl+Shift+T",
   hide: "Ctrl+Shift+H",
   toolbar: "Ctrl+Shift+B",
+  focus: "Ctrl+Shift+M",
 };
 
 // Keys that can end a shortcut, by KeyboardEvent.code, with their name.

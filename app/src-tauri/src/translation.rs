@@ -34,6 +34,11 @@ use crate::translate::quick::QuickTranslator;
 /// requests" (HTTP 429); None when it is in use.
 static QUICK_PAUSED: Mutex<Option<Instant>> = Mutex::new(None);
 const QUICK_PAUSE: Duration = Duration::from_secs(10 * 60);
+
+/// The service+model whose quota ran out and until when it is left alone (switching model
+/// or provider lifts it); None when the main model is in use.
+static MAIN_PAUSED: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+const MAIN_PAUSE: Duration = Duration::from_secs(5 * 60);
 use crate::translate::similar;
 use crate::translate::{ContextLine, TranslateError, TranslationRequest};
 use crate::AppState;
@@ -324,7 +329,20 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
         }
     };
     let model = backend(&translation.http, &settings.translator);
-    let (quick_text, result) = join(quick_line, hedged(&model, &request, &on_partial)).await;
+    let main_line = async {
+        let which = format!("{}|{}", model.base_url, model.model);
+        let paused = MAIN_PAUSED.lock().unwrap().as_ref().is_some_and(|(w, until)| *w == which && Instant::now() < *until);
+        if paused {
+            return Err(TranslateError::Quota("paused".into())); // quota used up: no request, no log
+        }
+        let result = hedged(&model, &request, &on_partial).await;
+        if let Err(TranslateError::Quota(_)) = result {
+            *MAIN_PAUSED.lock().unwrap() = Some((which, Instant::now() + MAIN_PAUSE));
+            log::warn(&format!("model quota used up: model paused for {} min (quick layer unaffected)", MAIN_PAUSE.as_secs() / 60));
+        }
+        result
+    };
+    let (quick_text, result) = join(quick_line, main_line).await;
 
     match result {
         Ok(full) => {
@@ -334,7 +352,9 @@ pub async fn translate_line(app: AppHandle, text: String, frame_id: u64, plan: P
             remember(translation, text, full);
         }
         Err(e) => {
-            log::warn(&format!("translation failed: {e}"));
+            if !matches!(e, TranslateError::Quota(_)) {
+                log::warn(&format!("translation failed: {e}")); // quota is logged once, when the pause starts
+            }
             if let Some(quick_text) = quick_text {
                 // The quick translation stays as the final one (not cached: the LLM may do better later).
                 publish.send_replace(Some(quick_text.clone()));

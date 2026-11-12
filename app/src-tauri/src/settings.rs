@@ -62,6 +62,7 @@ pub struct ShortcutSettings {
     pub toolbar: String, // show / hide the in-game toolbar
     pub edit: String,    // edit the marked areas (move, resize, rename, remove)
     pub term: String,    // click a word in the game to add it to the glossary
+    pub focus: String,   // give the mouse to the toolbar (and back to the game)
 }
 
 impl Default for ShortcutSettings {
@@ -75,6 +76,7 @@ impl Default for ShortcutSettings {
             toolbar: "Ctrl+Shift+B".into(),
             edit: "Ctrl+Shift+E".into(),
             term: "Ctrl+Shift+G".into(),
+            focus: "Ctrl+Shift+M".into(),
         }
     }
 }

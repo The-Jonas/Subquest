@@ -68,6 +68,24 @@ export function pairLines(lines: OcrLine[], translation: string): { line: OcrLin
   return [{ line: { ...lines[0], rect: union(lines.map((l) => l.rect)) }, text: parts.join(" ") }];
 }
 
+// pairLines for the whole window, where one reading holds every text on the
+// screen: when the model's line count differs, the translation is shared out
+// by block (shareParts) so a merged paragraph never drags a title or a hint
+// from the other side of the screen into one giant block.
+export function pairScreen(lines: OcrLine[], translation: string): { line: OcrLine; text: string }[] {
+  const direct = pairLines(lines, translation);
+  if (direct.length === lines.length) return direct;
+  const rects = lines.map(placement);
+  const groups = blocks(rects)
+    .map((g) => [...g].sort((a, b) => rects[a][1] - rects[b][1]))
+    .flatMap((g) => splitParagraphs(lines, g))
+    .sort((a, b) => rects[a[0]][1] - rects[b[0]][1]);
+  const parts = translation.split("\n").map((s) => s.trim()).filter(Boolean);
+  const shared = groups.length > 1 ? shareParts(groups.map((g) => g.map((i) => lines[i].text).join(" ")), parts) : null;
+  if (!shared) return direct;
+  return groups.flatMap((g, k) => pairLines(g.map((i) => lines[i]), shared[k].join("\n")));
+}
+
 // Smallest rectangle containing all the given ones.
 export function union(rects: Region[]): Region {
   const x0 = Math.min(...rects.map((r) => r[0]));
@@ -133,6 +151,21 @@ export function detectAlign(rects: Region[], single: Align): Align {
   return center <= right ? "center" : "right";
 }
 
+// Sideways limits (px) of line `i`: the nearest line on its row at each side
+// (a label and its value, two columns), else the bounds.
+function neighbours(i: number, rects: Region[], scale: number, minX: number, maxX: number) {
+  const r = rects[i];
+  let left = minX;
+  let right = maxX;
+  rects.forEach((o, k) => {
+    const rowOverlap = Math.min(r[1] + r[3], o[1] + o[3]) - Math.max(r[1], o[1]);
+    if (k === i || rowOverlap < Math.min(r[3], o[3]) * 0.5) return;
+    if (o[0] >= r[0] + r[2] - 1) right = Math.min(right, o[0] * scale);
+    else if (o[0] + o[2] <= r[0] + 1) left = Math.max(left, (o[0] + o[2]) * scale);
+  });
+  return { left, right };
+}
+
 // Builds the patches. `measureFor(line)` gives the measuring function of the
 // font that line will be drawn in (each text style can have its own);
 // `single` is the alignment of a line that has no neighbours.
@@ -176,14 +209,18 @@ export function layout(
     const ink = probe.inkAscent + probe.inkDescent;
     const base = ink > 0 ? (h * 100) / ink : h / FALLBACK_INK;
 
-    // Room on the side(s) the text grows to, given its alignment.
+    // Room on the side(s) the text grows to, given its alignment: up to the
+    // screen edge, or the nearest line on the same row (never less than the original).
     const center = x + w / 2;
-    const room =
+    const next = neighbours(i, rects, scale, minX, maxX);
+    const room = Math.max(
+      w,
       align[i] === "left"
-        ? maxX - x
+        ? next.right - x
         : align[i] === "right"
-          ? x + w - minX
-          : 2 * Math.min(center - minX, maxX - center);
+          ? x + w - next.left
+          : 2 * Math.min(center - next.left, next.right - center),
+    );
     const width = measure(text, base).width;
     const fontPx = width > room * EDGE ? Math.max(base * MIN_SHRINK, (base * room * EDGE) / width) : base;
     const m = measure(text, fontPx);
@@ -192,7 +229,7 @@ export function layout(
     // Ink centered where the original's was: same baseline when not shrunk.
     const baseline = y + h / 2 + (o.inkAscent - o.inkDescent) / 2;
     let left = align[i] === "left" ? x : align[i] === "right" ? x + w - m.width : center - m.width / 2;
-    left = Math.min(Math.max(minX, left), Math.max(minX, maxX - m.width));
+    left = Math.min(Math.max(next.left, left), Math.max(next.left, next.right - m.width));
 
     // The cover hides the original and sits behind the new text, whichever is bigger.
     const coverLeft = Math.min(x, left);
@@ -221,7 +258,12 @@ export function layout(
 // Splits a text into lines no wider than `width` at `px` (whole words; a
 // single word wider than the room gets a line of its own).
 export function wrap(text: string, width: number, px: number, measure: Measure): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
+  // A key drawn in brackets ("[ C ]", as OCR spaces it) is one word: never cut inside it.
+  const glue = String.fromCharCode(160); // a no-break space: the split below only cuts at plain ones
+  const words = text
+    .replace(/\[\s*([^\][]{1,6}?)\s*\]/g, (_, k) => `[${glue}${k}${glue}]`)
+    .split(/[ \t\r\n]+/)
+    .filter(Boolean);
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
@@ -234,7 +276,7 @@ export function wrap(text: string, width: number, px: number, measure: Measure):
     }
   }
   if (current) lines.push(current);
-  return balanceTags(lines); // a colored run cut in two keeps its color on both lines
+  return balanceTags(lines.map((l) => l.replaceAll(glue, " "))); // a colored run cut in two keeps its color on both lines
 }
 
 // Middle value of a list of numbers (0 for an empty list).

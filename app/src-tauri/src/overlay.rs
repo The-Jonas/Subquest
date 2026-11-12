@@ -280,6 +280,9 @@ pub fn open(app: &AppHandle, game: u64) -> Result<(), AppError> {
                     }
                     // The toolbar, when asked for, follows the same rule: only
                     // while the game or Subquest is in front.
+                    if front == Front::Game {
+                        crate::ingame::release_toolbar_focus(&app, false); // the game has the mouse again: the bar stops taking focus
+                    }
                     let toolbar_wanted = state.toolbar_wanted.load(Ordering::SeqCst) && front != Front::Other;
                     set_toolbar(&app, toolbar_wanted);
                 }

@@ -184,6 +184,7 @@
     "translatorNetwork": "No pude conectar con el servicio de traducción. Revisa internet y la dirección en Ajustes.",
     "translatorProvider": "El servicio de traducción rechazó la solicitud. Revisa la clave y el modelo en Ajustes; si es un límite de uso, espera un poco.",
     "translatorBusy": "El modelo está sobrecargado ahora (mucha demanda). Inténtalo de nuevo en unos segundos o elige otro modelo en Ajustes; los \"flash-lite\" suelen estar libres.",
+    "translatorQuota": "Se agotó la cuota de uso del modelo, así que está en pausa por 5 minutos (la traducción rápida sigue funcionando). Espera, elige otro modelo o proveedor en Ajustes, o activa la facturación de tu clave.",
     "fontNotFound": "Ninguna de las fuentes sugeridas existe en Google Fonts. Inténtalo de nuevo o marca un área con más texto."
   },
   "fonts": {
@@ -291,6 +292,8 @@
     "closeNoKey": "Ocultar la barra · vuelve desde Subquest",
     "term": "Elegir una palabra para el glosario",
     "help": "Cómo usar la barrita",
+    "log": "Líneas recientes",
+    "logEmpty": "Aún no se leyó ninguna línea.",
     "guide": {
       "title": "Cómo usar la barrita",
       "count": "{n} de {total}",
@@ -321,6 +324,10 @@
       "style": {
         "title": "Captura de estilo",
         "text": "Marca una frase del juego para guardar su aspecto. Luego, en la pantalla Juegos, elige la fuente: toda línea parecida la usa."
+      },
+      "log": {
+        "title": "Líneas recientes",
+        "text": "Abre la lista de las últimas líneas leídas, con sus traducciones, para ver lo que pasó demasiado rápido. Púlsala de nuevo para cerrar."
       },
       "term": {
         "title": "Glosario",
@@ -360,6 +367,10 @@
       "taken": "Esa combinación ya es de \"{action}\"."
     },
     "actions": {
+      "focus": {
+        "name": "Ratón a la barra",
+        "help": "Pasa el ratón a la barra cuando el juego retiene el cursor (como la tecla Windows); púlsalo de nuevo para volver al juego."
+      },
       "toolbar": {
         "name": "Mostrar la barra",
         "help": "Muestra u oculta la barra sobre el juego."

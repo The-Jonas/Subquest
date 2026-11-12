@@ -45,7 +45,7 @@
   import TermPicker from "./TermPicker.svelte";
   import IconText from "../components/IconText.svelte";
   import { extentOf, forMeasure, withAllIcons } from "../text/icons";
-  import { effectShadow, layout, layoutArea, pairLines, type Metrics, type Patch } from "./layout";
+  import { effectShadow, layout, layoutArea, pairScreen, type Metrics, type Patch } from "./layout";
 
   const MIN_FONT = 12; // classic box: never shrink below this
   const AUTO_FALLBACK = 24; // automatic size before any line was measured
@@ -254,7 +254,7 @@
       const placed =
         a.mode !== "screen" && a.region
           ? layoutArea(lines, translation, a.region, frame, view, measureFor, loose, icons.length)
-          : layout(pairLines(lines, translation), frame, view, measureFor, "center");
+          : layout(pairScreen(lines, translation), frame, view, measureFor, "center");
       const bg = cleanPiece(v.current, view);
       const scale = view.height / frame.height; // CSS px per window pixel (for the effects)
       for (const patch of placed) out.push({ look: lookFor(a, patch.style, patch.letterCase, patch.weight), patch, frame: v.current.frameId, bg, scale, icons: pictures, colors: v.current.highlights ?? [] });

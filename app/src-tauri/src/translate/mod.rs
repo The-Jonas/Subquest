@@ -36,6 +36,7 @@ pub enum TranslateError {
     Network(String),       // connection failure / timeout
     Provider(String),      // the API answered with an error
     Busy(String),          // overloaded (503) or rate-limited (429), even after retrying
+    Quota(String),         // the account's quota is used up (429): retrying within seconds is pointless
     Cancelled,             // a newer line arrived; this one is no longer worth finishing
 }
 
@@ -47,6 +48,7 @@ impl TranslateError {
             TranslateError::Network(_) => "translatorNetwork",
             TranslateError::Provider(_) => "translatorProvider",
             TranslateError::Busy(_) => "translatorBusy",
+            TranslateError::Quota(_) => "translatorQuota",
             TranslateError::Cancelled => "cancelled",
         }
     }
@@ -60,6 +62,7 @@ impl std::fmt::Display for TranslateError {
             TranslateError::Network(e) => write!(f, "connection error: {e}"),
             TranslateError::Provider(e) => write!(f, "the translation service refused: {e}"),
             TranslateError::Busy(e) => write!(f, "the translation service is busy: {e}"),
+            TranslateError::Quota(e) => write!(f, "the translation quota is used up: {e}"),
             TranslateError::Cancelled => write!(f, "cancelled by a newer line"),
         }
     }

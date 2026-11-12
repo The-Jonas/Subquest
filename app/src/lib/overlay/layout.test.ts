@@ -3,7 +3,7 @@
 // character half the font size wide), so every number here can be checked by hand.
 import { describe, expect, it } from "vitest";
 import type { OcrLine, Region } from "../api";
-import { blocks, detectAlign, layout, layoutArea, pairLines, splitKeycap, splitParagraphs, shareParts, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
+import { blocks, detectAlign, layout, layoutArea, pairLines, pairScreen, splitKeycap, splitParagraphs, shareParts, loneAlign, union, wrap, effectShadow, type Measure } from "./layout";
 
 // Fake font: width = 0.5 px per character per px of size; ink 0.7 up, 0.2 down.
 const measure: Measure = (text, px) => ({
@@ -38,6 +38,46 @@ describe("pairLines", () => {
   it("ignores blank lines the model added at the end", () => {
     const pairs = pairLines([line("a", [0, 0, 10, 10])], "um\n\n");
     expect(pairs.map((p) => p.text)).toEqual(["um"]);
+  });
+});
+
+describe("pairScreen (whole window)", () => {
+  // A busy screen: a title, a far-away hint and a two-line paragraph. The model
+  // merged the paragraph's lines, so the count no longer matches.
+  const lines = [
+    line("OPTIONS", [800, 60, 300, 40]),
+    line("The target is in the", [200, 500, 400, 20]),
+    line("garden, near the pool", [200, 530, 420, 20]),
+    line("Press to continue", [1500, 1000, 300, 20]),
+  ];
+
+  it("keeps a count mismatch inside each block instead of one block over the whole screen", () => {
+    const pairs = pairScreen(lines, "OPÇÕES\nO alvo está no jardim, perto da piscina\nPressione para continuar");
+    expect(pairs.map((p) => p.text)).toEqual([
+      "OPÇÕES",
+      "O alvo está no jardim, perto da piscina",
+      "Pressione para continuar",
+    ]);
+    // The paragraph's block covers only its own two lines, not the title or the hint.
+    expect(pairs[1].line.rect).toEqual([200, 500, 420, 50]);
+    expect(pairs[0].line.rect).toEqual([800, 60, 300, 40]);
+  });
+
+  it("falls back to one block when the translation can't be shared out", () => {
+    const pairs = pairScreen(lines, "tudo numa linha");
+    expect(pairs).toHaveLength(1);
+  });
+});
+
+describe("layout: neighbours on the same row", () => {
+  it("does not grow a left-aligned line over the one to its right", () => {
+    const rows = [
+      { line: line("Name", [100, 100, 80, 20]), text: "Nome completo do personagem principal" },
+      { line: line("Level 5", [400, 100, 70, 20]), text: "Nível 5" },
+    ];
+    const [a] = layout(rows, screen, screen, () => measure, "left");
+    const width = measure("Nome completo do personagem principal", a.fontPx).width;
+    expect(a.textLeft + width).toBeLessThanOrEqual(400);
   });
 });
 
@@ -93,6 +133,12 @@ describe("wrap", () => {
   it("breaks between words at the width", () => {
     // 10 px font: 5 px per character, so 40 px fits 8 characters.
     expect(wrap("um dois tres", 40, 10, measure)).toEqual(["um dois", "tres"]);
+  });
+
+  it("never breaks inside a key drawn in brackets", () => {
+    // "Pressione [ C ] para agachar." at 10 px (5 px per character) in 70 px: the cut falls inside "[ C ]".
+    const out = wrap("Pressione [ C ] para agachar.", 70, 10, measure);
+    expect(out.every((l) => !/\[[^\]]*$/.test(l) && !/^[^[]*\]/.test(l))).toBe(true);
   });
 
   it("gives a word wider than the room a line of its own", () => {

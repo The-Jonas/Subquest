@@ -2,12 +2,17 @@
 <script lang="ts">
   import { app, persistSettings, type Screen } from "../stores/app.svelte";
   import { t, localeNames, type Locale } from "../i18n/index.svelte";
-  import { session } from "../stores/session.svelte";
+  import { session, stopTranslating } from "../stores/session.svelte";
   import { startTour } from "../stores/tour.svelte";
 
   // The menu: few items, big narrow type, like a game's pause menu.
   const items: Screen[] = ["play", "games", "history", "settings"];
   const TOUR_ICON = "M10 3.5a6.5 6.5 0 1 0 0 13a6.5 6.5 0 0 0 0-13zM8 8a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.5M10 13.5h.01";
+
+  // Stops the session from any screen; a failure is not worth a dialog here.
+  function stop() {
+    stopTranslating().catch(() => {});
+  }
 
   // Switches the UI language and saves the choice.
   async function changeLocale(event: Event) {
@@ -48,6 +53,14 @@
       </li>
     {/each}
   </ul>
+
+  <!-- A running session can be stopped from any screen -->
+  {#if session.running}
+    <div class="running" role="status">
+      <p><span class="live-dot"></span>{t("play.start.running", { game: session.game?.title ?? "" })}</p>
+      <button class="btn" onclick={stop}>{t("play.start.stop")}</button>
+    </div>
+  {/if}
 
   <div class="foot">
     <!-- The guided tour: opens each screen and points at what matters -->
@@ -157,6 +170,30 @@
     li button::before {
       transition: none;
     }
+  }
+
+  .running {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--panel);
+  }
+  .running p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+  .running .live-dot {
+    flex: none;
+    margin: 0;
+  }
+  .running .btn {
+    justify-content: center;
+    padding: 7px 12px;
   }
 
   .foot {

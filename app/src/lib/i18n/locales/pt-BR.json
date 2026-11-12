@@ -184,6 +184,7 @@
     "translatorNetwork": "Não consegui falar com o serviço de tradução. Confira a internet e o endereço em Ajustes.",
     "translatorProvider": "O serviço de tradução recusou o pedido. Confira a chave e o modelo em Ajustes; se for limite de uso, espere um pouco.",
     "translatorBusy": "O modelo está sobrecarregado agora (muita gente usando). Tente de novo em alguns segundos ou escolha outro modelo em Ajustes; os \"flash-lite\" costumam estar livres.",
+    "translatorQuota": "A cota de uso do modelo acabou, então ele fica em pausa por 5 minutos (a tradução rápida continua). Espere, escolha outro modelo ou provedor em Ajustes, ou ative a cobrança da sua chave.",
     "fontNotFound": "Nenhuma das fontes sugeridas existe no Google Fonts. Tente de novo ou marque uma área com mais texto."
   },
   "fonts": {
@@ -291,6 +292,8 @@
     "closeNoKey": "Esconder a barrinha · volta pelo Subquest",
     "term": "Escolher uma palavra para o glossário",
     "help": "Como usar a barrinha",
+    "log": "Falas recentes",
+    "logEmpty": "Nenhuma fala lida ainda.",
     "guide": {
       "title": "Como usar a barrinha",
       "count": "{n} de {total}",
@@ -321,6 +324,10 @@
       "style": {
         "title": "Print de estilo",
         "text": "Marque uma frase do jogo para guardar a aparência dela. Depois, na tela Jogos, escolha a fonte: toda linha parecida passa a usar essa fonte."
+      },
+      "log": {
+        "title": "Falas recentes",
+        "text": "Abre a lista das últimas falas lidas, com as traduções, para você ver o que passou rápido demais. Aperte de novo para fechar."
       },
       "term": {
         "title": "Glossário",
@@ -360,6 +367,10 @@
       "taken": "Essa combinação já é de \"{action}\"."
     },
     "actions": {
+      "focus": {
+        "name": "Mouse na barra",
+        "help": "Passa o mouse para a barra quando o jogo prende o cursor (como a tecla Windows); aperte de novo para voltar ao jogo."
+      },
       "toolbar": {
         "name": "Mostrar a barrinha",
         "help": "Mostra ou esconde a barrinha por cima do jogo."
