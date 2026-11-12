@@ -20,6 +20,7 @@ add_library(subquest_portable STATIC
     src/vision/icons.cpp
     src/vision/loose.cpp
     src/ocr/line_cleanup.cpp
+    src/ocr/second_read.cpp
     src/pipeline/pipeline.cpp
 )
 target_include_directories(subquest_portable PUBLIC src)
@@ -86,6 +87,10 @@ if(SUBQUEST_BUILD_TESTS)
     add_executable(line_cleanup_test tests/line_cleanup_test.cpp)
     target_link_libraries(line_cleanup_test PRIVATE subquest_portable)
     add_test(NAME line_cleanup COMMAND line_cleanup_test)
+
+    add_executable(second_read_test tests/second_read_test.cpp)
+    target_link_libraries(second_read_test PRIVATE subquest_portable)
+    add_test(NAME second_read COMMAND second_read_test)
 
     add_executable(inpaint_test tests/inpaint_test.cpp)
     target_link_libraries(inpaint_test PRIVATE subquest_portable)

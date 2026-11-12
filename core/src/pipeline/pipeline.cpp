@@ -5,6 +5,7 @@
 #include <climits>
 
 #include "ocr/line_cleanup.h"
+#include "ocr/second_read.h"
 #include "vision/icons.h"
 #include "vision/loose.h"
 #include "vision/image_ops.h"
@@ -112,6 +113,7 @@ void Pipeline::ocr_loop() {
         const Frame& frame = job->second;
         OcrResult result = ocr_->recognize(frame);
         tidy_lines(result); // the same cleanup whatever the engine
+        refine_lines(frame, result, *ocr_); // lines of junk (text over a busy background) are read again in black and white
         const auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
                                 std::chrono::steady_clock::now().time_since_epoch()).count();
         result.total_ms = double(now_us - int64_t(frame.timestamp_us)) / 1000.0;
@@ -148,7 +150,9 @@ void Pipeline::ocr_loop() {
             if (!areas_[area].empty()) {
                 const std::vector<Rect> loose = find_loose_text(frame, result.lines, icons);
                 for (const Rect& r : loose) {
-                    result.loose.push_back({r.x + frame.origin_x, r.y + frame.origin_y, r.width, r.height});
+                    // Unread words (a run of them, or what is missing from a line OCR read) are erased
+                    // like the rest, but drawn again they would sit over the translation.
+                    if (looks_like_mark(r) && !shares_a_row(r, result.lines)) result.loose.push_back({r.x + frame.origin_x, r.y + frame.origin_y, r.width, r.height});
                     taken_out.push_back(r);
                 }
             }

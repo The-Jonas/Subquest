@@ -21,6 +21,8 @@ const REACH: usize = 3; // pixels looked at around the letters
 const LOCAL: i32 = 5; // the local background is this far from the letter, in the same direction
 const MIN_LETTER_PIXELS: usize = 12; // fewer letter pixels: nothing to measure
 const STRONG: f32 = 40.0; // how far from the text/background mix (RGB distance) counts as an effect
+const MIN_LETTER_SHARE: f32 = 0.08; // the text color must cover this share of the line box (normal lines: ~16%); a line of two colors has a mixed estimate that fits almost nothing (4%)
+const EVEN: f32 = 0.5; // an outline: its weakest direction has at least this share of the strongest
 const ONE_SIDED: f32 = 0.45; // the opposite side has less than this share: a shadow, not an outline
 
 /// How the game decorates the letters of a line. Sizes in window pixels.
@@ -104,7 +106,7 @@ pub fn measure(pixel: impl Fn(i32, i32) -> Option<u32>, line: (i32, i32, i32, i3
             }
         }
     }
-    if letters < MIN_LETTER_PIXELS {
+    if letters < MIN_LETTER_PIXELS || (letters as f32) < (lw * lh) as f32 * MIN_LETTER_SHARE {
         return None;
     }
     let mean = |k: usize, r: usize| if count[k][r] > 0 { diff[k][r] / count[k][r] as f32 } else { 0.0 };
@@ -131,6 +133,14 @@ pub fn measure(pixel: impl Fn(i32, i32) -> Option<u32>, line: (i32, i32, i32, i3
             dx: dx * reach,
             dy: dy * reach,
         });
+    }
+
+    // An outline is even all around the letters. ClearType (dark text on light
+    // backgrounds) leaves 1 px color fringes that fade from the sides to the top
+    // and bottom: measured on a web page, sides 72-79, diagonals 40-48, top and
+    // bottom 25, and all 30 lines "had an outline" of a tan color.
+    if side.iter().any(|&v| v < side[strongest] * EVEN) {
+        return None;
     }
 
     // All around: an outline (or a halo) as wide as it stays strong on average.
@@ -189,6 +199,21 @@ mod tests {
     }
 
     #[test]
+    fn clear_type_fringes_are_not_an_outline() {
+        // Strokes with a 1 px colored fringe on each side only (subpixel rendering).
+        let pixels = picture(|x, y, c| {
+            if is_bar(x, y) {
+                *c = TEXT
+            } else if (10..20).contains(&y) && [10, 20, 30, 40].iter().any(|&b| x == b - 1) {
+                *c = 0xE0A040
+            } else if (10..20).contains(&y) && [10, 20, 30, 40].iter().any(|&b| x == b + 3) {
+                *c = 0x4040E0
+            }
+        });
+        assert_eq!(run(&pixels), None);
+    }
+
+    #[test]
     fn plain_letters_have_no_effect() {
         let pixels = picture(|x, y, c| {
             if is_bar(x, y) {
@@ -212,6 +237,21 @@ mod tests {
         assert_eq!(effect.kind, "outline");
         assert_eq!(effect.color, "#000000");
         assert_eq!(effect.size, 1.0);
+    }
+
+    #[test]
+    fn a_text_color_that_fits_little_of_the_line_is_not_measured() {
+        // Two white bars (6% of the box) and two red ones, all ringed in black: the
+        // given text color (white) is not the letters' color, so no effect is claimed.
+        let pixels = picture(|x, y, c| {
+            let near = (-1..=1).any(|dy| (-1..=1).any(|dx| is_bar(x + dx, y + dy)));
+            if is_bar(x, y) {
+                *c = if x < 25 { TEXT } else { 0xC03030 }
+            } else if near {
+                *c = DARK
+            }
+        });
+        assert_eq!(run(&pixels), None);
     }
 
     #[test]

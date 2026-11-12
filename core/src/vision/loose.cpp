@@ -12,6 +12,7 @@ constexpr float MAX_TALL = 1.8f;  // and at most this much (taller: artwork, not
 constexpr float JOIN_GAP = 1.5f;  // pieces on one row closer than this many line heights are one leftover
 constexpr int MIN_GAP = 40;       // ink must stand this far (RGB) from the backgrounds
 constexpr float STRONG = 0.6f;    // ...and somewhere this share of the letters' usual contrast
+constexpr float MAX_MARK_ASPECT = 8.0f; // a mark is at most this many times wider than tall; more is a run of words
 constexpr float MAX_FILL = 0.6f;  // letters fill at most this share of their box
 
 // Squared RGB distance between a BGRA pixel and a 0xRRGGBB color.
@@ -155,6 +156,20 @@ std::vector<Rect> find_loose_text(const Frame& frame, const std::vector<OcrLine>
         out.push_back(grown(box, 1));
     }
     return out;
+}
+
+// Whether a leftover is a mark rather than a run of unread words (see loose.h).
+bool looks_like_mark(const Rect& leftover) {
+    return float(leftover.width) <= float(leftover.height) * MAX_MARK_ASPECT;
+}
+
+// Whether a leftover sits on the row of a line OCR read (see loose.h).
+bool shares_a_row(const Rect& leftover, const std::vector<OcrLine>& lines) {
+    for (const OcrLine& l : lines) {
+        const int32_t overlap = std::min(leftover.y + leftover.height, l.box.y + l.box.height) - std::max(leftover.y, l.box.y);
+        if (float(overlap) >= 0.5f * float(std::min(leftover.height, l.box.height))) return true;
+    }
+    return false;
 }
 
 } // namespace subquest

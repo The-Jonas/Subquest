@@ -213,10 +213,14 @@ impl OpenAiCompatTranslator {
                         }
                     }
                     SseEvent::Done => return Ok(text.trim().to_string()),
+                    // A cut-short answer is no translation: kept, it would sit on screen (and in
+                    // the cache) as if complete. Measured: 371 words came back as 57, ending mid-sentence.
+                    SseEvent::Truncated => return Err(TranslateError::Network("the model cut its answer short".into())),
                 }
             }
         }
-        Ok(text.trim().to_string())
+        // The stream closed without its end marker: the connection was cut.
+        Err(TranslateError::Network("the answer ended before it was complete".into()))
     }
 
     /// Asks one question about an image (PNG) and returns the whole answer.
@@ -416,6 +420,34 @@ mod tests {
         assert!(raw
             .to_lowercase()
             .contains("authorization: bearer test-key"));
+    }
+
+    #[test]
+    fn an_answer_cut_before_its_end_is_an_error_not_a_translation() {
+        let (url, _) = fake_server(
+            "text/event-stream",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"O periódico é\"}}]}
+
+",
+        );
+        let result = tauri::async_runtime::block_on(translator(&url).translate(&request(), |_| true));
+        assert!(matches!(result, Err(TranslateError::Network(_))), "{result:?}");
+    }
+
+    #[test]
+    fn a_length_stop_is_an_error_not_a_translation() {
+        let (url, _) = fake_server(
+            "text/event-stream",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"O periódico é\"}}]}
+
+             data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}
+
+             data: [DONE]
+
+",
+        );
+        let result = tauri::async_runtime::block_on(translator(&url).translate(&request(), |_| true));
+        assert!(matches!(result, Err(TranslateError::Network(_))), "{result:?}");
     }
 
     /// Like fake_server, but answers the first request with a 503 and the second normally.

@@ -369,6 +369,27 @@ int main() {
         const std::vector<Rect> icons = find_icons(f, lines);
         check(icons.empty() && lines[0].text == "is a journal", "a lone letter in the text's own color stays a word");
     }
+    {
+        // Wesnoth help page, text over a textured map: OCR read "a certain" and lost the next word.
+        // Measured: its 6 letters (6 pieces, 0% of a color of their own) were kept as a picture
+        // and pasted back over the translation ("certo [number]").
+        Frame f = blank();
+        const Rect a{20, 20, 10, 16}, certain{36, 20, 60, 16}, lost{104, 20, 56, 16};
+        letters(f, a), letters(f, certain), letters(f, lost);
+        std::vector<OcrLine> lines{make_line({{"a", a}, {"certain", certain}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.empty() && lines[0].text == "a certain", "unread words in the text's color are not a picture");
+    }
+    {
+        // The same page, another width: OCR read "simply" and the garbled rest of the line, and lost
+        // "click on" between them. In the middle of the line, the lost words were a "picture" too.
+        Frame f = blank();
+        const Rect simply{20, 20, 60, 16}, lost{98, 20, 70, 16}, rest{180, 20, 60, 16};
+        letters(f, simply), letters(f, lost), letters(f, rest);
+        std::vector<OcrLine> lines{make_line({{"simply", simply}, {"thCeri", rest}})};
+        const std::vector<Rect> icons = find_icons(f, lines);
+        check(icons.empty() && lines[0].text == "simply thCeri", "unread words between two words are not a picture either");
+    }
     check(icon_placeholder(0) == "{1}" && icon_placeholder(9) == "{10}", "placeholders count from 1");
 
     std::printf(failures ? "%d FAILURE(S)\n" : "ALL OK\n", failures);

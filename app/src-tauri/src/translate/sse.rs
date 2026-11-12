@@ -10,6 +10,7 @@ use serde_json::Value;
 pub enum SseEvent {
     Delta(String), // a piece of the answer text
     Done,          // `data: [DONE]`
+    Truncated,     // the model stopped at its length limit (`finish_reason: "length"`): the text is cut short
 }
 
 /// Incremental SSE parser: feed it raw chunks, get back the events completed so far.
@@ -40,6 +41,9 @@ fn parse_line(line: &str) -> Option<SseEvent> {
         return Some(SseEvent::Done);
     }
     let json: Value = serde_json::from_str(data).ok()?;
+    if json["choices"][0]["finish_reason"].as_str() == Some("length") {
+        return Some(SseEvent::Truncated);
+    }
     let text = json["choices"][0]["delta"]["content"].as_str()?;
     if text.is_empty() {
         return None;
@@ -50,6 +54,17 @@ fn parse_line(line: &str) -> Option<SseEvent> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_length_stop_is_reported() {
+        let mut p = SseParser::default();
+        assert_eq!(
+            p.push("data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}
+
+"),
+            vec![SseEvent::Truncated]
+        );
+    }
 
     #[test]
     fn joins_lines_split_across_chunks() {

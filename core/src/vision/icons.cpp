@@ -17,6 +17,9 @@ constexpr size_t ICON_READING = 1;   // OCR reads a picture as one character ("A
 constexpr float OWN_COLOR = 0.25f;   // a one-letter word whose letters' core is this near the text's color (share of the
                                      // text/background contrast) is a word ("a"), not a picture: on a tiny glyph almost
                                      // every pixel is an edge, which looks "colored" (a website's 9 px "a": 38-64%)
+constexpr size_t TEXT_PIECES = 3;    // an edge "picture" of this many pieces or more, all in the text's color, is unread words
+constexpr float TEXT_OWN_INK = 0.1f; // (measured: "number" and "Konr", 6 and 7 pieces, 0% of their own color; a skipped
+                                     // dash is one piece, a note or coins have a color of their own)
 constexpr float WIDE_GAP = 0.9f;     // a gap wider than this share of the line height can hold a picture
 constexpr float TALLER = 0.75f;      // pictures may reach this share of the line height above and below the letters
 constexpr float OTHER_INK = 0.35f;   // short junk with this much of its ink in another color than the text's (a white
@@ -310,7 +313,11 @@ Rect edge_picture(const Frame& frame, const OcrLine& line, const std::vector<Ocr
     // Its pieces together, as wide as the search: what OCR skipped there is
     // kept whole as one picture ("spend [1000 + coins]": the bold number was
     // not read, and taking only its biggest pieces left "00").
-    const Rect d = isolated_drawing(frame, area, line, false, true, false, true, EDGE_REACH).box;
+    const Drawing drawn = isolated_drawing(frame, area, line, false, true, false, true, EDGE_REACH);
+    const Rect d = drawn.box;
+    // Several glyphs in the text's own color are words OCR could not read (over a textured
+    // background), not a picture: left alone, the translation does not paste them back.
+    if (size_t(drawn.pieces) >= TEXT_PIECES && drawn.ink_other < TEXT_OWN_INK) return {};
     if (d.empty() || d.width < height * SMALLEST || d.height < height * SMALLEST) return {};
     // Nor part of another line: its letters or its own pictures (the line's
     // box may have been cut to its letters already).
@@ -504,7 +511,10 @@ std::vector<Rect> find_icons(const Frame& frame, std::vector<OcrLine>& lines) {
                     // even in the text's own colors (Hades' gray pickaxe in a
                     // line of white and purple words).
                     const bool letter_tall = seen.box.height >= line_height * GAP_TALL;
-                    if (!seen.box.empty() && big && (seen.ink_other >= OTHER_GAP_INK || letter_tall)) {
+                    // Several glyphs in the text's color are words OCR could not read (Wesnoth's
+                    // "click on" over a map: 119 x 16, 7 pieces, 0% of its own color), not a picture.
+                    const bool unread_words = size_t(seen.pieces) >= TEXT_PIECES && seen.ink_other < TEXT_OWN_INK;
+                    if (!seen.box.empty() && big && !unread_words && (seen.ink_other >= OTHER_GAP_INK || letter_tall)) {
                         words.push_back({icon_placeholder(icons.size()), seen.box});
                         icons.push_back(seen.box);
                         changed = true;

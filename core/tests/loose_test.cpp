@@ -70,6 +70,20 @@ int main() {
     }
     check(find_loose_text(f, {line(a), line(b), line(flavor), line({38, 108, 70, 18})}, {}).empty(), "once read, it is no longer loose");
 
+    // Measured on a Wesnoth help page whose right half sits over a textured map: OCR lost the end of
+    // a line, and its 269 x 18 ink came back as a "mark" drawn over the translation.
+    check(looks_like_mark({349, 129, 20, 11}) && looks_like_mark({40, 108, 44, 18}), "a few glyphs are a mark");
+    check(!looks_like_mark({412, 125, 269, 18}), "a run of words is not");
+
+    // The words that came back over the Wesnoth page ("on", "number"): on the row of a line OCR read.
+    // The Hades marks stand on a row of their own, between the lines.
+    {
+        OcrLine row;
+        row.box = {6, 126, 338, 16};
+        check(shares_a_row({349, 129, 20, 11}, {row}), "a lost word beside a line belongs to that line");
+        check(!shares_a_row({40, 108, 44, 18}, {row}), "a mark on its own row does not");
+    }
+
     if (failures == 0) std::printf("all loose tests passed\n");
     return failures == 0 ? 0 : 1;
 }
