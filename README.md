@@ -14,7 +14,7 @@ Subquest reads the text on any window, translates it with context-aware AI and s
   <img src="docs/screenshots/demo.webp" width="820" alt="A tip in The Battle for Wesnoth: the English text, then Subquest's Portuguese translation drawn in its place, in the game's own box and font" />
 </p>
 
-**Status:** v0.2.0, Windows only. v0.3.0 is in progress: see the [Roadmap](#roadmap).
+**Status:** v0.2.1, Windows only. v0.3.0 is next: see the [Roadmap](#roadmap).
 
 ## Install
 
@@ -163,7 +163,7 @@ The installer is written to `app/src-tauri/target/release/bundle/nsis/`. It carr
 
 ## Roadmap
 
-**Done so far (v0.1.0 and v0.2.0):** window capture, OCR, two translation layers (a fast one first, the language model replaces it), translation drawn in place with the original's font, case, colors and effects, icons kept in place, text removed with the real background, marked areas and whole-window mode, a per-game glossary, versioned profiles with migration, a pluggable OCR engine, the in-game bar and shortcuts, history, guided tour, themes and the installer.
+**Done so far (up to v0.2.1):** window capture, OCR, two translation layers (a fast one first, the language model replaces it), translation drawn in place with the original's font, case, colors and effects, icons kept in place, text removed with the real background, marked areas and whole-window mode, a per-game glossary, versioned profiles with migration, a pluggable OCR engine, the in-game bar and shortcuts, history, guided tour, themes and the installer.
 
 **Next, v0.3.0: Subquest for everything on screen.** Games stay the showcase; these steps open the door to the rest:
 

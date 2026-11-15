@@ -14,7 +14,7 @@ O Subquest lê o texto de qualquer janela, traduz com IA que entende o contexto 
   <img src="docs/screenshots/demo.webp" width="820" alt="Uma dica de The Battle for Wesnoth: o texto em inglês e depois a tradução do Subquest desenhada no lugar dele, na caixa e na fonte do próprio jogo" />
 </p>
 
-**Situação:** v0.2.0, só para Windows. A v0.3.0 está em andamento: veja o [roteiro](#roteiro).
+**Situação:** v0.2.1, só para Windows. A v0.3.0 é a próxima: veja o [roteiro](#roteiro).
 
 ## Instalar
 
@@ -135,7 +135,7 @@ O instalador fica em `app/src-tauri/target/release/bundle/nsis/`. Ele leva a DLL
 
 ## Roteiro
 
-**Pronto até agora (v0.1.0 e v0.2.0):** captura da janela, OCR, duas camadas de tradução (uma rápida primeiro, o modelo de linguagem substitui), tradução desenhada no lugar com a fonte, as maiúsculas, as cores e os efeitos do original, ícones mantidos no lugar, texto removido com o fundo real, áreas marcadas e modo janela inteira, glossário por jogo, perfis com versão e migração, OCR trocável, a barrinha e os atalhos, histórico, tour guiado, temas e o instalador.
+**Pronto até agora (até a v0.2.1):** captura da janela, OCR, duas camadas de tradução (uma rápida primeiro, o modelo de linguagem substitui), tradução desenhada no lugar com a fonte, as maiúsculas, as cores e os efeitos do original, ícones mantidos no lugar, texto removido com o fundo real, áreas marcadas e modo janela inteira, glossário por jogo, perfis com versão e migração, OCR trocável, a barrinha e os atalhos, histórico, tour guiado, temas e o instalador.
 
 **Próximo, v0.3.0: o Subquest para tudo que aparece na tela.** Os jogos continuam sendo a vitrine; estes passos abrem a porta para o resto:
 

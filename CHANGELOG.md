@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.2.1 — 2026-11-15
+
+A fixes-and-polish release: a cleaner interface and fewer wrong or leftover
+texts over translations. No new features; the whole-window mode is still
+experimental.
+
+### Interface
+- Plainer Translate screen, a readable sidebar, better contrast, and wording
+  that no longer assumes the translated window is a game ("Apps", "Translate").
+- A Stop button in the sidebar while a window is being translated.
+- New shortcut, Ctrl+Shift+M: gives the mouse and focus to the bar when the game
+  keeps the cursor (instead of reaching for the Windows key), and back again.
+- The in-game bar's window is wide enough for all its buttons.
+
+### Translation
+- When the translator's quota runs out (HTTP 429), the app says so once, pauses
+  the main translator for 5 minutes and logs one short line, instead of retrying
+  on every line and filling the log.
+- A translation stream that breaks is retried, and half-written text is dropped
+  when it fails.
+
+### Text in place
+- Whole-window reading keeps separate blocks apart, so one paragraph is no
+  longer merged with a title or hint from the other side of the screen.
+- A line can only grow up to the nearest line on its row (a label and its value,
+  two columns), so translations stop overlapping their neighbors.
+- Where two marked areas overlap, the reading with more text wins.
+- A key drawn in brackets ("[ C ]") is never broken across two lines.
+- A second OCR read recovers text the first one missed, and words or marks OCR
+  left behind are removed instead of being drawn again over the translation.
+- Lone letters in the text's own color are kept as words.
+
+### Docs
+- README rewritten around translating anything on screen, with games as the
+  showcase, new screenshots and a roadmap for v0.3.0.
+
+### Known issues
+- Whole-window reading is still **experimental**: on busy screens a few
+  fragments of the original may remain, or text over detailed backgrounds may be
+  unreadable for the Windows OCR.
+- The translator may still pick its own names for proper nouns; add them to the
+  glossary to fix them.
+
 ## v0.2.0 — 2026-11-06
 
 Translations now take the original text's place much more faithfully, tested
